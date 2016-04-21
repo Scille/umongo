@@ -16,12 +16,11 @@ with open('HISTORY.rst', 'rb') as history_file:
 
 requirements = [
     "marshmallow>=2.6.0",
-    "pymongo"  # needed for bson module
 ]
 
 test_requirements = [
     "txmongo",
-    "motor>=0.7.4"
+    "motor>=0.6.2"
 ]
 
 setup(
