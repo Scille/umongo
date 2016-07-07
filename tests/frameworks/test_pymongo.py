@@ -15,7 +15,7 @@ major, minor, _ = get_pymongo_version()
 if int(major) != 3 or int(minor) < 2:
     dep_error = "pymongo driver requires pymongo>=3.2.0"
 else:
-    dep_error = None
+    dep_error = ''
 
 if not dep_error:  # Make sure the module is valid by importing it
     from umongo.frameworks import pymongo as framework_pymongo
