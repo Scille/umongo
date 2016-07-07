@@ -16,8 +16,11 @@ class BaseSchema(MaSchema):
     @validates_schema(pass_original=True)
     def check_unknown_fields(self, data, original_data):
         loadable_fields = [k for k, v in self.fields.items() if not v.dump_only]
-        for key in original_data:
+        for key, value in original_data.items():
             if key not in loadable_fields:
+                if (key in self.fields and self.fields[key].dump_only and
+                        value is not missing):
+                    raise ValidationError(_('Field {field} is dump_only.').format(field=key))
                 raise ValidationError(_('Unknown field name {field}.').format(field=key))
 
     def map_to_field(self, func):
