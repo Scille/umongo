@@ -1,4 +1,5 @@
 from datetime import datetime
+from operator import itemgetter
 from marshmallow import ValidationError, missing
 from marshmallow import fields as ma_fields
 from bson import DBRef, ObjectId, errors as bson_errors
@@ -82,6 +83,8 @@ class ListField(BaseField, ma_fields.List):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('default', [])
         kwargs.setdefault('missing', lambda: List(self.container))
+        self._ordering = kwargs.pop('ordering', None)
+        self._order_reverse = kwargs.pop('reverse', False)
         super().__init__(*args, **kwargs)
 
     def _deserialize(self, value, attr, data):
@@ -91,7 +94,13 @@ class ListField(BaseField, ma_fields.List):
     def _serialize_to_mongo(self, obj):
         if not obj:
             return missing
-        return [self.container.serialize_to_mongo(each) for each in obj]
+
+        items = [self.container.serialize_to_mongo(each) for each in obj]
+
+        if self._ordering is not None:
+            items.sort(key=itemgetter(self._ordering), reverse=self._order_reverse)
+
+        return items
 
     def _deserialize_from_mongo(self, value):
         if value:
