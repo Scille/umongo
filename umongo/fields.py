@@ -1,4 +1,7 @@
 from datetime import datetime
+
+import geojson
+
 from marshmallow import ValidationError, missing
 from marshmallow import fields as ma_fields
 from bson import DBRef, ObjectId, errors as bson_errors
@@ -215,6 +218,28 @@ class ObjectIdField(BaseField, ma_fields.Field):
             return ObjectId(value)
         except bson_errors.InvalidId:
             raise ValidationError(_('Invalid ObjectId.'))
+
+
+class PointField(BaseField, ma_fields.Field):
+
+    def _serialize(self, value, attr, obj):
+        if value is None:
+            return None
+        return value.coordinates
+
+    def _deserialize(self, value, attr, data):
+        if isinstance(value, geojson.Point):
+            return value
+        try:
+            return geojson.Point(value)
+        except ValueError:
+            raise ValidationError(_('Invalid Point.'))
+
+    def _serialize_to_mongo(self, obj):
+        return geojson.dumps(obj)
+
+    def _deserialize_from_mongo(self, value):
+        return geojson.loads(value)
 
 
 class ReferenceField(ObjectIdField):
