@@ -15,7 +15,8 @@ with open('HISTORY.rst', 'rb') as history_file:
     history = history_file.read().decode('utf8')
 
 requirements = [
-    "marshmallow>=2.6.0"
+    "marshmallow>=2.6.0",
+    "geojson>=1.3.1",
 ]
 
 setup(
