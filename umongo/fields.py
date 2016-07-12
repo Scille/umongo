@@ -235,9 +235,6 @@ class PointField(BaseField, ma_fields.Field):
         except ValueError:
             raise ValidationError(_('Invalid Point.'))
 
-    def _serialize_to_mongo(self, obj):
-        return geojson.dumps(obj)
-
     def _deserialize_from_mongo(self, value):
         return geojson.GeoJSON.to_instance(value)
 
