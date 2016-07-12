@@ -239,7 +239,7 @@ class PointField(BaseField, ma_fields.Field):
         return geojson.dumps(obj)
 
     def _deserialize_from_mongo(self, value):
-        return geojson.loads(value)
+        return geojson.GeoJSON.to_instance(value)
 
 
 class ReferenceField(ObjectIdField):
