@@ -76,6 +76,9 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
     def dump(self):
         return self._data.dump()
 
+    def update(self, data, schema=None, reset_missings=False):
+        return self._data.update(data, schema=schema, reset_missings=reset_missings)
+
     # Data-proxy accessor shortcuts
 
     def __getitem__(self, name):
