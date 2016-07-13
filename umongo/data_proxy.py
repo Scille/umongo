@@ -80,13 +80,22 @@ class DataProxy:
     def _mark_as_modified(self, key):
         self._modified_data.add(key)
 
-    def update(self, data, schema=None):
+    def update(self, data, schema=None, reset_missings=False):
         schema = schema or self._schema
         # Always use marshmallow partial load to skip required checks
         loaded_data, err = schema.load(data, partial=True)
         if err:
             raise ValidationError(err)
         self._data.update(loaded_data)
+
+        # Set missing values to missing
+        if reset_missings:
+            loadable_fields = set(
+                [k for k, v in schema.fields.items() if not v.dump_only])
+            missing_keys = loadable_fields - set(data)
+            for key in missing_keys:
+                self._data[key] = missing
+
         for key in loaded_data:
             self._mark_as_modified(key)
 

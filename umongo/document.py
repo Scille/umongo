@@ -203,13 +203,15 @@ class DocumentImplementation(Implementation, metaclass=MetaDocumentImplementatio
                                   ' using update')
         return self._data.to_mongo(update=update)
 
-    def update(self, data, schema=None):
+    def update(self, data, schema=None, reset_missings=False):
         """
         Update the document with the given data
 
         :param schema: use this schema for the load instead of the default one
+        :param reset_missings: if True, all loadable fields in schema missing
+                               in data are removed from document
         """
-        return self._data.update(data, schema=schema)
+        return self._data.update(data, schema=schema, reset_missings=reset_missings)
 
     def dump(self, schema=None):
         """
