@@ -95,6 +95,7 @@ class DataProxy:
             missing_keys = loadable_fields - set(data)
             for key in missing_keys:
                 self._data[key] = missing
+                self._mark_as_modified(key)
 
         for key in loaded_data:
             self._mark_as_modified(key)
