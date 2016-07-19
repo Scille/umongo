@@ -138,6 +138,8 @@ class DataProxy:
         field = self._fields[name]
         name = field.attribute or name
         value = field._deserialize(value, name, None)
+        if value is None:
+            value = missing
         field._validate(value)
         self._data[name] = value
         self._mark_as_modified(name)
