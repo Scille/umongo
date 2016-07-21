@@ -119,6 +119,20 @@ def _build_document_opts(instance, template, name, nmspc, bases):
     return DocumentOpts(collection_name=collection_name, **kwargs)
 
 
+def make_marshmallow_schema_class(UMongoSchema):
+
+    class MarshmallowSchema(UMongoSchema):
+        pass
+
+    # Remove 'attribute' from all fields
+    fields = {k: copy(v) for k, v in MarshmallowSchema._declared_fields.items()}
+    for f in fields.values():
+        f.attribute = None
+    MarshmallowSchema._declared_fields = fields
+
+    return MarshmallowSchema
+
+
 class BaseBuilder:
     """
     A builder connect a :class:`umongo.document.Template` with a
@@ -200,6 +214,8 @@ class BaseBuilder:
         schema = schema_cls()
         nmspc['schema'] = schema
 
+        nmspc['DocSchema'] = make_marshmallow_schema_class(schema_cls)
+
         # _build_document_opts cannot determine the indexes given we need to
         # visit the document's fields which weren't defined at this time
         opts.indexes = _collect_indexes(nmspc.get('Meta'), schema.fields, bases)
@@ -232,6 +248,7 @@ class BaseBuilder:
         schema_cls = self._build_schema(template, schema_bases, schema_nmspc)
         nmspc['Schema'] = schema_cls
         nmspc['schema'] = schema_cls()
+        nmspc['DocSchema'] = make_marshmallow_schema_class(schema_cls)
 
         implementation = type(name, bases, nmspc)
         self._templates_lookup[template] = implementation
