@@ -146,10 +146,9 @@ class DataProxy:
         if name not in self._fields:
             raise to_raise(name)
         name = self._fields[name].attribute or name
-        if self._data[name] is missing:
-            raise to_raise(name)
-        self._data[name] = missing
-        self._mark_as_modified(name)
+        if self._data[name] is not missing:
+            self._data[name] = missing
+            self._mark_as_modified(name)
 
     def __repr__(self):
         return "<DataProxy(%s)>" % self._data

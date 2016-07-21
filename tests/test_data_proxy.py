@@ -203,8 +203,7 @@ class TestDataProxy(BaseTest):
         assert d.get('b') is None
         assert d.get_by_mongo_name('in_mongo_b') is None
         assert d._data['in_mongo_b'] is missing
-        with pytest.raises(KeyError):
-            d.delete('b')
+        d.delete('b')
         d.set('b', 2)
         assert d.get('b') == 2
         d.delete('b')
