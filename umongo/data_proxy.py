@@ -88,22 +88,23 @@ class DataProxy:
     def update(self, data, schema=None, reset_missings=False):
         schema = schema or self._schema
 
-        # Set missing values to missing
-        if reset_missings:
-            loadable_fields = set(
-                [k for k, v in schema.fields.items() if not v.dump_only])
-            missing_keys = loadable_fields - set(data)
-            for key in missing_keys:
-                self._data[key] = missing
-                self._mark_as_modified(key)
-
-        # Always use marshmallow partial load to skip required checks
-        loaded_data, err = schema.load(data, partial=True)
+        # Use marshmallow partial load to skip required checks
+        # unless reset_missings is True
+        loaded_data, err = schema.load(data, partial=(not reset_missings))
         if err:
             raise ValidationError(err)
         self._data.update(loaded_data)
         for key in loaded_data:
             self._mark_as_modified(key)
+
+        # Delete missing fields unless dump_only or with a default value
+        if reset_missings:
+            deletable_fields = set(
+                [k for k, v in schema.fields.items()
+                 if not v.dump_only and v.missing is missing])
+            missing_keys = deletable_fields - set(data)
+            for key in missing_keys:
+                self.delete(key)
 
     def load(self, data, partial=False, schema=None):
         schema = schema or self._schema
