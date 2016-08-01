@@ -89,7 +89,7 @@ class DataProxy:
         schema = schema or self._schema
 
         # Use marshmallow partial load to skip required checks
-        # unless reset_missings is True
+        # unless reset_missings is True
         loaded_data, err = schema.load(data, partial=(not reset_missings))
         if err:
             raise ValidationError(err)
