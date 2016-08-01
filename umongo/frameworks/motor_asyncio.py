@@ -61,6 +61,33 @@ class MotorAsyncIODocument(DocumentImplementation):
 
     opts = DocumentImplementation.opts
 
+    # Cook hooks into coroutines in order to allow them to return
+    # either Future or regular return value.
+
+    @asyncio.coroutine
+    def __coroutined_pre_insert(self, payload):
+        return self.pre_insert(payload)
+
+    @asyncio.coroutine
+    def __coroutined_pre_update(self, query, payload):
+        return self.pre_update(query, payload)
+
+    @asyncio.coroutine
+    def __coroutined_pre_delete(self):
+        return self.pre_delete()
+
+    @asyncio.coroutine
+    def __coroutined_post_insert(self, ret, payload):
+        return self.post_insert(ret, payload)
+
+    @asyncio.coroutine
+    def __coroutined_post_update(self, ret, payload):
+        return self.post_update(ret, payload)
+
+    @asyncio.coroutine
+    def __coroutined_post_delete(self, ret):
+        return self.post_delete(ret)
+
     @asyncio.coroutine
     def reload(self):
         """
@@ -89,6 +116,8 @@ class MotorAsyncIODocument(DocumentImplementation):
             satisfies condition(s) (e.g. version number).
             Raises :class:`umongo.exceptions.UpdateError` if the
             conditions are not satisfied.
+        :return: Update result dict returned by underlaying driver or
+            ObjectId of the inserted document.
         """
         yield from self.io_validate(validate_all=io_validate_all)
         payload = self._data.to_mongo(update=self.is_created)
@@ -97,16 +126,20 @@ class MotorAsyncIODocument(DocumentImplementation):
                 if payload:
                     query = conditions or {}
                     query['_id'] = self._data.get_by_mongo_name('_id')
+                    yield from self.__coroutined_pre_update(query, payload)
                     ret = yield from self.collection.update(query, payload)
                     if ret.get('ok') != 1 or ret.get('n') != 1:
                         raise UpdateError(ret)
+                    yield from self.__coroutined_post_update(ret, payload)
             elif conditions:
                 raise RuntimeError('Document must already exist in database to use `conditions`.')
             else:
+                yield from self.__coroutined_pre_insert(payload)
                 ret = yield from self.collection.insert(payload)
                 # TODO: check ret ?
                 self._data.set_by_mongo_name('_id', ret)
                 self.is_created = True
+                yield from self.__coroutined_post_insert(ret, payload)
         except DuplicateKeyError as exc:
             # Need to dig into error message to find faulting index
             errmsg = exc.details['errmsg']
@@ -127,6 +160,7 @@ class MotorAsyncIODocument(DocumentImplementation):
             # Unknown index, cannot wrap the error so just reraise it
             raise
         self._data.clear_modified()
+        return ret
 
     @asyncio.coroutine
     def delete(self):
@@ -144,13 +178,17 @@ class MotorAsyncIODocument(DocumentImplementation):
         is not created (i.e. ``doc.is_created`` is False)
         Raises :class:`umongo.exceptions.DeleteError` if the document
         doesn't exist in database.
+
+        :return: Delete result dict returned by underlaying driver.
         """
+        yield from self.__coroutined_pre_delete()
         if not self.is_created:
             raise NotCreatedError("Document doesn't exists in database")
         ret = yield from self.collection.remove({'_id': self.pk})
         if ret.get('ok') != 1 or ret.get('n') != 1:
             raise DeleteError(ret)
         self.is_created = False
+        yield from self.__coroutined_post_delete(ret)
         return ret
 
     def io_validate(self, validate_all=False):

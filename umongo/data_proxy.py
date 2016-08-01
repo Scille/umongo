@@ -9,11 +9,11 @@ __all__ = ('DataProxy', 'missing')
 
 class DataProxy:
 
-    __slots__ = ('partial', '_schema', '_fields', '_data',
+    __slots__ = ('not_loaded_fields', '_schema', '_fields', '_data',
                  '_modified_data', '_fields_from_mongo_key')
 
     def __init__(self, schema, data=None):
-        self.partial = False
+        self.not_loaded_fields = ()
         self._schema = schema
         self._fields = schema.fields
         self._data = {}
@@ -25,6 +25,10 @@ class DataProxy:
             fields_from_mongo_key[k] = v
         self._fields_from_mongo_key = fields_from_mongo_key
         self.load(data if data else {})
+
+    @property
+    def partial(self):
+        return bool(self.not_loaded_fields)
 
     def to_mongo(self, update=False):
         if update:
@@ -58,7 +62,7 @@ class DataProxy:
         if set_data:
             mongo_data['$set'] = set_data
         if unset_data:
-            mongo_data['$unset'] = sorted(unset_data)
+            mongo_data['$unset'] = {k: "" for k in unset_data}
         return mongo_data or None
 
     def from_mongo(self, data, partial=False):
@@ -66,9 +70,10 @@ class DataProxy:
         for k, v in data.items():
             field = self._fields_from_mongo_key[k]
             self._data[k] = field.deserialize_from_mongo(v)
+        if partial:
+            self._collect_partial_fields(data.keys(), as_mongo_fields=True)
         self._add_missing_fields()
         self.clear_modified()
-        self.partial = partial
 
     def dump(self, schema=None):
         schema = schema or self._schema
@@ -107,57 +112,51 @@ class DataProxy:
         if err:
             raise ValidationError(err)
         self._data = loaded_data
+        if partial:
+            self._collect_partial_fields(data)
         self._add_missing_fields()
         self.clear_modified()
-        self.partial = partial
 
     def get_by_mongo_name(self, name):
         value = self._data[name]
-        if value is missing:
-            if self.partial:
-                raise FieldNotLoadedError(name)
-            else:
-                return None
+        if self._fields_from_mongo_key[name] in self.not_loaded_fields:
+            raise FieldNotLoadedError(name)
         return value
 
     def set_by_mongo_name(self, name, value):
         self._data[name] = value
+        if self._fields_from_mongo_key[name] in self.not_loaded_fields:
+            raise FieldNotLoadedError(name)
         self._mark_as_modified(name)
 
     def delete_by_mongo_name(self, name):
         self.set_by_mongo_name(name, missing)
 
-    def get(self, name, to_raise=KeyError):
+    def _get_field(self, name, to_raise):
         if name not in self._fields:
             raise to_raise(name)
         field = self._fields[name]
+        if field in self.not_loaded_fields:
+            raise FieldNotLoadedError(name)
         name = field.attribute or name
+        return name, field
+
+    def get(self, name, to_raise=KeyError):
+        name, field = self._get_field(name, to_raise)
         value = self._data[name]
-        if value is missing:
-            if self.partial:
-                raise FieldNotLoadedError(name)
-            elif field.default is not missing:
-                return field.default
-            else:
-                return None
+        if value is missing and field.default is not missing:
+            return field.default
         return value
 
     def set(self, name, value, to_raise=KeyError):
-        if name not in self._fields:
-            raise to_raise(name)
-        field = self._fields[name]
-        name = field.attribute or name
+        name, field = self._get_field(name, to_raise)
         value = field._deserialize(value, name, None)
         field._validate(value)
         self._data[name] = value
         self._mark_as_modified(name)
 
     def delete(self, name, to_raise=KeyError):
-        if name not in self._fields:
-            raise to_raise(name)
-        name = self._fields[name].attribute or name
-        if self._data[name] is missing:
-            raise to_raise(name)
+        name, _ = self._get_field(name, to_raise)
         self._data[name] = missing
         self._mark_as_modified(name)
 
@@ -187,12 +186,21 @@ class DataProxy:
             if isinstance(v, BaseDataObject):
                 v.clear_modified()
 
+    def _collect_partial_fields(self, loaded_fields, as_mongo_fields=False):
+        if as_mongo_fields:
+            self.not_loaded_fields = set(
+                self._fields_from_mongo_key[k]
+                for k in self._fields_from_mongo_key.keys() - set(loaded_fields))
+        else:
+            self.not_loaded_fields = set(
+                self._fields[k] for k in self._fields.keys() - set(loaded_fields))
+
     def _add_missing_fields(self):
         # TODO: we should be able to do that by configuring marshmallow...
         for name, field in self._fields.items():
-            name = field.attribute or name
-            if name not in self._data:
+            mongo_name = field.attribute or name
+            if mongo_name not in self._data:
                 if callable(field.missing):
-                    self._data[name] = field.missing()
+                    self._data[mongo_name] = field.missing()
                 else:
-                    self._data[name] = field.missing
+                    self._data[mongo_name] = field.missing

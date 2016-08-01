@@ -1,6 +1,7 @@
 from bson import ObjectId, DBRef
 import pytest
 from datetime import datetime
+from dateutil.tz.tz import tzutc
 from marshmallow import ValidationError
 from uuid import UUID
 
@@ -95,9 +96,9 @@ class TestFields(BaseTest):
         data, _ = s.load({'a': datetime(2016, 8, 6)})
         assert data['a'] == datetime(2016, 8, 6)
         data, _ = s.load({'a': "2016-08-06T00:00:00Z"})
+        assert data['a'] == datetime(2016, 8, 6, tzinfo=tzutc())
+        data, _ = s.load({'a': "2016-08-06T00:00:00"})
         assert data['a'] == datetime(2016, 8, 6)
-        with pytest.raises(ValidationError):
-            s.load({'a': "2016-08-06"})
         with pytest.raises(ValidationError):
             s.load({'a': "dummy"})
 
@@ -149,6 +150,8 @@ class TestFields(BaseTest):
             embedded = fields.EmbeddedField(MyEmbeddedDocument, attribute='in_mongo_embedded')
 
         MySchema = MyDoc.Schema
+        modified_schema = MyDoc.Schema(load_only=('embedded',))
+        modified_embedded_schema = MyEmbeddedDocument.Schema(load_only=('a',))
 
         # Make sure embedded document doesn't have implicit _id field
         assert '_id' not in MyEmbeddedDocument.Schema().fields
@@ -157,11 +160,13 @@ class TestFields(BaseTest):
         d = DataProxy(MySchema())
         d.load(data={'embedded': {'a': 1, 'b': 2}})
         assert d.dump() == {'embedded': {'a': 1, 'b': 2}}
+        assert d.dump(schema=modified_schema) == {}
         embedded = d.get('embedded')
         assert type(embedded) == MyEmbeddedDocument
         assert embedded.a == 1
         assert embedded.b == 2
         assert embedded.dump() == {'a': 1, 'b': 2}
+        assert embedded.dump(schema=modified_embedded_schema) == {'b': 2}
         assert embedded.to_mongo() == {'in_mongo_a': 1, 'b': 2}
         assert d.to_mongo() == {'in_mongo_embedded': {'in_mongo_a': 1, 'b': 2}}
 
@@ -177,7 +182,7 @@ class TestFields(BaseTest):
         assert d.to_mongo(update=True) is None
 
         del embedded.a
-        assert embedded.to_mongo(update=True) == {'$unset': ['in_mongo_a']}
+        assert embedded.to_mongo(update=True) == {'$unset': {'in_mongo_a': ''}}
         assert d.to_mongo(update=True) == {'$set': {'in_mongo_embedded': {'b': 2}}}
 
         d.set('embedded', MyEmbeddedDocument(a=4))
@@ -205,6 +210,20 @@ class TestFields(BaseTest):
         assert 'tests.test_fields.MyEmbeddedDocument' in repr_d
         assert "'in_mongo_a': 1" in repr_d
         assert "'b': 2" in repr_d
+
+        # Test unknown fields
+        with pytest.raises(AttributeError):
+            embedded_doc.dummy
+        with pytest.raises(AttributeError):
+            embedded_doc.dummy = None
+        with pytest.raises(AttributeError):
+            del embedded_doc.dummy
+        with pytest.raises(KeyError):
+            embedded_doc['dummy']
+        with pytest.raises(KeyError):
+            embedded_doc['dummy'] = None
+        with pytest.raises(KeyError):
+            del embedded_doc['dummy']
 
     @pytest.mark.xfail()
     def test_embedded_document_required(self):
@@ -257,7 +276,7 @@ class TestFields(BaseTest):
         d.clear_modified()
         d.get('list').clear()
         assert d.dump() == {'list': []}
-        assert d.to_mongo(update=True) == {'$unset': ['in_mongo_list']}
+        assert d.to_mongo(update=True) == {'$unset': {'in_mongo_list': ''}}
 
         d.set('list', [1, 2, 3])
         d.clear_modified()
@@ -340,6 +359,15 @@ class TestFields(BaseTest):
         embeds_list.extend([{'field': 4}, {'field': 5}])
         for e in embeds_list:
             assert isinstance(e, MyEmbeddedDocument)
+        # Modifying an EmbeddedDocument inside a list should count a list modification
+        d.clear_modified()
+        d.get('refs')[0] = obj_id2
+        assert d.to_mongo(update=True) == {'$set': {'refs': [
+            obj_id2, obj_id2, obj_id1, obj_id1, obj_id2]}}
+        d.clear_modified()
+        d.get('embeds')[1].field = 42
+        assert d.to_mongo(update=True) == {'$set': {'embeds': [
+            {'field': 1}, {'field': 42}, {'field': 3}, {'field': 4}, {'field': 5}]}}
 
     def test_objectid(self):
 

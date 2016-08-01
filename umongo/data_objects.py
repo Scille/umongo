@@ -12,6 +12,11 @@ class List(BaseDataObject, list):
         super().__init__(*args, **kwargs)
         self.container_field = container_field
 
+    def __setitem__(self, key, obj):
+        obj = self.container_field.deserialize(obj)
+        super().__setitem__(key, obj)
+        self._modified = True
+
     def append(self, obj):
         obj = self.container_field.deserialize(obj)
         ret = super().append(obj)
@@ -53,7 +58,22 @@ class List(BaseDataObject, list):
         return '<object %s.%s(%s)>' % (
             self.__module__, self.__class__.__name__, list(self))
 
+    def is_modified(self):
+        if self._modified:
+            return True
+        if len(self) and isinstance(self[0], BaseDataObject):
+            # Recursive handling needed
+            return next((True for obj in self if obj.is_modified() is True), False)
 
+    def clear_modified(self):
+        self._modified = False
+        if len(self) and isinstance(self[0], BaseDataObject):
+            # Recursive handling needed
+            for obj in self:
+                obj.clear_modified()
+
+
+# TODO: Dict is to much raw: you need to use `set_modified` by hand !
 class Dict(BaseDataObject, dict):
     pass
 

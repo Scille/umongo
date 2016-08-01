@@ -82,7 +82,9 @@ Ready to contribute? Here's how to set up `umongo` for local development.
     $ py.test tests
     $ tox
 
-   To get flake8 and tox, just pip install them into your virtualenv.
+   To get flake8, pytest and tox, just pip install them into your virtualenv.
+
+.. note:: You need pytest>=2.8
 
 6. Commit your changes and push your branch to GitHub::
 

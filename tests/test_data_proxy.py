@@ -2,9 +2,10 @@ from marshmallow import ValidationError, missing
 import pytest
 
 from umongo.data_proxy import DataProxy
-from umongo import EmbeddedSchema, fields, EmbeddedDocument, validate
+from umongo import EmbeddedSchema, fields, EmbeddedDocument, validate, exceptions
 
 from .common import BaseTest
+
 
 class TestDataProxy(BaseTest):
 
@@ -69,7 +70,7 @@ class TestDataProxy(BaseTest):
         assert d.to_mongo(update=True) is None
         d.set('a', 3)
         d.delete('b')
-        assert d.to_mongo(update=True) == {'$set': {'a': 3}, '$unset': ['in_mongo_b']}
+        assert d.to_mongo(update=True) == {'$set': {'a': 3}, '$unset': {'in_mongo_b': ''}}
         d.clear_modified()
         assert d.to_mongo(update=True) is None
         assert d.to_mongo() == {'a': 3}
@@ -126,9 +127,9 @@ class TestDataProxy(BaseTest):
         d.load({'a': 1, 'b': 2})
         d.delete('b')
         assert d.to_mongo() == {'a': 1}
-        assert d.to_mongo(update=True) == {'$unset': ['in_mongo_b']}
+        assert d.to_mongo(update=True) == {'$unset': {'in_mongo_b': ''}}
         d.delete('a')
-        assert d.to_mongo(update=True) == {'$unset': ['a', 'in_mongo_b']}
+        assert d.to_mongo(update=True) == {'$unset': {'a': '', 'in_mongo_b': ''}}
 
         with pytest.raises(KeyError):
             d.delete('in_mongo_b')
@@ -191,7 +192,7 @@ class TestDataProxy(BaseTest):
         assert d.to_mongo(update=True) == {'$set': {'in_mongo_b': 3}}
         assert d.get_by_mongo_name('in_mongo_b') == 3
         d.delete_by_mongo_name('in_mongo_b')
-        assert d.to_mongo(update=True) == {'$unset': ['in_mongo_b']}
+        assert d.to_mongo(update=True) == {'$unset': {'in_mongo_b': ''}}
 
     def test_set_to_missing_fields(self):
 
@@ -200,13 +201,13 @@ class TestDataProxy(BaseTest):
             b = fields.IntField(attribute='in_mongo_b')
 
         d = DataProxy(MySchema(), data={'a': 1})
-        assert d.get('b') is None
-        assert d.get_by_mongo_name('in_mongo_b') is None
+        assert d.get('b') is missing
+        assert d.get_by_mongo_name('in_mongo_b') is missing
         assert d._data['in_mongo_b'] is missing
-        with pytest.raises(KeyError):
-            d.delete('b')
         d.set('b', 2)
         assert d.get('b') == 2
+        d.delete('b')
+        # Can do it two time in a row without error
         d.delete('b')
         assert d._data['in_mongo_b'] is missing
 
@@ -236,3 +237,69 @@ class TestDataProxy(BaseTest):
         with pytest.raises(ValidationError) as exc:
             d.set('with_max', 100)
         assert exc.value.args[0] == ['Must be at most 99.']
+
+    def test_partial(self):
+
+        class MySchema(EmbeddedSchema):
+            with_default = fields.StrField(default='default_value')
+            with_missing = fields.StrField(missing='missing_value')
+            normal = fields.StrField()
+            loaded = fields.StrField()
+            loaded_but_empty = fields.StrField()
+
+        d = DataProxy(MySchema())
+        d.from_mongo({'loaded': "foo", 'loaded_but_empty': missing}, partial=True)
+        assert d.partial is True
+        for field in ('with_default', 'with_missing', 'normal'):
+            with pytest.raises(exceptions.FieldNotLoadedError):
+                d.get(field)
+            with pytest.raises(exceptions.FieldNotLoadedError):
+                d.set(field, "test")
+            with pytest.raises(exceptions.FieldNotLoadedError):
+                d.delete(field)
+        assert d.get('loaded') == "foo"
+        assert d.get('loaded_but_empty') is missing
+        d.set('loaded_but_empty', "bar")
+        assert d.get('loaded_but_empty') == "bar"
+        d.delete('loaded')
+        # Can still access the deleted field
+        assert d.get('loaded') is missing
+
+        # Same test, but using `load`
+        d = DataProxy(MySchema())
+        d.load({'loaded': "foo", 'loaded_but_empty': missing}, partial=True)
+        assert d.partial is True
+        for field in ('with_default', 'with_missing', 'normal'):
+            with pytest.raises(exceptions.FieldNotLoadedError):
+                d.get(field)
+            with pytest.raises(exceptions.FieldNotLoadedError):
+                d.set(field, "test")
+            with pytest.raises(exceptions.FieldNotLoadedError):
+                d.delete(field)
+        assert d.get('loaded') == "foo"
+        assert d.get('loaded_but_empty') is missing
+        d.set('loaded_but_empty', "bar")
+        assert d.get('loaded_but_empty') == "bar"
+        d.delete('loaded')
+        # Can still access the deleted field
+        assert d.get('loaded') is missing
+
+        # Not partial
+        d = DataProxy(MySchema())
+        d.from_mongo({'loaded': "foo", 'loaded_but_empty': missing})
+        assert d.partial is False
+        assert d.get('with_default') == 'default_value'
+        assert d.get('with_missing') == 'missing_value'
+        assert d.get('normal') is missing
+        assert d.get('loaded') == "foo"
+        assert d.get('loaded_but_empty') == missing
+        # Same test with load
+        d = DataProxy(MySchema())
+        d.load({'loaded': "foo", 'loaded_but_empty': missing})
+        assert d.partial is False
+        assert d.partial is False
+        assert d.get('with_default') == 'default_value'
+        assert d.get('with_missing') == 'missing_value'
+        assert d.get('normal') is missing
+        assert d.get('loaded') == "foo"
+        assert d.get('loaded_but_empty') == missing

@@ -1,6 +1,6 @@
 from bson import DBRef
 
-from .data_proxy import DataProxy
+from .data_proxy import DataProxy, missing
 from .exceptions import (NotCreatedError, NoDBDefinedError,
                          AbstractDocumentError, DocumentDefinitionError)
 from .schema import Schema
@@ -153,7 +153,8 @@ class DocumentImplementation(Implementation, metaclass=MetaDocumentImplementatio
                      has already been commited to database given ``_id``
                      field could be generated before insertion
         """
-        return self._data.get_by_mongo_name('_id')
+        value = self._data.get_by_mongo_name('_id')
+        return value if value is not missing else None
 
     @property
     def dbref(self):
@@ -231,7 +232,8 @@ class DocumentImplementation(Implementation, metaclass=MetaDocumentImplementatio
     # Data-proxy accessor shortcuts
 
     def __getitem__(self, name):
-        return self._data.get(name)
+        value = self._data.get(name)
+        return value if value is not missing else None
 
     def __delitem__(self, name):
         self._data.delete(name)
@@ -246,7 +248,67 @@ class DocumentImplementation(Implementation, metaclass=MetaDocumentImplementatio
             self._data.set(name, value, to_raise=AttributeError)
 
     def __getattr__(self, name):
-        return self._data.get(name, to_raise=AttributeError)
+        value = self._data.get(name, to_raise=AttributeError)
+        return value if value is not missing else None
 
     def __delattr__(self, name):
         self._data.delete(name, to_raise=AttributeError)
+
+    def pre_insert(self, payload):
+        """
+        Overload this method to get a callback before document insertion.
+        :param payload: Data to insert in database, you can modify
+            this dict.
+
+        .. note:: If you use an async driver, this callback can return a defer/future.
+        """
+        pass
+
+    def pre_update(self, query, payload):
+        """
+        Overload this method to get a callback before document update.
+        :param query: Query to select the document to update, you can modify
+            this dict.
+        :param payload: Data to send in database, you can modify
+            this dict.
+
+        .. note:: If you use an async driver, this callback can return a defer/future.
+        """
+        pass
+
+    def pre_delete(self):
+        """
+        Overload this method to get a callback before document deletion.
+
+        .. note:: If you use an async driver, this callback can return a defer/future.
+        """
+        pass
+
+    def post_insert(self, ret, payload):
+        """
+        Overload this method to get a callback after document insertion.
+        :param ret: Pymongo response sent by the database.
+        :param payload: Data that have been inserted in database.
+
+        .. note:: If you use an async driver, this callback can return a defer/future.
+        """
+        pass
+
+    def post_update(self, ret, payload):
+        """
+        Overload this method to get a callback after document update.
+        :param ret: Pymongo response sent by the database.
+        :param payload: Data used for the update in database.
+
+        .. note:: If you use an async driver, this callback can return a defer/future.
+        """
+        pass
+
+    def post_delete(self, ret):
+        """
+        Overload this method to get a callback after document deletion.
+        :param ret: Pymongo response sent by the database.
+
+        .. note:: If you use an async driver, this callback can return a defer/future.
+        """
+        pass
