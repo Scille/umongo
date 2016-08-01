@@ -82,11 +82,6 @@ class DataProxy:
 
     def update(self, data, schema=None, reset_missings=False):
         schema = schema or self._schema
-        # Always use marshmallow partial load to skip required checks
-        loaded_data, err = schema.load(data, partial=True)
-        if err:
-            raise ValidationError(err)
-        self._data.update(loaded_data)
 
         # Set missing values to missing
         if reset_missings:
@@ -97,6 +92,11 @@ class DataProxy:
                 self._data[key] = missing
                 self._mark_as_modified(key)
 
+        # Always use marshmallow partial load to skip required checks
+        loaded_data, err = schema.load(data, partial=True)
+        if err:
+            raise ValidationError(err)
+        self._data.update(loaded_data)
         for key in loaded_data:
             self._mark_as_modified(key)
 
