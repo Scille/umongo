@@ -227,6 +227,20 @@ class DocumentImplementation(Implementation, metaclass=MetaDocumentImplementatio
         """
         self._data.clear_modified()
 
+    def commit(self, io_validate_all=False, conditions=None):
+
+        self.pre_commit(io_validate_all=False, conditions=conditions)
+
+        self._commit(io_validate_all=True, conditions=conditions)
+
+        self.post_commit(io_validate_all=False, conditions=conditions)
+
+    def pre_commit(self, io_validate_all=False, conditions=None):
+        pass
+
+    def post_commit(self, io_validate_all=False, conditions=None):
+        pass
+
     # Data-proxy accessor shortcuts
 
     def __getitem__(self, name):

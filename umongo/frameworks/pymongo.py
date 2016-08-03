@@ -63,7 +63,7 @@ class PyMongoDocument(DocumentImplementation):
         self._data = DataProxy(self.schema)
         self._data.from_mongo(ret)
 
-    def commit(self, io_validate_all=False, conditions=None):
+    def _commit(self, io_validate_all=False, conditions=None):
         """
         Commit the document in database.
         If the document doesn't already exist it will be inserted, otherwise
