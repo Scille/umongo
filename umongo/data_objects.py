@@ -83,9 +83,13 @@ class Reference:
     error_messages = I18nErrorDict(not_found='Reference not found for document {document}.')
 
     def __init__(self, document_cls, pk):
-        self.document_cls = document_cls
-        self.pk = pk
-        self._document = None
+
+        # Attribute getter/setter/deleter are overridden to provide
+        # direct access to referenced document. We must use __dict__
+        # directly to get around those.
+        self.__dict__['document_cls'] = document_cls
+        self.__dict__['pk'] = pk
+        self.__dict__['_document'] = None
 
     def fetch(self, no_data=False):
         """
@@ -110,3 +114,29 @@ class Reference:
         elif isinstance(other, DBRef):
             return self.pk == other.id and self.document_cls.collection.name == other.collection
         return NotImplemented
+
+    def __getitem__(self, name):
+        return self.fetch()[name]
+
+    def __setitem__(self, name, value):
+        self.fetch()[name] = value
+
+    def __delitem__(self, name):
+        del self.fetch()[name]
+
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        return getattr(self.fetch(), name)
+
+    def __setattr__(self, name, value):
+        if name in self.__dict__:
+            self.__dict__[name] = value
+        else:
+            setattr(self.fetch(), name)
+
+    def __delattr__(self, name):
+        if name in self.__dict__:
+            del self.__dict__[name]
+        else:
+            delattr(self.fetch(), name)
