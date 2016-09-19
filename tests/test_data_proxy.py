@@ -347,3 +347,14 @@ class TestDataProxy(BaseTest):
         assert d.partial is True
         d.load({'loaded': "foo", 'loaded_but_empty': missing})
         assert d.partial is False
+
+        # Load partial, then update
+        d = MyDataProxy()
+        d.load({'loaded': "foo", 'loaded_but_empty': missing}, partial=True)
+        assert d.partial is True
+        assert len(d.not_loaded_fields) == 3
+        d.update({'normal': "bar"})
+        assert d.partial is True
+        assert len(d.not_loaded_fields) == 2
+        d.update({'with_default': "monthy", 'with_missing': 'python'})
+        assert d.partial is False
