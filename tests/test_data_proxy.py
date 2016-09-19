@@ -273,7 +273,7 @@ class TestDataProxy(BaseTest):
         class MySchema(EmbeddedSchema):
             with_default = fields.StrField(default='default_value')
             with_missing = fields.StrField(missing='missing_value')
-            normal = fields.StrField()
+            normal = fields.StrField(attribute='in_mongo_normal')
             loaded = fields.StrField()
             loaded_but_empty = fields.StrField()
 
