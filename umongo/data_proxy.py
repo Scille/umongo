@@ -87,6 +87,8 @@ class BaseDataProxy:
         if err:
             raise ValidationError(err)
         self._data.update(loaded_data)
+        self.not_loaded_fields = tuple(
+            set(self.not_loaded_fields) - set(self._fields[k] for k in data))
         for key in loaded_data:
             self._mark_as_modified(key)
 
