@@ -266,9 +266,26 @@ def _embedded_document_io_validate(field, value):
 
 class PyMongoReference(Reference):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._document = None
+    def fetch(self, no_data=False):
+        if not self._document:
+            if self.pk is None:
+                raise ReferenceError('Cannot retrieve a None Reference')
+            self._document = self.document_cls.find_one(self.pk)
+            if not self._document:
+                raise ValidationError(self.error_messages['not_found'].format(
+                    document=self.document_cls.__name__))
+        return self._document
+
+
+class PyMongoReferenceAutoFetch(Reference):
+
+    def __init__(self, document_cls, pk):
+        # Attribute getter/setter/deleter are overridden to provide
+        # direct access to referenced document. We must use __dict__
+        # directly to get around those.
+        self.__dict__['document_cls'] = document_cls
+        self.__dict__['pk'] = pk
+        self.__dict__['_document'] = None
 
     def fetch(self, no_data=False):
         if not self._document:
@@ -279,6 +296,32 @@ class PyMongoReference(Reference):
                 raise ValidationError(self.error_messages['not_found'].format(
                     document=self.document_cls.__name__))
         return self._document
+
+    def __getitem__(self, name):
+        return self.fetch()[name]
+
+    def __setitem__(self, name, value):
+        self.fetch()[name] = value
+
+    def __delitem__(self, name):
+        del self.fetch()[name]
+
+    def __getattr__(self, name):
+        if name in self.__dict__:
+            return self.__dict__[name]
+        return getattr(self.fetch(), name)
+
+    def __setattr__(self, name, value):
+        if name in self.__dict__:
+            self.__dict__[name] = value
+        else:
+            setattr(self.fetch(), name)
+
+    def __delattr__(self, name):
+        if name in self.__dict__:
+            del self.__dict__[name]
+        else:
+            delattr(self.fetch(), name)
 
 
 class PyMongoBuilder(BaseBuilder):
@@ -307,3 +350,12 @@ class PyMongoBuilder(BaseBuilder):
             field.reference_cls = PyMongoReference
         if isinstance(field, EmbeddedField):
             field.io_validate_recursive = _embedded_document_io_validate
+
+
+class PyMongoBuilderAutoFetch(PyMongoBuilder):
+
+    def _patch_field(self, field):
+        super()._patch_field(field)
+
+        if isinstance(field, ReferenceField):
+            field.reference_cls = PyMongoReferenceAutoFetch
