@@ -1,9 +1,9 @@
 from marshmallow import (Schema as MaSchema, fields as ma_fields,
                          validate as ma_validate, missing, validates_schema)
 
-from .exceptions import ValidationError
 from .i18n import gettext as _
-
+from .marshmallow_bonus import (schema_validator_check_unknown_fields,
+                                schema_from_umongo_get_attribute)
 
 __all__ = ('BaseSchema', 'BaseField', 'BaseValidator', 'BaseDataObject')
 
@@ -13,12 +13,8 @@ class BaseSchema(MaSchema):
     All schema used in umongo should inherit from this base schema
     """
 
-    @validates_schema(pass_original=True)
-    def check_unknown_fields(self, data, original_data):
-        loadable_fields = [k for k, v in self.fields.items() if not v.dump_only]
-        for key in original_data:
-            if key not in loadable_fields:
-                raise ValidationError(_('Unknown field name {field}.').format(field=key))
+    __check_unknown_fields = validates_schema(pass_original=True)(
+        schema_validator_check_unknown_fields)
 
     def map_to_field(self, func):
         """
@@ -33,6 +29,32 @@ class BaseSchema(MaSchema):
             if hasattr(field, 'map_to_field'):
                 field.map_to_field(mongo_path, name, func)
 
+    def as_marshmallow_schema(self, params=None, base_schema_cls=MaSchema,
+                              check_unknown_fields=True, missing_accessor=True,
+                              mongo_world=False):
+        """
+        Return a pure-marshmallow version of this schema class.
+
+        :param params: Per-field dict to pass parameters to their field creation.
+        :param base_schema_cls: Class the schema will inherit from (
+            default: :class:`marshmallow.Schema`).
+        :param missing_accessor: Provide the schema with a custom `get_attribute`
+            method to access umongo missing fields instead of returning `None` (default: True).
+        :param check_unknown_fields: Unknown fields are considered as errors (default: True).
+        :param mongo_world: If True the schema will work against the mongo world
+            instead of the OO world (default: False).
+        """
+        params = params or {}
+        nmspc = {name: field.as_marshmallow_field(params=params.get(name), mongo_world=mongo_world)
+                 for name, field in self.fields.items()}
+        name = 'Marshmallow%s' % type(self).__name__
+        if check_unknown_fields:
+            nmspc['_%s__check_unknown_fields' % name] = validates_schema(
+                pass_original=True)(schema_validator_check_unknown_fields)
+        if missing_accessor:
+            nmspc['get_attribute'] = schema_from_umongo_get_attribute
+        return type(name, (base_schema_cls, ), nmspc)
+
 
 class I18nErrorDict(dict):
     def __getitem__(self, name):
@@ -44,18 +66,20 @@ class BaseField(ma_fields.Field):
     """
     All fields used in umongo should inherit from this base field.
 
-    Enabled flags                 | resulting index
-    ------------------------------+----------------
-    <no flags>                    |
-    allow_none                    |
-    required                      |
-    required, allow_none          |
-    required, unique, allow_none  | unique
-    unique                        | unique, sparse
-    unique, required              | unique
-    unique, allow_none            | unique, sparse
+    ==============================   ===============
+    Enabled flags                    resulting index
+    ==============================   ===============
+    <no flags>
+    allow_none
+    required
+    required, allow_none
+    required, unique, allow_none     unique
+    unique                           unique, sparse
+    unique, required                 unique
+    unique, allow_none               unique, sparse
+    ==============================   ===============
 
-    Note: Even with allow_none flag, the unique flag will refuse duplicated
+    .. note:: Even with allow_none flag, the unique flag will refuse duplicated
     `null` value (consider unsetting the field with `del` instead)
     """
 
@@ -68,7 +92,11 @@ class BaseField(ma_fields.Field):
         super().__init__(*args, **kwargs)
         # Overwrite error_messages to handle i18n translation
         self.error_messages = I18nErrorDict(self.error_messages)
+        # `io_validate` will be run after `io_validate_resursive`
+        # only if this one doesn't returns errors. This is useful for
+        # list and embedded fields.
         self.io_validate = io_validate
+        self.io_validate_recursive = None
         self.unique = unique
         self.instance = instance
 
@@ -79,7 +107,9 @@ class BaseField(ma_fields.Field):
                 'load_only={self.load_only}, dump_only={self.dump_only}, '
                 'missing={self.missing}, allow_none={self.allow_none}, '
                 'error_messages={self.error_messages}, '
-                'io_validate={self.io_validate}, unique={self.unique}, '
+                'io_validate={self.io_validate}, '
+                'io_validate_recursive={self.io_validate_recursive}, '
+                'unique={self.unique}, '
                 'instance={self.instance})>'
                 .format(ClassName=self.__class__.__name__, self=self))
 
@@ -134,6 +164,37 @@ class BaseField(ma_fields.Field):
     def translate_query(self, key, query):
         return {self.attribute or key: query}
 
+    def _extract_marshmallow_field_params(self, mongo_world):
+        params = {field: getattr(self, field)
+                  for field in ('default', 'load_from', 'validate',
+                                'required', 'allow_none', 'load_only',
+                                'dump_only', 'missing', 'error_messages')}
+        if mongo_world and self.attribute:
+            params['attribute'] = self.attribute
+        return params
+
+    def as_marshmallow_field(self, params=None, mongo_world=False):
+        """
+        Return a pure-marshmallow version of this field.
+
+        :param params: Additional parameters passed to the mashmallow field
+            class constructor.
+        :param mongo_world: If True the field will work against the mongo world
+            instead of the OO world (default: False)
+        """
+        kwargs = self._extract_marshmallow_field_params(mongo_world)
+        if params:
+            kwargs.update(params)
+        # Retrieve the marshmallow class we inherit from
+        for m_class in type(self).mro():
+            if (not issubclass(m_class, BaseField) and
+                    issubclass(m_class, ma_fields.Field)):
+                m_field = m_class(**kwargs)
+                # Add i18n support to the field
+                m_field.error_messages = I18nErrorDict(m_field.error_messages)
+                return m_field
+        # Cannot escape the loop given BaseField itself inherits marshmallow's Field
+
 
 class BaseValidator(ma_validate.Validator):
     """
@@ -158,18 +219,11 @@ class BaseDataObject:
     All data objects in umongo should inherit from this base data object.
     """
 
-    def __init__(self, *args, **kwargs):
-        self._modified = False
-        super().__init__(*args, **kwargs)
-
     def is_modified(self):
-        return self._modified
-
-    def set_modified(self):
-        self._modified = True
+        raise NotImplementedError()
 
     def clear_modified(self):
-        self._modified = False
+        raise NotImplementedError()
 
     @classmethod
     def build_from_mongo(cls, data):

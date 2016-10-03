@@ -5,7 +5,7 @@ from dateutil.tz.tz import tzutc
 from marshmallow import ValidationError
 from uuid import UUID
 
-from umongo.data_proxy import DataProxy
+from umongo.data_proxy import data_proxy_factory
 from umongo import Document, EmbeddedDocument, Schema, EmbeddedSchema, fields, Reference
 from umongo.data_objects import List, Dict
 
@@ -102,12 +102,46 @@ class TestFields(BaseTest):
         with pytest.raises(ValidationError):
             s.load({'a': "dummy"})
 
+    def test_strictdatetime(self):
+
+        class MySchema(EmbeddedSchema):
+            a = fields.StrictDateTimeField()
+            b = fields.StrictDateTimeField(load_as_tz_aware=False)
+            c = fields.StrictDateTimeField(load_as_tz_aware=True)
+
+        # Test _deserialize
+        s = MySchema(strict=True)
+        for date in (
+            datetime(2016, 8, 6),
+            "2016-08-06T00:00:00Z",
+            "2016-08-06T00:00:00",
+        ):
+            data, _ = s.load({'a': date, 'b': date, 'c': date})
+            assert data['a'] == datetime(2016, 8, 6)
+            assert data['b'] == datetime(2016, 8, 6)
+            assert data['c'] == datetime(2016, 8, 6, tzinfo=tzutc())
+        with pytest.raises(ValidationError):
+            s.load({'a': "dummy"})
+
+        # Test _deserialize_from_mongo
+        MyDataProxy = data_proxy_factory('My', MySchema())
+        d = MyDataProxy()
+        for date in (
+            datetime(2016, 8, 6),
+            datetime(2016, 8, 6, tzinfo=tzutc()),
+        ):
+            d.from_mongo({'a': date, 'b': date, 'c': date})
+            assert d.get('a') == datetime(2016, 8, 6)
+            assert d.get('b') == datetime(2016, 8, 6)
+            assert d.get('c') == datetime(2016, 8, 6, tzinfo=tzutc())
+
     def test_dict(self):
 
         class MySchema(Schema):
             dict = fields.DictField(attribute='in_mongo_dict')
 
-        d = DataProxy(MySchema())
+        MyDataProxy = data_proxy_factory('My', MySchema())
+        d = MyDataProxy()
         d.load({'dict': {'a': 1, 'b': {'c': True}}})
         with pytest.raises(KeyError):
             d.get('in_mongo_dict')
@@ -124,10 +158,15 @@ class TestFields(BaseTest):
         dict_.clear_modified()
         assert d.to_mongo(update=True) is None
 
-        d2 = DataProxy(MySchema(), {'dict': {}})
-        d2.to_mongo() == {'dict': {}}
+        d2 = MyDataProxy({'dict': {'a': 1}})
+        assert d2.to_mongo() == {'in_mongo_dict': {'a': 1}}
 
-        d3 = DataProxy(MySchema())
+        # Empty dict is considered as missing field
+        d2.set('dict', {})
+        assert d2.to_mongo() == {}
+        assert d2.to_mongo(update=True) == {'$unset': {'in_mongo_dict': ''}}
+
+        d3 = MyDataProxy()
         d3.from_mongo({})
         assert isinstance(d3.get('dict'), Dict)
         assert d3.to_mongo() == {}
@@ -150,27 +189,24 @@ class TestFields(BaseTest):
             embedded = fields.EmbeddedField(MyEmbeddedDocument, attribute='in_mongo_embedded')
 
         MySchema = MyDoc.Schema
-        modified_schema = MyDoc.Schema(load_only=('embedded',))
-        modified_embedded_schema = MyEmbeddedDocument.Schema(load_only=('a',))
 
         # Make sure embedded document doesn't have implicit _id field
         assert '_id' not in MyEmbeddedDocument.Schema().fields
         assert 'id' not in MyEmbeddedDocument.Schema().fields
 
-        d = DataProxy(MySchema())
+        MyDataProxy = data_proxy_factory('My', MySchema())
+        d = MyDataProxy()
         d.load(data={'embedded': {'a': 1, 'b': 2}})
         assert d.dump() == {'embedded': {'a': 1, 'b': 2}}
-        assert d.dump(schema=modified_schema) == {}
         embedded = d.get('embedded')
         assert type(embedded) == MyEmbeddedDocument
         assert embedded.a == 1
         assert embedded.b == 2
         assert embedded.dump() == {'a': 1, 'b': 2}
-        assert embedded.dump(schema=modified_embedded_schema) == {'b': 2}
         assert embedded.to_mongo() == {'in_mongo_a': 1, 'b': 2}
         assert d.to_mongo() == {'in_mongo_embedded': {'in_mongo_a': 1, 'b': 2}}
 
-        d2 = DataProxy(MySchema())
+        d2 = MyDataProxy()
         d2.from_mongo(data={'in_mongo_embedded': {'in_mongo_a': 1, 'b': 2}})
         assert d == d2
 
@@ -197,6 +233,12 @@ class TestFields(BaseTest):
         assert embedded_doc['a'] == 1
         assert embedded_doc['b'] == 2
 
+        embedded_doc.clear_modified()
+        embedded_doc.update({'b': 42})
+        assert embedded_doc.is_modified()
+        assert embedded_doc.a == 1
+        assert embedded_doc.b == 42
+
         with pytest.raises(ValidationError):
             MyEmbeddedDocument(in_mongo_a=1, b=2)
 
@@ -208,7 +250,8 @@ class TestFields(BaseTest):
         # Test repr readability
         repr_d = repr(MyEmbeddedDocument(a=1, b=2))
         assert 'tests.test_fields.MyEmbeddedDocument' in repr_d
-        assert "'in_mongo_a': 1" in repr_d
+        assert "'in_mongo_a'" not in repr_d
+        assert "'a': 1" in repr_d
         assert "'b': 2" in repr_d
 
         # Test unknown fields
@@ -225,35 +268,60 @@ class TestFields(BaseTest):
         with pytest.raises(KeyError):
             del embedded_doc['dummy']
 
-    @pytest.mark.xfail()
-    def test_embedded_document_required(self):
-        # TODO
-        class MyEmbeddedDocument(EmbeddedDocument):
-            required_field = fields.IntField(required=True)
-            optional_field = fields.IntField()
+    def test_embedded_inheritance(self):
+        @self.instance.register
+        class EmbeddedParent(EmbeddedDocument):
+            a = fields.IntField(attribute='in_mongo_a_parent')
+            b = fields.IntField()
+
+        @self.instance.register
+        class EmbeddedChild(EmbeddedParent):
+            a = fields.IntField(attribute='in_mongo_a_child')
+            c = fields.IntField()
+
+        @self.instance.register
+        class GrandChild(EmbeddedChild):
+            d = fields.IntField()
+
+        @self.instance.register
+        class OtherEmbedded(EmbeddedDocument):
+            pass
 
         @self.instance.register
         class MyDoc(Document):
-            embedded = fields.EmbeddedField(MyEmbeddedDocument, attribute='in_mongo_embedded')
+            parent = fields.EmbeddedField(EmbeddedParent)
+            child = fields.EmbeddedField(EmbeddedChild)
 
-        MySchema = MyDoc.Schema
-        # with pytest.raises(ValidationError):
-        #     MyEmbeddedDocument()
+        assert 'EmbeddedChild' in EmbeddedParent.opts.children
+        assert 'OtherEmbedded' not in EmbeddedParent.opts.children
 
-        # with pytest.raises(ValidationError):
-        #     MyEmbeddedDocument(optional_field=1)
+        parent = EmbeddedParent(a=1)
+        child = EmbeddedChild(a=1, b=2, c=3)
+        grandchild = GrandChild(d=4)
 
-        # embedded = MyEmbeddedDocument(optional_field=1, required_field=2)
-        embedded = MyEmbeddedDocument()
-        d = DataProxy(MySchema())
-        d.set('embedded', embedded)
+        assert parent.to_mongo() == {'in_mongo_a_parent': 1}
+        assert child.to_mongo() == {'in_mongo_a_child': 1, 'b': 2, 'c': 3, '_cls': 'EmbeddedChild'}
+        assert grandchild.to_mongo() == {'d': 4, '_cls': 'GrandChild'}
+
+        with pytest.raises(ValidationError):
+            ret = MyDoc(parent=OtherEmbedded())
+        with pytest.raises(ValidationError):
+            ret = MyDoc(child=parent)
+        doc = MyDoc(parent=child, child=child)
+        assert doc.child == doc.parent
+
+        doc = MyDoc(child={'a': 1, '_cls': 'GrandChild'},
+                    parent={'_cls': 'EmbeddedChild', 'a': 1})
+        assert doc.child.to_mongo() == {'in_mongo_a_child': 1, '_cls': 'GrandChild'}
+        assert doc.parent.to_mongo() == {'in_mongo_a_child': 1, '_cls': 'EmbeddedChild'}
 
     def test_list(self):
 
         class MySchema(Schema):
             list = fields.ListField(fields.IntField(), attribute='in_mongo_list')
 
-        d = DataProxy(MySchema())
+        MyDataProxy = data_proxy_factory('My', MySchema())
+        d = MyDataProxy()
         assert d.to_mongo() == {}
 
         d.load({'list': [1, 2, 3]})
@@ -299,7 +367,7 @@ class TestFields(BaseTest):
         assert d.dump() == {'list': [2, 3, 4, 5]}
         assert d.to_mongo(update=True) == {'$set': {'in_mongo_list': [2, 3, 4, 5]}}
 
-        d2 = DataProxy(MySchema())
+        d2 = MyDataProxy()
         d2.from_mongo({})
         assert isinstance(d2.get('list'), List)
         assert d2.to_mongo() == {}
@@ -332,7 +400,8 @@ class TestFields(BaseTest):
         obj_id1 = ObjectId()
         obj_id2 = ObjectId()
         to_ref_doc1 = ToRefDoc.build_from_mongo(data={'_id': obj_id1})
-        d = DataProxy(MySchema())
+        MyDataProxy = data_proxy_factory('My', MySchema())
+        d = MyDataProxy()
         d.load({
             'embeds': [MyEmbeddedDocument(field=1),
                        {'field': 2}],
@@ -374,7 +443,8 @@ class TestFields(BaseTest):
         class MySchema(Schema):
             objid = fields.ObjectIdField(attribute='in_mongo_objid')
 
-        d = DataProxy(MySchema())
+        MyDataProxy = data_proxy_factory('My', MySchema())
+        d = MyDataProxy()
         d.load({'objid': ObjectId("5672d47b1d41c88dcd37ef05")})
         assert d.dump() == {'objid': "5672d47b1d41c88dcd37ef05"}
         assert d.to_mongo() == {'in_mongo_objid': ObjectId("5672d47b1d41c88dcd37ef05")}
@@ -384,11 +454,11 @@ class TestFields(BaseTest):
         assert d.get('objid') == ObjectId("5672d47b1d41c88dcd37ef05")
 
         d.set('objid', ObjectId("5672d5e71d41c88f914b77c4"))
-        d.to_mongo(update=True) == {
+        assert d.to_mongo(update=True) == {
             '$set': {'in_mongo_objid': ObjectId("5672d5e71d41c88f914b77c4")}}
 
         d.set('objid', ObjectId("5672d5e71d41c88f914b77c4"))
-        d.to_mongo(update=True) == {
+        assert d.to_mongo(update=True) == {
             '$set': {'in_mongo_objid': ObjectId("5672d5e71d41c88f914b77c4")}}
 
         d.set('objid', "5672d5e71d41c88f914b77c4")
@@ -430,11 +500,12 @@ class TestFields(BaseTest):
 
         MySchema = MyDoc.Schema
 
-        d = DataProxy(MySchema())
+        MyDataProxy = data_proxy_factory('My', MySchema())
+        d = MyDataProxy()
         d.load({'ref': ObjectId("5672d47b1d41c88dcd37ef05")})
         d.load({'ref': "5672d47b1d41c88dcd37ef05"})
         assert d.dump() == {'ref': "5672d47b1d41c88dcd37ef05"}
-        d.get('ref').document_cls == MyReferencedDoc
+        assert d.get('ref').document_cls == MyReferencedDoc
         d.set('ref', to_refer_doc)
         assert d.to_mongo(update=True) == {'$set': {'in_mongo_ref': to_refer_doc.pk}}
         assert d.get('ref') == ref
@@ -467,7 +538,8 @@ class TestFields(BaseTest):
 
         MySchema = MyDoc.Schema
 
-        d = DataProxy(MySchema())
+        MyDataProxy = data_proxy_factory('My', MySchema())
+        d = MyDataProxy()
         d.load({'ref': ObjectId("5672d47b1d41c88dcd37ef05")})
         d.load({'ref': "5672d47b1d41c88dcd37ef05"})
         assert d.dump() == {'ref': "5672d47b1d41c88dcd37ef05"}
@@ -495,10 +567,11 @@ class TestFields(BaseTest):
 
         MySchema = MyDoc.Schema
 
-        d = DataProxy(MySchema())
+        MyDataProxy = data_proxy_factory('My', MySchema())
+        d = MyDataProxy()
         d.load({'gref': {'id': ObjectId("5672d47b1d41c88dcd37ef05"), 'cls': ToRef2.__name__}})
         assert d.dump() == {'gref': {'id': "5672d47b1d41c88dcd37ef05", 'cls': 'ToRef2'}}
-        d.get('gref').document_cls == ToRef2
+        assert d.get('gref').document_cls == ToRef2
         d.set('gref', doc1)
         assert d.to_mongo(update=True) == {
             '$set': {'in_mongo_gref': {'_id': doc1.pk, '_cls': 'ToRef1'}}}

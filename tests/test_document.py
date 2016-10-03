@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime
 from bson import ObjectId, DBRef
 
-from umongo import Document, Schema, fields, exceptions
+from umongo import Document, EmbeddedDocument, Schema, fields, exceptions
 
 from .common import BaseTest
 
@@ -229,6 +229,38 @@ class TestDocument(BaseTest):
             pass
 
         assert 'id' not in CustomIdInheritance.schema.fields
+
+    def test_is_modified(self):
+
+        @self.instance.register
+        class Vehicle(EmbeddedDocument):
+            name = fields.StrField()
+
+        @self.instance.register
+        class Driver(Document):
+            name = fields.StrField()
+            vehicle = fields.EmbeddedField(Vehicle)
+
+        driver = Driver(name='Marty')
+        assert driver.is_modified()
+        driver.is_created = True
+        assert not driver.is_modified()
+        driver.name = 'Marty McFly'
+        assert driver.is_modified()
+        driver.clear_modified()
+        assert not driver.is_modified()
+        vehicle = Vehicle(name='Hoverboard')
+        assert not vehicle.is_modified()
+        driver.vehicle = vehicle
+        assert driver.is_modified()
+        driver.clear_modified()
+        assert not driver.is_modified()
+        vehicle.name = 'DeLorean DMC-12'
+        assert vehicle.is_modified()
+        assert driver.is_modified()
+        driver.clear_modified()
+        assert not vehicle.is_modified()
+        assert not driver.is_modified()
 
     def test_inheritance_from_template(self):
         # It is legal (and equivalent) to make a child inherit from

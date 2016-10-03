@@ -37,6 +37,25 @@ Document
 .. autoclass:: umongo.document.DocumentImplementation
     :inherited-members:
 
+.. _api_abstracts:
+
+Abstracts
+=========
+
+.. autoclass:: umongo.abstract.BaseSchema
+  :members:
+
+.. autoclass:: umongo.abstract.BaseField
+  :members:
+  :undoc-members:
+
+.. autoclass:: umongo.abstract.BaseValidator
+  :members:
+
+.. autoclass:: umongo.abstract.BaseDataObject
+  :members:
+  :undoc-members:
+
 .. _api_fields:
 
 Fields
@@ -54,6 +73,14 @@ Data objects
 .. automodule:: umongo.data_objects
   :members:
   :undoc-members:
+
+.. _api_marshmallow_intergration:
+
+Marshmallow integration
+=======================
+
+.. automodule:: umongo.marshmallow_bonus
+  :members:
 
 .. _api_exceptions:
 

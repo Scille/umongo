@@ -61,7 +61,7 @@ with Tester('Create one'):
         'nick': 'n00b',
         'birthday': '2016-05-18T11:40:32+00:00',
     }
-    assert data == expected, 'data: %s, expected: %s' % (payload, expected)
+    assert data == expected, 'data: %s, expected: %s' % (data, expected)
     test_list(8)
 
 with Tester('Change password'):

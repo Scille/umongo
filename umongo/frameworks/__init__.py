@@ -29,10 +29,12 @@ __all__ = (
 class BuilderRegisterer:
 
     def __init__(self):
-        self.builders = set()
+        self.builders = []
 
     def register(self, builder):
-        self.builders.add(builder)
+        if builder not in self.builders:
+            # Insert new item first to overload older compatible builders
+            self.builders.insert(0, builder)
 
     def unregister(self, builder):
         # Basically only used for tests

@@ -4,10 +4,11 @@ from pymongo.errors import DuplicateKeyError
 
 from ..builder import BaseBuilder
 from ..document import DocumentImplementation
-from ..data_proxy import DataProxy, missing
+from ..data_proxy import missing
 from ..data_objects import Reference
 from ..exceptions import NotCreatedError, UpdateError, DeleteError, ValidationError
 from ..fields import ReferenceField, ListField, EmbeddedField
+from ..query_mapper import map_query
 
 from .tools import cook_find_filter
 
@@ -30,6 +31,10 @@ class WrappedCursor(Cursor):
         return setattr(self.raw_cursor, name, value)
 
     def __getitem__(self, index):
+        if isinstance(index, slice):
+            elems = self.raw_cursor[index]
+            return (self.document_cls.build_from_mongo(elem, use_cls=True)
+                    for elem in elems)
         elem = self.raw_cursor[index]
         return self.document_cls.build_from_mongo(elem, use_cls=True)
 
@@ -60,7 +65,7 @@ class PyMongoDocument(DocumentImplementation):
         ret = self.collection.find_one(self.pk)
         if ret is None:
             raise NotCreatedError("Document doesn't exists in database")
-        self._data = DataProxy(self.schema)
+        self._data = self.DataProxy()
         self._data.from_mongo(ret)
 
     def commit(self, io_validate_all=False, conditions=None):
@@ -77,27 +82,35 @@ class PyMongoDocument(DocumentImplementation):
         :return: A :class:`pymongo.results.UpdateResult` or
             :class:`pymongo.results.InsertOneResult` depending of the operation.
         """
-        self.io_validate(validate_all=io_validate_all)
-        payload = self._data.to_mongo(update=self.is_created)
         try:
             if self.is_created:
-                if payload:
+                if self.is_modified():
                     query = conditions or {}
-                    query['_id'] = self._data.get_by_mongo_name('_id')
-                    self.pre_update(query, payload)
+                    query['_id'] = self.pk
+                    # pre_update can provide additional query filter and/or
+                    # modify the fields' values
+                    additional_filter = self.pre_update()
+                    if additional_filter:
+                        query.update(map_query(additional_filter, self.schema.fields))
+                    self.io_validate(validate_all=io_validate_all)
+                    payload = self._data.to_mongo(update=True)
                     ret = self.collection.update_one(query, payload)
                     if ret.matched_count != 1:
-                        raise UpdateError(ret.raw_result)
-                    self.post_update(ret, payload)
+                        raise UpdateError(ret)
+                    self.post_update(ret)
+                else:
+                    ret = None
             elif conditions:
                 raise RuntimeError('Document must already exist in database to use `conditions`.')
             else:
-                self.pre_insert(payload)
+                self.pre_insert()
+                self.io_validate(validate_all=io_validate_all)
+                payload = self._data.to_mongo(update=False)
                 ret = self.collection.insert_one(payload)
                 # TODO: check ret ?
                 self._data.set_by_mongo_name('_id', ret.inserted_id)
                 self.is_created = True
-                self.post_insert(ret, payload)
+                self.post_insert(ret)
         except DuplicateKeyError as exc:
             # Need to dig into error message to find faulting index
             errmsg = exc.details['errmsg']
@@ -119,10 +132,14 @@ class PyMongoDocument(DocumentImplementation):
         self._data.clear_modified()
         return ret
 
-    def delete(self):
+    def delete(self, conditions=None):
         """
         Remove the document from database.
 
+        :param conditions: Only perform delete if matching record in db
+            satisfies condition(s) (e.g. version number).
+            Raises :class:`umongo.exceptions.DeleteError` if the
+            conditions are not satisfied.
         Raises :class:`umongo.exceptions.NotCreatedError` if the document
         is not created (i.e. ``doc.is_created`` is False)
         Raises :class:`umongo.exceptions.DeleteError` if the document
@@ -132,10 +149,15 @@ class PyMongoDocument(DocumentImplementation):
         """
         if not self.is_created:
             raise NotCreatedError("Document doesn't exists in database")
-        self.pre_delete()
-        ret = self.collection.delete_one({'_id': self.pk})
+        query = conditions or {}
+        query['_id'] = self.pk
+        # pre_delete can provide additional query filter
+        additional_filter = self.pre_delete()
+        if additional_filter:
+            query.update(map_query(additional_filter, self.schema.fields))
+        ret = self.collection.delete_one(query)
         if ret.deleted_count != 1:
-            raise DeleteError(ret.raw_result)
+            raise DeleteError(ret)
         self.is_created = False
         self.post_delete(ret)
         return ret
@@ -202,7 +224,7 @@ def _run_validators(validators, field, value):
 def _io_validate_data_proxy(schema, data_proxy, partial=None):
     errors = {}
     for name, field in schema.fields.items():
-        if partial and name not in partial:
+        if partial and (partial is True or name not in partial):
             continue
         data_name = field.attribute or name
         value = data_proxy._data[data_name]
@@ -210,6 +232,8 @@ def _io_validate_data_proxy(schema, data_proxy, partial=None):
             # Also look for required
             field._validate_missing(value)
             if value is not missing:
+                if field.io_validate_recursive:
+                    field.io_validate_recursive(field, value)
                 if field.io_validate:
                     _run_validators(field.io_validate, field, value)
         except ValidationError as ve:
@@ -238,33 +262,6 @@ def _list_io_validate(field, value):
 
 def _embedded_document_io_validate(field, value):
     _io_validate_data_proxy(value.schema, value._data)
-
-
-def _io_validate_patch_schema(fields):
-    """Add default io validators to the given schema
-    """
-
-    def patch_field(field):
-        validators = field.io_validate
-        if not validators:
-            field.io_validate = []
-        else:
-            if hasattr(validators, '__iter__'):
-                field.io_validate = list(validators)
-            else:
-                field.io_validate = [validators]
-        if isinstance(field, ListField):
-            field.io_validate.append(_list_io_validate)
-            patch_field(field.container)
-        if isinstance(field, ReferenceField):
-            field.io_validate.append(_reference_io_validate)
-            field.reference_cls = PyMongoReference
-        if isinstance(field, EmbeddedField):
-            field.io_validate.append(_embedded_document_io_validate)
-            _io_validate_patch_schema(field.schema.fields)
-
-    for field in fields.values():
-        patch_field(field)
 
 
 class PyMongoReference(Reference):
@@ -304,9 +301,9 @@ class PyMongoBuilder(BaseBuilder):
             else:
                 field.io_validate = [validators]
         if isinstance(field, ListField):
-            field.io_validate.append(_list_io_validate)
+            field.io_validate_recursive = _list_io_validate
         if isinstance(field, ReferenceField):
             field.io_validate.append(_reference_io_validate)
             field.reference_cls = PyMongoReference
         if isinstance(field, EmbeddedField):
-            field.io_validate.append(_embedded_document_io_validate)
+            field.io_validate_recursive = _embedded_document_io_validate

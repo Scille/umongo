@@ -1,6 +1,7 @@
 from bson import DBRef
 
-from .data_proxy import DataProxy, missing
+from .abstract import BaseDataObject
+from .data_proxy import missing
 from .exceptions import (NotCreatedError, NoDBDefinedError,
                          AbstractDocumentError, DocumentDefinitionError)
 from .schema import Schema
@@ -100,7 +101,7 @@ class MetaDocumentImplementation(MetaImplementation):
         return cls.opts.instance.db[cls.opts.collection_name]
 
 
-class DocumentImplementation(Implementation, metaclass=MetaDocumentImplementation):
+class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocumentImplementation):
     """
     Represent a document once it has been implemented inside a
     :class:`umongo.instance.BaseInstance`.
@@ -110,18 +111,20 @@ class DocumentImplementation(Implementation, metaclass=MetaDocumentImplementatio
     """
 
     __slots__ = ('is_created', '_data')
+    __real_attributes = None
     opts = DocumentOpts(None, DocumentTemplate, abstract=True, allow_inheritance=True)
 
     def __init__(self, **kwargs):
+        super().__init__()
         if self.opts.abstract:
             raise AbstractDocumentError("Cannot instantiate an abstract Document")
         self.is_created = False
         "Return True if the document has been commited to database"  # is_created's docstring
-        self._data = DataProxy(self.schema, data=kwargs if kwargs else None)
+        self._data = self.DataProxy(kwargs if kwargs else None)
 
     def __repr__(self):
         return '<object Document %s.%s(%s)>' % (
-            self.__module__, self.__class__.__name__, self._data._data)
+            self.__module__, self.__class__.__name__, dict(self._data.items()))
 
     def __eq__(self, other):
         from .data_objects import Reference
@@ -194,7 +197,7 @@ class DocumentImplementation(Implementation, metaclass=MetaDocumentImplementatio
 
     def to_mongo(self, update=False):
         """
-        Return the document as a dict compatible with MongoDB driver
+        Return the document as a dict compatible with MongoDB driver.
 
         :param update: if True the return dict should be used as an
                        update payload instead of containing the entire document
@@ -204,30 +207,35 @@ class DocumentImplementation(Implementation, metaclass=MetaDocumentImplementatio
                                   ' using update')
         return self._data.to_mongo(update=update)
 
-    def update(self, data, schema=None, reset_missings=False):
+    def update(self, data, reset_missings=False):
         """
-        Update the document with the given data
+        Update the document with the given data.
 
-        :param schema: use this schema for the load instead of the default one
         :param reset_missings: if True, all loadable fields in schema missing
                                in data are removed from document
         """
-        return self._data.update(data, schema=schema, reset_missings=reset_missings)
+        self._data.update(data, reset_missings=reset_missings)
 
-    def dump(self, schema=None):
+    def dump(self):
         """
-        Dump the document
-
-        :param schema: use this schema for the dump instead of the default one
-        :return: a JSON compatible ``dict`` representing the document
+        Dump the document.
         """
-        return self._data.dump(schema=schema)
+        return self._data.dump()
 
     def clear_modified(self):
         """
-        Reset the list of document's modified items
+        Reset the list of document's modified items.
         """
         self._data.clear_modified()
+
+    def is_modified(self):
+        """
+        Returns True if and only if the document was modified since last commit.
+        """
+        return not self.is_created or self._data.is_modified()
+
+    def items(self):
+        return self._data.items()
 
     # Data-proxy accessor shortcuts
 
@@ -242,8 +250,13 @@ class DocumentImplementation(Implementation, metaclass=MetaDocumentImplementatio
         self._data.set(name, value)
 
     def __setattr__(self, name, value):
-        if name in DocumentImplementation.__dict__:
-            DocumentImplementation.__dict__[name].__set__(self, value)
+        # Try to retrieve name among class's attributes and __slots__
+        if not self.__real_attributes:
+            # `dir(self)` result only depend on self's class so we can
+            # compute it once and store it inside the class
+            type(self).__real_attributes = dir(self)
+        if name in self.__real_attributes:
+            object.__setattr__(self, name, value)
         else:
             self._data.set(name, value, to_raise=AttributeError)
 
@@ -254,23 +267,21 @@ class DocumentImplementation(Implementation, metaclass=MetaDocumentImplementatio
     def __delattr__(self, name):
         self._data.delete(name, to_raise=AttributeError)
 
-    def pre_insert(self, payload):
+    # Callbacks
+
+    def pre_insert(self):
         """
         Overload this method to get a callback before document insertion.
-        :param payload: Data to insert in database, you can modify
-            this dict.
 
         .. note:: If you use an async driver, this callback can return a defer/future.
         """
         pass
 
-    def pre_update(self, query, payload):
+    def pre_update(self):
         """
         Overload this method to get a callback before document update.
-        :param query: Query to select the document to update, you can modify
-            this dict.
-        :param payload: Data to send in database, you can modify
-            this dict.
+        :return: Additional filters dict that will be used for the query to
+            select the document to update.
 
         .. note:: If you use an async driver, this callback can return a defer/future.
         """
@@ -279,26 +290,26 @@ class DocumentImplementation(Implementation, metaclass=MetaDocumentImplementatio
     def pre_delete(self):
         """
         Overload this method to get a callback before document deletion.
+        :return: Additional filters dict that will be used for the query to
+            select the document to update.
 
         .. note:: If you use an async driver, this callback can return a defer/future.
         """
         pass
 
-    def post_insert(self, ret, payload):
+    def post_insert(self, ret):
         """
         Overload this method to get a callback after document insertion.
         :param ret: Pymongo response sent by the database.
-        :param payload: Data that have been inserted in database.
 
         .. note:: If you use an async driver, this callback can return a defer/future.
         """
         pass
 
-    def post_update(self, ret, payload):
+    def post_update(self, ret):
         """
         Overload this method to get a callback after document update.
         :param ret: Pymongo response sent by the database.
-        :param payload: Data used for the update in database.
 
         .. note:: If you use an async driver, this callback can return a defer/future.
         """

@@ -6,10 +6,11 @@ from pymongo.errors import DuplicateKeyError
 
 from ..builder import BaseBuilder
 from ..document import DocumentImplementation
-from ..data_proxy import DataProxy, missing
+from ..data_proxy import missing
 from ..data_objects import Reference
 from ..exceptions import NotCreatedError, UpdateError, DeleteError, ValidationError
 from ..fields import ReferenceField, ListField, EmbeddedField
+from ..query_mapper import map_query
 
 from .tools import cook_find_filter
 
@@ -33,7 +34,7 @@ class TxMongoDocument(DocumentImplementation):
         ret = yield self.collection.find_one(self.pk)
         if ret is None:
             raise NotCreatedError("Document doesn't exists in database")
-        self._data = DataProxy(self.schema)
+        self._data = self.DataProxy()
         self._data.from_mongo(ret)
 
     @inlineCallbacks
@@ -51,27 +52,35 @@ class TxMongoDocument(DocumentImplementation):
          :return: A :class:`pymongo.results.UpdateResult` or
             :class:`pymongo.results.InsertOneResult` depending of the operation.
        """
-        yield self.io_validate(validate_all=io_validate_all)
-        payload = self._data.to_mongo(update=self.is_created)
         try:
             if self.is_created:
-                if payload:
+                if self.is_modified():
                     query = conditions or {}
-                    query['_id'] = self._data.get_by_mongo_name('_id')
-                    yield maybeDeferred(self.pre_update, query, payload)
+                    query['_id'] = self.pk
+                    # pre_update can provide additional query filter and/or
+                    # modify the fields' values
+                    additional_filter = yield maybeDeferred(self.pre_update)
+                    if additional_filter:
+                        query.update(map_query(additional_filter, self.schema.fields))
+                    yield self.io_validate(validate_all=io_validate_all)
+                    payload = self._data.to_mongo(update=True)
                     ret = yield self.collection.update_one(query, payload)
                     if ret.matched_count != 1:
-                        raise UpdateError(ret.raw_result)
-                    yield maybeDeferred(self.post_update, ret, payload)
+                        raise UpdateError(ret)
+                    yield maybeDeferred(self.post_update, ret)
+                else:
+                    ret = None
             elif conditions:
                 raise RuntimeError('Document must already exist in database to use `conditions`.')
             else:
-                yield maybeDeferred(self.pre_insert, payload)
+                yield maybeDeferred(self.pre_insert)
+                yield self.io_validate(validate_all=io_validate_all)
+                payload = self._data.to_mongo(update=False)
                 ret = yield self.collection.insert_one(payload)
                 # TODO: check ret ?
                 self._data.set_by_mongo_name('_id', ret.inserted_id)
                 self.is_created = True
-                yield maybeDeferred(self.post_insert, ret, payload)
+                yield maybeDeferred(self.post_insert, ret)
         except DuplicateKeyError as exc:
             # Need to dig into error message to find faulting index
             errmsg = exc.details['errmsg']
@@ -92,10 +101,14 @@ class TxMongoDocument(DocumentImplementation):
         return ret
 
     @inlineCallbacks
-    def delete(self):
+    def delete(self, conditions=None):
         """
         Remove the document from database.
 
+        :param conditions: Only perform delete if matching record in db
+            satisfies condition(s) (e.g. version number).
+            Raises :class:`umongo.exceptions.DeleteError` if the
+            conditions are not satisfied.
         Raises :class:`umongo.exceptions.NotCreatedError` if the document
         is not created (i.e. ``doc.is_created`` is False)
         Raises :class:`umongo.exceptions.DeleteError` if the document
@@ -105,10 +118,15 @@ class TxMongoDocument(DocumentImplementation):
         """
         if not self.is_created:
             raise NotCreatedError("Document doesn't exists in database")
-        yield maybeDeferred(self.pre_delete)
-        ret = yield self.collection.delete_one({'_id': self.pk})
+        query = conditions or {}
+        query['_id'] = self.pk
+        # pre_delete can provide additional query filter
+        additional_filter = yield maybeDeferred(self.pre_delete)
+        if additional_filter:
+            query.update(map_query(additional_filter, self.schema.fields))
+        ret = yield self.collection.delete_one(query)
         if ret.deleted_count != 1:
-            raise DeleteError(ret.raw_result)
+            raise DeleteError(ret)
         self.is_created = False
         yield maybeDeferred(self.post_delete, ret)
         return ret
@@ -188,7 +206,7 @@ def _errback_factory(errors, field=None):
 
     def errback(err):
         if isinstance(err.value, ValidationError):
-            if field:
+            if field is not None:
                 errors[field] = err.value.messages
             else:
                 errors.extend(err.value.messages)
@@ -204,10 +222,14 @@ def _run_validators(validators, field, value):
     errors = []
     defers = []
     for validator in validators:
-        defer = validator(field, value)
-        assert isinstance(defer, Deferred), 'io_validate functions must return a Deferred'
-        defer.addErrback(_errback_factory(errors))
-        defers.append(defer)
+        try:
+            defer = validator(field, value)
+        except ValidationError as ve:
+            errors.extend(ve.messages)
+        else:
+            assert isinstance(defer, Deferred), 'io_validate functions must return a Deferred'
+            defer.addErrback(_errback_factory(errors))
+            defers.append(defer)
     yield DeferredList(defers)
     if errors:
         raise ValidationError(errors)
@@ -226,6 +248,8 @@ def _io_validate_data_proxy(schema, data_proxy, partial=None):
             # Also look for required
             field._validate_missing(value)
             if value is not missing:
+                if field.io_validate_recursive:
+                    yield field.io_validate_recursive(field, value)
                 if field.io_validate:
                     defer = _run_validators(field.io_validate, field, value)
                     defer.addErrback(_errback_factory(errors, name))
@@ -300,9 +324,9 @@ class TxMongoBuilder(BaseBuilder):
                 validators = [validators]
             field.io_validate = validators
         if isinstance(field, ListField):
-            field.io_validate.append(_list_io_validate)
+            field.io_validate_recursive = _list_io_validate
         if isinstance(field, ReferenceField):
             field.io_validate.append(_reference_io_validate)
             field.reference_cls = TxMongoReference
         if isinstance(field, EmbeddedField):
-            field.io_validate.append(_embedded_document_io_validate)
+            field.io_validate_recursive = _embedded_document_io_validate

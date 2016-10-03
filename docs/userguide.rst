@@ -179,7 +179,7 @@ readability we keep it as ``name`` inside our document.
         >>> class AutoId(Document):
         ...     pass
         >>> AutoId.find_one()
-        <object Document __main__.AutoId({'_id': ObjectId('5714b9a61d41c8feb01222c8')})>
+        <object Document __main__.AutoId({'id': ObjectId('5714b9a61d41c8feb01222c8')})>
 
 But what about if we what to retrieve the ``_id`` field whatever it name is ?
 No problem, use the ``pk`` property:
@@ -207,9 +207,9 @@ You get also access to Object Oriented version of your driver methods:
     >>> Dog.find()
     <umongo.dal.pymongo.WrappedCursor object at 0x7f169851ba68>
     >>> next(Dog.find())
-    <object Document __main__.Dog({'_id': 'Odwin', 'breed': 'Labrador'})>
+    <object Document __main__.Dog({'id': 'Odwin', 'breed': 'Labrador'})>
     Dog.find_one({'_id': 'Odwin'})
-    <object Document __main__.Dog({'_id': 'Odwin', 'breed': 'Labrador'})>
+    <object Document __main__.Dog({'id': 'Odwin', 'breed': 'Labrador'})>
 
 You can also access the collection used by the document at any time
 (for example to do more low-level operations):
@@ -359,7 +359,7 @@ Inheritance inside the same collection is achieve by adding a ``_cls`` field
     'Child'
     >>> child.dump()
     {'cls': 'Child', 'unique_in_parent': 42, 'unique_in_child': 'forty_two'}
-    >>> Parent().dump(unique_in_parent=22)
+    >>> Parent(unique_in_parent=22).dump()
     {'unique_in_parent': 22}
     >>> [x.document for x in Parent.opts.indexes]
     [{'key': SON([('unique_in_parent', 1)]), 'name': 'unique_in_parent_1', 'sparse': True, 'unique': True}]
@@ -488,6 +488,109 @@ in a μMongo document but instead use their μMongo equivalents (respectively
 :class:`umongo.abstract.BaseSchema`, :class:`umongo.abstract.BaseField` and
 :class:`umongo.abstract.BaseValidator`).
 
+Now let's go back to the `Base concepts`_, the schema contains a little...
+simplification !
+
+According to it, the client and OO worlds are made of the same data, but only
+in a different form (serialized vs object oriented).
+However it happened pretty often the API you want to provide doesn't strictly
+follow your datamodel (e.g. you don't want to display or allow modification
+of the passwords in your `/users` route)
+
+Let's go back to our `Dog` document, in real life you can rename your dog but
+not change it breed. So in our user API we should have a schema that enforce this !
+
+.. code-block:: python
+
+    >>> DogMaSchema = Dog.schema.as_marshmallow_schema()
+
+As you can imagine, ``as_marshmallow_schema`` convert the original umongo's
+schema into a pure marshmallow schema. This way we can now customize it
+by subclassing it:
+
+.. code-block:: python
+
+    >>> class PatchDogSchema(DogMaSchema):
+    ...     class Meta:
+    ...         fields = ('name', )
+    >>> patch_dog_schema = PatchDogSchema()
+    >>> patch_dog_schema.load({'name': 'Scruffy', 'breed': 'Golden retriever'}).errors
+    {'_schema': ['Unknown field name breed.']}
+    >>> ret = patch_dog_schema.load({'name': 'Scruffy'})
+    >>> ret.errors
+    {}
+    >>> ret.data
+    {'name': 'Scruffy'}
+
+Finally we can integrated the validated data into OO world:
+
+.. code-block:: python
+
+    >>> my_dog.update(ret.data)
+    >>> my_dog.name
+    'Scruffy'
+
+.. note:: When instantiating a custom marshmallow schema, you can use`strict=True`
+    to make the schema raise a `ValidationError` instead of returning an error dict.
+    This allow a better integration in umongo own error handling:
+
+    .. code-block:: python
+
+        try:
+            data, _ = patch_dog_schema.load(payload)
+            my_dog.update(data)
+            my_dog.commit()
+        except (ValidationError, UMongoError) as e:
+            # error handling
+
+
+Now let's imagine we want to allow the per-breed creation of a massive number of ducks.
+The API would accept a really different format that our datamodel:
+
+.. code-block:: python
+
+    {
+        'breeds': [
+            {'name': 'Mandarin Duck', 'births': ['2016-08-29T00:00:00', '2016-08-31T00:00:00', ...]},
+            {'name': 'Mallard', 'births': ['2016-08-27T00:00:00', ...]},
+            ...
+        ]
+    }
+
+Now starting from the umongo schema would not help, so we will create our schema
+from scratch... almost:
+
+.. code-block:: python
+
+    >>> MassiveBreedSchema(marshmallow.Schema):
+    ...     name = Duck.schema.fields['breed'].as_marshmallow_field()
+    ...     births = marshmallow.fields.List(
+    ...         Duck.schema.fields['birthday'].as_marshmallow_field())
+    >>> MassiveDuckSchema(marshmallow.Schema):
+    ...     breeds = marshmallow.fields.List(marshmallow.fields.Nested(MassiveBreedSchema))
+
+.. note:: A custom marshmallow schema :class:`umongo.marshmallow_bonus.SchemaFromUmongo`
+    can be used instead of regular :class:`marshmallow.Schema` to benefit a tighter
+    integration with umongo (unknown field checking and access to missing fields
+    instead of serializing them as `None`)
+
+This time we directly convert umongo schema's fields into there marshmallow
+equivalent with ``as_marshmallow_field``. Now we can build our ducks easily:
+
+.. code-block:: python
+
+    try:
+        data, _ =  MassiveDuckSchema(strict=True).load(payload)
+        ducks = []
+        for breed in data['breeds']:
+            for birthday in breed['births']:
+                duck = Duck(breed=breed['name']), birthday=birthday)
+                duck.commit()
+                ducks.append(duck)
+    except ValidationError as e:
+        # Error handling
+        ...
+
 
 Field validate & io_validate
 ============================
@@ -550,3 +653,6 @@ wrapped by :class:`asyncio.coroutine` and called with ``yield from``.
         yield from Job(activity='Pythoning').commit()
         yield from Job(activity='Javascripting...').commit()
         # raises ValidationError: {'activity': ["No way I'm doing this !"]}
+
+.. warning:: When converting to marshmallow with `as_marshmallow_schema` and
+    `as_marshmallow_fields`, `io_validate` attribute will not be preserved.

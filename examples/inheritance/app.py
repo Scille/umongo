@@ -69,7 +69,7 @@ quit: leave the console"""
         print('\n'.join([str(v) for v in Vehicle.find()]))
 
     def new_vehicle(self):
-        vehicle_type = input('Type ? car/bike ') or 'car',
+        vehicle_type = input('Type ? car/bike ') or 'car'
         data = {
             'model': input('Model ? ') or 'unknown'
         }
@@ -80,7 +80,7 @@ quit: leave the console"""
                 pass
             vehicle = Car(**data)
         else:
-            strokes = input('Type of stroke-engine ? 2/4')
+            strokes = input('Type of stroke-engine ? 2/4 ')
             if strokes:
                 data['engine_type'] = '2-stroke' if strokes == '2' else '4-stroke'
             vehicle = MotorBike(**data)

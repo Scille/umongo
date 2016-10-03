@@ -79,6 +79,9 @@ class TestMotorAsyncio(BaseDBTest):
 
             john2 = yield from Student.find_one(john.id)
             assert john2._data == john._data
+            # Double commit should do nothing
+            ret = yield from john.commit()
+            assert ret is None
 
         loop.run_until_complete(do_test())
 
@@ -133,7 +136,12 @@ class TestMotorAsyncio(BaseDBTest):
             yield from john.commit()
             assert john.is_created
             assert (yield from Student.find().count()) == 1
+            # Test conditional delete
+            with pytest.raises(exceptions.DeleteError):
+                yield from john.remove(conditions={'name': 'Bad Name'})
+            yield from john.remove(conditions={'name': 'John Doe'})
             # Finally try to remove a doc no longer in database
+            yield from john.commit()
             yield from (yield from Student.find_one(john.id)).remove()
             with pytest.raises(exceptions.DeleteError):
                 yield from john.remove()
@@ -233,7 +241,7 @@ class TestMotorAsyncio(BaseDBTest):
             yield from student.commit()
             teacher = classroom_model.Teacher(name='M. Strickland')
             yield from teacher.commit()
-            course = classroom_model.Course(name='Overboard 101', teacher=teacher)
+            course = classroom_model.Course(name='Hoverboard 101', teacher=teacher)
             yield from course.commit()
             assert student.courses == []
             student.courses.append(course)
@@ -254,7 +262,7 @@ class TestMotorAsyncio(BaseDBTest):
 
             teacher = classroom_model.Teacher(name='M. Strickland')
             yield from teacher.commit()
-            course = classroom_model.Course(name='Overboard 101', teacher=teacher)
+            course = classroom_model.Course(name='Hoverboard 101', teacher=teacher)
             yield from course.commit()
             assert isinstance(course.teacher, Reference)
             teacher_fetched = yield from course.teacher.fetch()
@@ -288,6 +296,35 @@ class TestMotorAsyncio(BaseDBTest):
 
             # with pytest.raises(exceptions.ValidationError):
             #     Student.build_from_mongo({})
+
+        loop.run_until_complete(do_test())
+
+    def test_required_nested(self, loop, instance):
+
+        @asyncio.coroutine
+        def do_test():
+            @instance.register
+            class MyEmbeddedDocument(EmbeddedDocument):
+                required_field = fields.IntField(required=True)
+                optional_field = fields.IntField()
+
+            @instance.register
+            class MyDoc(Document):
+                embedded = fields.EmbeddedField(MyEmbeddedDocument, attribute='in_mongo_embedded')
+                embedded_list = fields.ListField(fields.EmbeddedField(MyEmbeddedDocument), attribute='embedded_list')
+
+            MySchema = MyDoc.Schema
+            with pytest.raises(exceptions.ValidationError):
+                yield from MyDoc().commit()
+            with pytest.raises(exceptions.ValidationError):
+                yield from MyDoc(embedded={'optional_field': 1}).commit()
+            with pytest.raises(exceptions.ValidationError):
+                yield from MyDoc(embedded={'required_field': 1}, embedded_list=[{'optionial_field': 1}]).commit()
+
+            doc = MyDoc(embedded={'required_field': 1}, embedded_list=[])
+            yield from doc.commit()
+            doc = MyDoc(embedded={'required_field': 1}, embedded_list=[{'required_field': 1}])
+            yield from doc.commit()
 
         loop.run_until_complete(do_test())
 
@@ -330,13 +367,32 @@ class TestMotorAsyncio(BaseDBTest):
                 raise exceptions.ValidationError('Ho boys !')
 
             @instance.register
+            class EmbeddedDoc(EmbeddedDocument):
+                io_field = fields.IntField(io_validate=io_validate)
+
+            @instance.register
             class IOStudent(Student):
                 io_field = fields.StrField(io_validate=io_validate)
+                list_io_field = fields.ListField(fields.IntField(io_validate=io_validate))
+                reference_io_field = fields.ReferenceField(classroom_model.Course, io_validate=io_validate)
+                embedded_io_field = fields.EmbeddedField(EmbeddedDoc, io_validate=io_validate)
 
-            student = IOStudent(name='Marty', io_field='io?')
+            bad_reference = ObjectId()
+            student = IOStudent(
+                name='Marty',
+                io_field='io?',
+                list_io_field=[1, 2],
+                reference_io_field=bad_reference,
+                embedded_io_field={'io_field': 42}
+            )
             with pytest.raises(exceptions.ValidationError) as exc:
                 yield from student.io_validate()
-            assert exc.value.messages == {'io_field': ['Ho boys !']}
+            assert exc.value.messages == {
+                'io_field': ['Ho boys !'],
+                'list_io_field': {0: ['Ho boys !'], 1: ['Ho boys !']},
+                'reference_io_field': ['Ho boys !', 'Reference not found for document Course.'],
+                'embedded_io_field': {'io_field': ['Ho boys !']}
+            }
 
         loop.run_until_complete(do_test())
 
@@ -804,49 +860,40 @@ class TestMotorAsyncio(BaseDBTest):
                 name = fields.StrField()
                 age = fields.IntField()
 
-                def pre_insert(self, payload):
-                    callbacks.append(('pre_insert', payload))
+                def pre_insert(self):
+                    callbacks.append('pre_insert')
 
-                def pre_update(self, query, payload):
-                    callbacks.append(('pre_update', query, payload))
+                def pre_update(self):
+                    callbacks.append('pre_update')
 
                 def pre_delete(self):
-                    callbacks.append(('pre_delete', ))
+                    callbacks.append('pre_delete')
 
-                def post_insert(self, ret, payload):
+                def post_insert(self, ret):
                     assert isinstance(ret, ObjectId)
-                    callbacks.append(('post_insert', 'ret', payload))
+                    callbacks.append('post_insert')
 
-                def post_update(self, ret, payload):
+                def post_update(self, ret):
                     assert ret == {'ok': 1, 'nModified': 1, 'updatedExisting': True, 'n': 1}
-                    callbacks.append(('post_update', 'ret', payload))
+                    callbacks.append('post_update')
 
                 def post_delete(self, ret):
                     assert ret == {'n': 1, 'ok': 1}
-                    callbacks.append(('post_delete', 'ret'))
+                    callbacks.append('post_delete')
 
 
             p = Person(name='John', age=20)
             yield from p.commit()
-            assert callbacks == [
-                ('pre_insert', {'_id': p.pk, 'name': 'John', 'age': 20}),
-                ('post_insert', 'ret', {'_id': p.pk, 'name': 'John', 'age': 20})
-            ]
+            assert callbacks == ['pre_insert', 'post_insert']
 
             callbacks.clear()
             p.age = 22
             yield from p.commit({'age': 22})
-            assert callbacks == [
-                ('pre_update', {'_id': p.pk}, {'$set': {'age': 22}}),
-                ('post_update', 'ret', {'$set': {'age': 22}})
-            ]
+            assert callbacks == ['pre_update', 'post_update']
 
             callbacks.clear()
             yield from p.delete()
-            assert callbacks == [
-                ('pre_delete', ),
-                ('post_delete', 'ret')
-            ]
+            assert callbacks == ['pre_delete', 'post_delete']
 
         loop.run_until_complete(do_test())
 
@@ -862,14 +909,14 @@ class TestMotorAsyncio(BaseDBTest):
                 name = fields.StrField()
                 age = fields.IntField()
 
-                def pre_insert(self, payload):
+                def pre_insert(self):
                     events.append('start pre_insert')
                     future = asyncio.Future()
                     future.set_result(True)
                     yield from future
                     events.append('end pre_insert')
 
-                def post_insert(self, ret, payload):
+                def post_insert(self, ret):
                     events.append('start post_insert')
                     future = asyncio.Future()
                     future.set_result(True)
@@ -884,6 +931,59 @@ class TestMotorAsyncio(BaseDBTest):
                 'start post_insert',
                 'end post_insert'
             ]
+
+        loop.run_until_complete(do_test())
+
+    def test_modify_in_pre_hook(self, loop, instance):
+
+        @asyncio.coroutine
+        def do_test():
+
+            @instance.register
+            class Person(Document):
+                version = fields.IntField(required=True, attribute='_version')
+                name = fields.StrField()
+                age = fields.IntField()
+
+                def pre_insert(self):
+                    self.version = 1
+
+                def pre_update(self):
+                    # Prevent concurrency by checking a version number on update
+                    last_version = self.version
+                    self.version += 1
+                    return {'version': last_version}
+
+                def pre_delete(self):
+                    return {'version': self.version}
+
+
+            p = Person(name='John', age=20)
+            yield from p.commit()
+
+            assert p.version == 1
+            p_concurrent = yield from Person.find_one(p.pk)
+
+            p.age = 22
+            yield from p.commit()
+            assert p.version == 2
+
+            # Concurrent should not be able to commit it modifications
+            p_concurrent.name = 'John'
+            with pytest.raises(exceptions.UpdateError):
+                yield from p_concurrent.commit()
+
+            yield from p_concurrent.reload()
+            assert p_concurrent.version == 2
+
+            p.age = 24
+            yield from p.commit()
+            assert p.version == 3
+            yield from p.delete()
+            yield from p.commit()
+            with pytest.raises(exceptions.DeleteError):
+                yield from p_concurrent.delete()
+            yield from p.delete()
 
         loop.run_until_complete(do_test())
 

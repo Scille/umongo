@@ -7,6 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from functools import partial
 
 from umongo import Instance, Document, fields, ValidationError, set_gettext
+from umongo.marshmallow_bonus import SchemaFromUmongo
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -100,12 +101,15 @@ async def populate_db():
         await User(**data).commit()
 
 
-# dump/update can be passed a custom schema instance to avoid some fields
-no_pass_schema = User.Schema(load_only=('password',), dump_only=('password',))
-
+# Create a custom marshmallow schema from User document in order to avoid some fields
+class UserNoPassSchema(User.schema.as_marshmallow_schema()):
+    class Meta:
+        read_only = ('password',)
+        load_only = ('password',)
+no_pass_schema = UserNoPassSchema()
 
 def dump_user_no_pass(u):
-    return u.dump(schema=no_pass_schema)
+    return no_pass_schema.dump(u).data
 
 
 @app.register('/', methods=['GET'])
@@ -130,6 +134,10 @@ def _to_objid(data):
         return None
 
 
+def _nick_or_id_lookup(nick_or_id):
+    return {'$or': [{'nick': nick_or_id}, {'_id': _to_objid(nick_or_id)}]}
+
+
 def build_error(status=400, msg=None):
     if status == 404 and not msg:
         msg = 'Not found'
@@ -139,7 +147,7 @@ def build_error(status=400, msg=None):
 @app.register('/users/{nick_or_id}', methods=['GET'])
 async def get_user(request):
     nick_or_id = request.match_info['nick_or_id']
-    user = await User.find_one({'$or': [{'nick': nick_or_id}, {'_id': _to_objid(nick_or_id)}]})
+    user = await User.find_one(_nick_or_id_lookup(nick_or_id))
     if not user:
         return build_error(404)
     return jsonify(request, dump_user_no_pass(user))
@@ -151,13 +159,19 @@ async def update_user(request):
     payload = await request.json()
     if payload is None:
         return build_error(400, 'Request body must be json with Content-type: application/json')
-    user = await User.find_one({'$or': [{'nick': nick_or_id}, {'_id': _to_objid(nick_or_id)}]})
+    user = await User.find_one(_nick_or_id_lookup(nick_or_id))
     if not user:
         return build_error(404)
     # Define a custom schema from the default one to ignore read-only fields
-    schema = User.Schema(dump_only=('password', 'nick'))
+    UserUpdateSchema = User.Schema.as_marshmallow_schema(params={
+        'password': {'dump_only': True},
+        'nick': {'dump_only': True}
+    })()
+    # with `strict`, marshmallow raise ValidationError if something is wrong
+    schema = UserUpdateSchema(strict=True)
     try:
-        user.update(payload, schema=schema)
+        data, _ = schema.load(payload)
+        user.update(data)
         await user.commit()
     except ValidationError as ve:
         return build_error(400, ve.args[0])
@@ -167,7 +181,7 @@ async def update_user(request):
 @app.register('/users/{nick_or_id}', methods=['DELETE'])
 async def delete_user(request):
     nick_or_id = request.match_info['nick_or_id']
-    user = await User.find_one({'$or': [{'nick': nick_or_id}, {'_id': _to_objid(nick_or_id)}]})
+    user = await User.find_one(_nick_or_id_lookup(nick_or_id))
     if not user:
         return build_error(404)
     try:
@@ -183,20 +197,18 @@ async def change_password_user(request):
     payload = await request.json()
     if payload is None:
         return build_error(400, 'Request body must be json with Content-type: application/json')
-    user = await User.find_one({'$or': [{'nick': nick_or_id}, {'_id': _to_objid(nick_or_id)}]})
+    user = await User.find_one(_nick_or_id_lookup(nick_or_id))
     if not user:
         return build_error(404, 'Not found')
 
-    # Custom schema with only a required password field
-    class PasswordSchema(User.Schema):
-        class Meta:
-            fields = ('password',)
-
-    schema = PasswordSchema(strict=True)
-    schema.fields['password'].required = True
+    # Use a field from our document to create a marshmallow schema
+    # Note that we use `SchemaFromUmongo` to get unknown fields check on
+    # deserialization and skip missing fields instead of returning None
+    class ChangePasswordSchema(SchemaFromUmongo):
+        password = User.schema.fields['password'].as_marshmallow_field(params={'required': True})
+    # with `strict`, marshmallow raises a ValidationError if something is wrong
+    schema = ChangePasswordSchema(strict=True)
     try:
-        # Validate the incoming payload outside of the document to process
-        # the `required` options
         data, _ = schema.load(payload)
         user.password = data['password']
         await user.commit()

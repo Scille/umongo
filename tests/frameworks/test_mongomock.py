@@ -22,7 +22,7 @@ def db():
     return MongoClient()[TEST_DB]
 
 
-# MongoMockDal is 100% based on PyMongodal so no need for really heavy tests
+# MongoMockBuilder is 100% based on PyMongoBuilder so no need for really heavy tests
 @pytest.mark.skipif(dep_error is not None, reason=dep_error)
 def test_mongomock(classroom_model):
     Student = classroom_model.Student
