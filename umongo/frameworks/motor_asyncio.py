@@ -4,10 +4,11 @@ from pymongo.errors import DuplicateKeyError
 
 from ..builder import BaseBuilder
 from ..document import DocumentImplementation
-from ..data_proxy import DataProxy, missing
+from ..data_proxy import missing
 from ..data_objects import Reference
 from ..exceptions import NotCreatedError, UpdateError, ValidationError, DeleteError
 from ..fields import ReferenceField, ListField, EmbeddedField
+from ..query_mapper import map_query
 
 from .tools import cook_find_filter
 
@@ -65,24 +66,24 @@ class MotorAsyncIODocument(DocumentImplementation):
     # either Future or regular return value.
 
     @asyncio.coroutine
-    def __coroutined_pre_insert(self, payload):
-        return self.pre_insert(payload)
+    def __coroutined_pre_insert(self):
+        return self.pre_insert()
 
     @asyncio.coroutine
-    def __coroutined_pre_update(self, query, payload):
-        return self.pre_update(query, payload)
+    def __coroutined_pre_update(self):
+        return self.pre_update()
 
     @asyncio.coroutine
     def __coroutined_pre_delete(self):
         return self.pre_delete()
 
     @asyncio.coroutine
-    def __coroutined_post_insert(self, ret, payload):
-        return self.post_insert(ret, payload)
+    def __coroutined_post_insert(self, ret):
+        return self.post_insert(ret)
 
     @asyncio.coroutine
-    def __coroutined_post_update(self, ret, payload):
-        return self.post_update(ret, payload)
+    def __coroutined_post_update(self, ret):
+        return self.post_update(ret)
 
     @asyncio.coroutine
     def __coroutined_post_delete(self, ret):
@@ -101,7 +102,7 @@ class MotorAsyncIODocument(DocumentImplementation):
         ret = yield from self.collection.find_one(self.pk)
         if ret is None:
             raise NotCreatedError("Document doesn't exists in database")
-        self._data = DataProxy(self.schema)
+        self._data = self.DataProxy()
         self._data.from_mongo(ret)
 
     @asyncio.coroutine
@@ -119,29 +120,35 @@ class MotorAsyncIODocument(DocumentImplementation):
         :return: Update result dict returned by underlaying driver or
             ObjectId of the inserted document.
         """
-        yield from self.io_validate(validate_all=io_validate_all)
-        payload = self._data.to_mongo(update=self.is_created)
         try:
             if self.is_created:
-                if payload:
+                if self.is_modified():
                     query = conditions or {}
-                    query['_id'] = self._data.get_by_mongo_name('_id')
-                    yield from self.__coroutined_pre_update(query, payload)
+                    query['_id'] = self.pk
+                    # pre_update can provide additional query filter and/or
+                    # modify the fields' values
+                    additional_filter = yield from self.__coroutined_pre_update()
+                    if additional_filter:
+                        query.update(map_query(additional_filter, self.schema.fields))
+                    yield from self.io_validate(validate_all=io_validate_all)
+                    payload = self._data.to_mongo(update=True)
                     ret = yield from self.collection.update(query, payload)
                     if ret.get('ok') != 1 or ret.get('n') != 1:
                         raise UpdateError(ret)
-                    yield from self.__coroutined_post_update(ret, payload)
+                    yield from self.__coroutined_post_update(ret)
                 else:
                     ret = None
             elif conditions:
                 raise RuntimeError('Document must already exist in database to use `conditions`.')
             else:
-                yield from self.__coroutined_pre_insert(payload)
+                yield from self.__coroutined_pre_insert()
+                yield from self.io_validate(validate_all=io_validate_all)
+                payload = self._data.to_mongo(update=False)
                 ret = yield from self.collection.insert(payload)
                 # TODO: check ret ?
                 self._data.set_by_mongo_name('_id', ret)
                 self.is_created = True
-                yield from self.__coroutined_post_insert(ret, payload)
+                yield from self.__coroutined_post_insert(ret)
         except DuplicateKeyError as exc:
             # Need to dig into error message to find faulting index
             errmsg = exc.details['errmsg']
@@ -165,17 +172,21 @@ class MotorAsyncIODocument(DocumentImplementation):
         return ret
 
     @asyncio.coroutine
-    def delete(self):
+    def delete(self, conditions=None):
         """
         Alias of :meth:`remove` to enforce default api.
         """
-        return self.remove()
+        return self.remove(conditions=conditions)
 
     @asyncio.coroutine
-    def remove(self):
+    def remove(self, conditions=None):
         """
         Remove the document from database.
 
+        :param conditions: Only perform delete if matching record in db
+            satisfies condition(s) (e.g. version number).
+            Raises :class:`umongo.exceptions.DeleteError` if the
+            conditions are not satisfied.
         Raises :class:`umongo.exceptions.NotCreatedError` if the document
         is not created (i.e. ``doc.is_created`` is False)
         Raises :class:`umongo.exceptions.DeleteError` if the document
@@ -183,10 +194,15 @@ class MotorAsyncIODocument(DocumentImplementation):
 
         :return: Delete result dict returned by underlaying driver.
         """
-        yield from self.__coroutined_pre_delete()
         if not self.is_created:
             raise NotCreatedError("Document doesn't exists in database")
-        ret = yield from self.collection.remove({'_id': self.pk})
+        query = conditions or {}
+        query['_id'] = self.pk
+        # pre_delete can provide additional query filter
+        additional_filter = yield from self.__coroutined_pre_delete()
+        if additional_filter:
+            query.update(map_query(additional_filter, self.schema.fields))
+        ret = yield from self.collection.remove(query)
         if ret.get('ok') != 1 or ret.get('n') != 1:
             raise DeleteError(ret)
         self.is_created = False
@@ -270,6 +286,8 @@ def _io_validate_data_proxy(schema, data_proxy, partial=None):
             # Also look for required
             field._validate_missing(value)
             if value is not missing:
+                if field.io_validate_recursive:
+                    yield from field.io_validate_recursive(field, value)
                 if field.io_validate:
                     tasks.append(_run_validators(field.io_validate, field, value))
                     tasks_field_name.append(name)
@@ -352,9 +370,9 @@ class MotorAsyncIOBuilder(BaseBuilder):
             field.io_validate = [v if asyncio.iscoroutinefunction(v) else asyncio.coroutine(v)
                                  for v in validators]
         if isinstance(field, ListField):
-            field.io_validate.append(_list_io_validate)
+            field.io_validate_recursive = _list_io_validate
         if isinstance(field, ReferenceField):
             field.io_validate.append(_reference_io_validate)
             field.reference_cls = MotorAsyncIOReference
         if isinstance(field, EmbeddedField):
-            field.io_validate.append(_embedded_document_io_validate)
+            field.io_validate_recursive = _embedded_document_io_validate

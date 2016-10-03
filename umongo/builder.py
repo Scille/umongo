@@ -3,6 +3,7 @@ from copy import copy
 from marshmallow.fields import Field
 
 from .template import Template, Implementation
+from .data_proxy import data_proxy_factory
 from .document import DocumentTemplate, DocumentOpts, DocumentImplementation
 from .embedded_document import (
     EmbeddedDocumentTemplate, EmbeddedDocumentOpts, EmbeddedDocumentImplementation)
@@ -21,8 +22,15 @@ def _is_child(bases):
     """Find if the given inheritance leeds to a child document (i.e.
     a document that shares the same collection with a parent)
     """
-    return next((True for b in bases
-                 if issubclass(b, DocumentImplementation) and not b.opts.abstract), False)
+    return any(b for b in bases if issubclass(b, DocumentImplementation) and not b.opts.abstract)
+
+
+def _is_child_embedded_document(bases):
+    """Same thing than _is_child, but for EmbeddedDocument...
+    """
+    return any(b for b in bases
+               if issubclass(b, EmbeddedDocumentImplementation) and
+               b is not EmbeddedDocumentImplementation)
 
 
 def _collect_fields(nmspc):
@@ -199,6 +207,7 @@ class BaseBuilder:
         nmspc['Schema'] = schema_cls
         schema = schema_cls()
         nmspc['schema'] = schema
+        nmspc['DataProxy'] = data_proxy_factory(name, schema)
 
         # _build_document_opts cannot determine the indexes given we need to
         # visit the document's fields which weren't defined at this time
@@ -216,7 +225,8 @@ class BaseBuilder:
         assert issubclass(template, EmbeddedDocumentTemplate)
         name = template.__name__
         bases = self._convert_bases(template.__bases__)
-        opts = EmbeddedDocumentOpts(self.instance, template)
+        opts = EmbeddedDocumentOpts(
+            self.instance, template, is_child=_is_child_embedded_document(bases))
         nmspc, schema_template_fields = _collect_fields(template.__dict__)
         nmspc['opts'] = opts
 
@@ -224,6 +234,17 @@ class BaseBuilder:
         # customized in the implementation, we copy them to avoid
         # overwriting if two implementations are created
         schema_nmspc = {k: copy(v) for k, v in schema_template_fields.items()}
+
+        # If EmbeddedDocument is a child, _cls field must be added to the schema
+        if opts.is_child:
+            add_child_field(name, schema_nmspc)
+        # Notify the parents of their newborn !
+        for base in bases:
+            if (not issubclass(base, EmbeddedDocumentImplementation) or
+                    base is EmbeddedDocumentImplementation):
+                continue
+            base.opts.children.add(name)
+
         # Create schema by retrieving inherited schema classes
         schema_bases = tuple([base.Schema for base in bases
                               if hasattr(base, 'Schema')])
@@ -231,7 +252,9 @@ class BaseBuilder:
             schema_bases = (Schema, )
         schema_cls = self._build_schema(template, schema_bases, schema_nmspc)
         nmspc['Schema'] = schema_cls
-        nmspc['schema'] = schema_cls()
+        schema = schema_cls()
+        nmspc['schema'] = schema
+        nmspc['DataProxy'] = data_proxy_factory(name, schema)
 
         implementation = type(name, bases, nmspc)
         self._templates_lookup[template] = implementation

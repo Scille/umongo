@@ -2,6 +2,17 @@
 History
 =======
 
+0.10.0 (2016-09-29)
+-------------------
+
+* Add pre/post update/insert/delete hooks (see #22)
+* Provide Umongo to Marshmallow schema/field conversion with
+  schema.as_marshmallow_schema() and field.as_marshmallow_field() (see #34)
+* List and Dict inherit from collections's UserList and UserDict instead
+  of builtins types (needed due to metaprogramming conflict otherwise)
+* DeleteError and UpdateError returns the driver result object instead
+  of the raw error dict (except for motor which only has raw error dict)
+
 0.9.0 (2016-06-11)
 ------------------
 

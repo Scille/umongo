@@ -29,7 +29,7 @@ from .i18n import set_gettext
 
 __author__ = 'Emmanuel Leblond'
 __email__ = 'emmanuel.leblond@gmail.com'
-__version__ = '0.9.0'
+__version__ = '0.10.0'
 __all__ = (
     'Instance',
     'PyMongoInstance',

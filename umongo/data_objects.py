@@ -1,4 +1,5 @@
 from bson import DBRef
+from collections import UserList, UserDict
 
 from .abstract import BaseDataObject, I18nErrorDict
 
@@ -6,16 +7,19 @@ from .abstract import BaseDataObject, I18nErrorDict
 __all__ = ('List', 'Reference')
 
 
-class List(BaseDataObject, list):
+class List(BaseDataObject, UserList):
+
+    __slots__ = ('container_field', '_modified')
 
     def __init__(self, container_field, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._modified = False
         self.container_field = container_field
 
     def __setitem__(self, key, obj):
         obj = self.container_field.deserialize(obj)
         super().__setitem__(key, obj)
-        self._modified = True
+        self.set_modified()
 
     def append(self, obj):
         obj = self.container_field.deserialize(obj)
@@ -58,12 +62,15 @@ class List(BaseDataObject, list):
         return '<object %s.%s(%s)>' % (
             self.__module__, self.__class__.__name__, list(self))
 
+    def set_modified(self):
+        self._modified = True
+
     def is_modified(self):
         if self._modified:
             return True
         if len(self) and isinstance(self[0], BaseDataObject):
             # Recursive handling needed
-            return next((True for obj in self if obj.is_modified() is True), False)
+            return any(obj.is_modified() for obj in self)
 
     def clear_modified(self):
         self._modified = False
@@ -74,8 +81,22 @@ class List(BaseDataObject, list):
 
 
 # TODO: Dict is to much raw: you need to use `set_modified` by hand !
-class Dict(BaseDataObject, dict):
-    pass
+class Dict(BaseDataObject, UserDict):
+
+    __slots__ = ('_modified', )
+
+    def __init__(self, *args, **kwargs):
+        self._modified = False
+        super().__init__(*args, **kwargs)
+
+    def is_modified(self):
+        return self._modified
+
+    def set_modified(self):
+        self._modified = True
+
+    def clear_modified(self):
+        self._modified = False
 
 
 class Reference:
