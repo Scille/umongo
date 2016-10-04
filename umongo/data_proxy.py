@@ -98,11 +98,12 @@ class BaseDataProxy:
         # Delete missing fields unless dump_only or with a default value
         if reset_missings:
             deletable_fields = set(
-                [k for k, v in self.schema.fields.items()
+                [k for k, v in self._fields.items()
                  if not v.dump_only and v.missing is missing])
             missing_keys = deletable_fields - set(data)
             for key in missing_keys:
                 self.delete(key)
+                self.not_loaded_fields.discard(self._fields[key])
 
     def load(self, data, partial=False):
         # Always use marshmallow partial load to skip required checks
