@@ -404,6 +404,12 @@ class TestDataProxy(BaseTest):
         assert d.get('c') == 3
         assert d.get('d') == 41
         assert set(['e']) == d._modified_data
-        # With reset_missings: exception raised
-        with pytest.raises(ValidationError):
-            d.update({'d': 41}, reset_missings=True)
+        # With reset_missings
+        # No exception raised for missing required value
+        d.clear_modified()
+        d.update({'d': 41}, reset_missings=True)
+        assert d.get('a') == missing
+        assert d.get('b') == 69
+        assert d.get('c') == 3
+        assert d.get('d') == 41
+        assert set(['a', 'b', 'e']) == d._modified_data
