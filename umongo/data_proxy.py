@@ -84,8 +84,7 @@ class BaseDataProxy:
     def update(self, data, reset_missings=False):
 
         # Use marshmallow partial load to skip required checks
-        # unless reset_missings is True
-        loaded_data, err = self.schema.load(data, partial=(not reset_missings))
+        loaded_data, err = self.schema.load(data, partial=True)
         if err:
             raise ValidationError(err)
         self._data.update(loaded_data)
