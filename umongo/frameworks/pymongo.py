@@ -277,7 +277,7 @@ class PyMongoReference(Reference):
         return self._document
 
 
-class PyMongoReferenceAutoFetch(Reference):
+class PyMongoReferenceAutoFetch(PyMongoReference):
 
     def __init__(self, document_cls, pk):
         # Attribute getter/setter/deleter are overridden to provide
@@ -286,16 +286,6 @@ class PyMongoReferenceAutoFetch(Reference):
         self.__dict__['document_cls'] = document_cls
         self.__dict__['pk'] = pk
         self.__dict__['_document'] = None
-
-    def fetch(self, no_data=False):
-        if not self._document:
-            if self.pk is None:
-                raise ReferenceError('Cannot retrieve a None Reference')
-            self._document = self.document_cls.find_one(self.pk)
-            if not self._document:
-                raise ValidationError(self.error_messages['not_found'].format(
-                    document=self.document_cls.__name__))
-        return self._document
 
     def __getitem__(self, name):
         return self.fetch()[name]
