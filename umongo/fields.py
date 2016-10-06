@@ -411,13 +411,25 @@ class EmbeddedField(BaseField, ma_fields.Nested):
             return to_use_cls(**value)
         else:
             value = super()._deserialize(value, attr, data)
-            return self._deserialize_from_mongo(value)
+            return self.embedded_document_cls.build_from_mongo(value)
+            #return self._deserialize_from_mongo(value)
 
     def _serialize_to_mongo(self, obj):
         return obj.to_mongo()
 
     def _deserialize_from_mongo(self, value):
-        return self.embedded_document_cls.build_from_mongo(value)
+        embedded_document_cls = self.embedded_document_cls
+        # Handle inheritance deserialization here using `_cls` field as hint
+        if embedded_document_cls.opts.children and isinstance(value, dict) and '_cls' in value:
+            to_use_cls_name = value.pop('_cls')
+            try:
+                to_use_cls = embedded_document_cls.opts.instance.retrieve_embedded_document(
+                    to_use_cls_name)
+            except NotRegisteredDocumentError as e:
+                raise ValidationError(str(e))
+            return to_use_cls.build_from_mongo(value)
+        else:
+            return embedded_document_cls.build_from_mongo(value)
 
     def _validate_missing(self, value):
         # Overload default to handle recursive check
