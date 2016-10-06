@@ -412,7 +412,7 @@ class EmbeddedField(BaseField, ma_fields.Nested):
         else:
             value = super()._deserialize(value, attr, data)
             return self.embedded_document_cls.build_from_mongo(value)
-            #return self._deserialize_from_mongo(value)
+            # return self._deserialize_from_mongo(value)
 
     def _serialize_to_mongo(self, obj):
         return obj.to_mongo()
