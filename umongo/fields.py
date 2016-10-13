@@ -79,6 +79,20 @@ class DictField(BaseField, ma_fields.Dict):
         self.attribute or keys[0] + '.' + '.'.join(keys[1:])
         return {self.attribute or key: query}
 
+    def as_marshmallow_field(self, params=None, mongo_world=False):
+        kwargs = self._extract_marshmallow_field_params(mongo_world)
+        if params:
+            kwargs.update(params)
+        m_field = ma_fields.Dict(**kwargs)
+
+        # Monkey patch Dict to return a dict rather than a UserDict
+        def _serialize(value, attr, obj):
+            if isinstance(value, Dict):
+                return value.data
+        m_field._serialize = _serialize
+
+        return m_field
+
 
 class ListField(BaseField, ma_fields.List):
 
