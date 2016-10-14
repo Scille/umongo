@@ -30,7 +30,7 @@ def on_need_add_id_field(bases, fields):
 
 def add_child_field(name, fields):
     from .fields import StrField
-    fields['cls'] = StrField(attribute='_cls', missing=name, dump_only=True)
+    fields['cls'] = StrField(attribute='_cls', missing=name, dump_only=True, load_only=True)
 
 
 class Schema(BaseSchema):
