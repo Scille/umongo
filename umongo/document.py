@@ -227,11 +227,14 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
                                   ' using update')
         return self._data.to_mongo(update=update)
 
-    def update(self, data):
+    def update(self, data, reset_missings=False):
         """
         Update the document with the given data.
+
+        :param reset_missings: if True, all loadable fields in schema missing
+                               in data are removed from document
         """
-        self._data.update(data)
+        self._data.update(data, reset_missings=reset_missings)
 
     def dump(self):
         """

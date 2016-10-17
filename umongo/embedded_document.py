@@ -84,12 +84,12 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
     def to_mongo(self, update=False):
         return self._data.to_mongo(update=update)
 
-    def update(self, data):
+    def update(self, data, reset_missings=False):
         """
         Update the embedded document with the given data.
         """
         self.set_modified()
-        return self._data.update(data)
+        self._data.update(data, reset_missings=reset_missings)
 
     def dump(self):
         """

@@ -81,8 +81,9 @@ class BaseDataProxy:
     def _mark_as_modified(self, key):
         self._modified_data.add(key)
 
-    def update(self, data):
-        # Always use marshmallow partial load to skip required checks
+    def update(self, data, reset_missings=False):
+
+        # Use marshmallow partial load to skip required checks
         loaded_data, err = self.schema.load(data, partial=True)
         if err:
             raise ValidationError(err)
@@ -92,6 +93,27 @@ class BaseDataProxy:
                 self.not_loaded_fields.discard(self._fields_from_mongo_key[k])
         for key in loaded_data:
             self._mark_as_modified(key)
+
+        # Delete missing fields unless dump_only
+        if reset_missings:
+            deletable_fields = set(
+                [k for k, v in self._fields.items()
+                 if not v.dump_only])
+            missing_keys = deletable_fields - set(data)
+
+            for key in missing_keys:
+                # In fact, if fields has a default value,
+                # set default rather than delete
+                if self._fields[key].missing is not missing:
+                    field = self._fields[key]
+                    if callable(field.missing):
+                        def_value = field.missing()
+                    else:
+                        def_value = field.missing
+                    self.set(key, def_value)
+                else:
+                    self.delete(key)
+                self.not_loaded_fields.discard(self._fields[key])
 
     def load(self, data, partial=False):
         # Always use marshmallow partial load to skip required checks

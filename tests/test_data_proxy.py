@@ -359,3 +359,57 @@ class TestDataProxy(BaseTest):
         d.update({'normal': 'test'})
         assert d.partial is False
         assert not d.not_loaded_fields
+
+    def test_update(self):
+
+        class MySchema(EmbeddedSchema):
+            a = fields.IntField(required=True)
+            b = fields.IntField(missing=69)
+            c = fields.IntField(dump_only=True)
+            d = fields.IntField(attribute='e')
+
+        MyDataProxy = data_proxy_factory('My', MySchema())
+        d = MyDataProxy({'a': 1, 'b': 2, 'd': 4})
+        d.set('c', 3)
+
+        # Update without reset_missings
+        # a and b are modified, c and d are unchanged
+        d.clear_modified()
+        d.update({'a': 11, 'b': 12})
+        assert d.get('a') == 11
+        assert d.get('b') == 12
+        assert d.get('c') == 3
+        assert d.get('d') == 4
+        assert set(['a', 'b']) == d._modified_data
+
+        # Update with reset_missings
+        # a is modified
+        # b is set to its default value
+        # c is not affected because it is dump_only
+        # d is set to missing
+        d.clear_modified()
+        d.update({'a': 21}, reset_missings=True)
+        assert d.get('a') == 21
+        assert d.get('b') == 69
+        assert d.get('c') == 3
+        assert d.get('d') == missing
+        assert set(['a', 'b', 'e']) == d._modified_data
+
+        # Update with required field missing
+        # Without reset_missings
+        d.clear_modified()
+        d.update({'d': 41})
+        assert d.get('a') == 21
+        assert d.get('b') == 69
+        assert d.get('c') == 3
+        assert d.get('d') == 41
+        assert set(['e']) == d._modified_data
+        # With reset_missings
+        # No exception raised for missing required value
+        d.clear_modified()
+        d.update({'d': 41}, reset_missings=True)
+        assert d.get('a') == missing
+        assert d.get('b') == 69
+        assert d.get('c') == 3
+        assert d.get('d') == 41
+        assert set(['a', 'b', 'e']) == d._modified_data
