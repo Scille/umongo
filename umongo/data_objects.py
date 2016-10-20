@@ -4,7 +4,7 @@ from collections import UserList, UserDict
 from .abstract import BaseDataObject, I18nErrorDict
 
 
-__all__ = ('List', 'Reference')
+__all__ = ('List', 'Dict', 'Reference')
 
 
 class List(BaseDataObject, UserList):

@@ -3,6 +3,14 @@ from .data_objects import BaseDataObject
 from .data_proxy import missing
 
 
+__all__ = (
+    'EmbeddedDocumentTemplate',
+    'EmbeddedDocument',
+    'EmbeddedDocumentOpts',
+    'EmbeddedDocumentImplementation'
+)
+
+
 class EmbeddedDocumentTemplate(Template):
     """
     Base class to define a umongo embedded document.

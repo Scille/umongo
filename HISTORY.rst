@@ -2,6 +2,11 @@
 History
 =======
 
+dev
+---
+
+* Document support marshmallow's pre/post processors
+
 0.10.0 (2016-09-29)
 -------------------
 

@@ -5,6 +5,7 @@ from .i18n import gettext as _
 from .marshmallow_bonus import (schema_validator_check_unknown_fields,
                                 schema_from_umongo_get_attribute)
 
+
 __all__ = ('BaseSchema', 'BaseField', 'BaseValidator', 'BaseDataObject')
 
 
