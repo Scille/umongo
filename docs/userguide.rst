@@ -543,6 +543,26 @@ Finally we can integrated the validated data into OO world:
         except (ValidationError, UMongoError) as e:
             # error handling
 
+This works great when you want to add special behavior depending of the situation.
+For more simple usecases we could use the
+`marshmallow pre/post precessors  <http://marshmallow.readthedocs.io/en/latest/extending.html#pre-processing-and-post-processing-methods>`_
+. For example to simply customize the dump:
+
+.. code-block:: python
+
+    >>> from umongo import post_dump  # same as `from marshmallow import post_dump`
+    >>> @instance.register
+    ... class Dog(Document):
+    ...     name = fields.StrField(required=True)
+    ...     breed = fields.StrField(missing="Mongrel")
+    ...     birthday = fields.DateTimeField()
+    ...     @post_dump
+    ...     def customize_dump(self, data):
+    ...         data['name'] = data['name'].capitalize()
+    ...         data['brief'] = "Hi ! My name is %s and I'm a %s" % (data['name'], data['breed'])"
+    ...
+    >>> Dog(name='scruffy').dump()
+    {'name': 'Scruffy', 'breed': 'Mongrel', 'brief': "Hi ! My name is Scruffy and I'm a Mongrel"}
 
 Now let's imagine we want to allow the per-breed creation of a massive number of ducks.
 The API would accept a really different format that our datamodel:

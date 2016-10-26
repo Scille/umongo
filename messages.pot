@@ -8,69 +8,67 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: emmanuel.leblond@gmail.com\n"
-"POT-Creation-Date: 2016-04-19 11:56+0200\n"
+"POT-Creation-Date: 2016-10-21 16:11+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Emmanuel Leblond <emmanuel.leblond@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.3.3\n"
+"Generated-By: Babel 2.3.4\n"
 
-#: umongo/fields.py:212
-msgid "Invalid ObjectId."
-msgstr ""
-
-#: umongo/fields.py:237
-#, python-format
-msgid "DBRef must be on collection `{collection}`."
-msgstr ""
-
-#: umongo/fields.py:242 umongo/fields.py:251
-#, python-format
-msgid "`{document}` reference expected."
-msgstr ""
-
-#: umongo/fields.py:248 umongo/fields.py:284
-msgid "Cannot reference a document that has not been created yet."
-msgstr ""
-
-#: umongo/fields.py:288
-msgid "Generic reference must have `id` and `cls` fields."
-msgstr ""
-
-#: umongo/fields.py:292
-msgid "Invalid `id` field."
-msgstr ""
-
-#: umongo/fields.py:298
-msgid "Invalid value for generic reference field."
-msgstr ""
-
-#: umongo/fields.py:307
-#, python-format
-msgid "Unknown document `{document}`."
-msgstr ""
-
-#: umongo/schema.py:19
-msgid "Unknown field name {field}."
-msgstr ""
-
-#: umongo/dal/motor_asyncio.py:100 umongo/dal/pymongo.py:83
-#: umongo/dal/txmongo.py:60
+#: umongo/abstract.py:88
 msgid "Field value must be unique."
 msgstr ""
 
-#: umongo/dal/motor_asyncio.py:103 umongo/dal/pymongo.py:86
-#: umongo/dal/txmongo.py:63
-#, python-format
+#: umongo/abstract.py:89
 msgid "Values of fields {fields} must be unique together."
 msgstr ""
 
-#: umongo/dal/motor_asyncio.py:258 umongo/dal/pymongo.py:221
-#: umongo/dal/txmongo.py:238
+#: umongo/data_objects.py:105
 msgid "Reference not found for document {document}."
 msgstr ""
+
+#: umongo/data_proxy.py:209
+msgid "Missing data for required field."
+msgstr ""
+
+#: umongo/fields.py:273
+msgid "DBRef must be on collection `{collection}`."
+msgstr ""
+
+#: umongo/fields.py:278 umongo/fields.py:289
+msgid "`{document}` reference expected."
+msgstr ""
+
+#: umongo/fields.py:286 umongo/fields.py:333
+msgid "Cannot reference a document that has not been created yet."
+msgstr ""
+
+#: umongo/fields.py:337 umongo/marshmallow_bonus.py:183
+msgid "Generic reference must have `id` and `cls` fields."
+msgstr ""
+
+#: umongo/fields.py:341 umongo/marshmallow_bonus.py:187
+msgid "Invalid `id` field."
+msgstr ""
+
+#: umongo/fields.py:347 umongo/marshmallow_bonus.py:181
+msgid "Invalid value for generic reference field."
+msgstr ""
+
+#: umongo/fields.py:356 umongo/fields.py:420
+msgid "Unknown document `{document}`."
+msgstr ""
+
+#: umongo/marshmallow_bonus.py:50
+msgid "Unknown field name {field}."
+msgstr ""
+
+#: umongo/marshmallow_bonus.py:135
+msgid "Invalid ObjectId."
+msgstr ""
+
 
 # Marshmallow fields #
 

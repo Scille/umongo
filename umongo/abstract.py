@@ -1,9 +1,10 @@
 from marshmallow import (Schema as MaSchema, fields as ma_fields,
                          validate as ma_validate, missing, validates_schema)
 
-from .i18n import gettext as _
+from .i18n import gettext as _, N_
 from .marshmallow_bonus import (schema_validator_check_unknown_fields,
                                 schema_from_umongo_get_attribute)
+
 
 __all__ = ('BaseSchema', 'BaseField', 'BaseValidator', 'BaseDataObject')
 
@@ -84,8 +85,8 @@ class BaseField(ma_fields.Field):
     """
 
     default_error_messages = {
-        'unique': 'Field value must be unique.',
-        'unique_compound': 'Values of fields {fields} must be unique together.'
+        'unique': N_('Field value must be unique.'),
+        'unique_compound': N_('Values of fields {fields} must be unique together.')
     }
 
     def __init__(self, *args, io_validate=None, unique=False, instance=None, **kwargs):
@@ -115,6 +116,13 @@ class BaseField(ma_fields.Field):
 
     def serialize(self, attr, obj, accessor=None):
         return super().serialize(attr, obj, accessor=accessor)
+
+    def _validate_missing(self, value):
+        # Overwirte marshmallow.Field._validate_missing given it also checks
+        # for missing required fields (this is done at commit time in umongo
+        # using `DataProxy.required_validate`).
+        if value is None and getattr(self, 'allow_none', False) is False:
+            self.fail('null')
 
     def deserialize(self, value, attr=None, data=None):
         return super().deserialize(value, attr=attr, data=data)
@@ -177,7 +185,7 @@ class BaseField(ma_fields.Field):
         """
         Return a pure-marshmallow version of this field.
 
-        :param params: Additional parameters passed to the mashmallow field
+        :param params: Additional parameters passed to the marshmallow field
             class constructor.
         :param mongo_world: If True the field will work against the mongo world
             instead of the OO world (default: False)

@@ -238,16 +238,13 @@ class TestTxMongo(BaseDBTest):
         Student = classroom_model.Student
         student = Student(birthday=datetime(1968, 6, 9))
 
-        with pytest.raises(exceptions.ValidationError):
-            yield student.io_validate()
-
-        with pytest.raises(exceptions.ValidationError):
+        # Required check should be done during commit
+        with pytest.raises(exceptions.ValidationError) as exc:
             yield student.commit()
+        assert exc.value.messages == {'name': ['Missing data for required field.']}
 
         student.name = 'Marty'
         yield student.commit()
-        # with pytest.raises(exceptions.ValidationError):
-        #     Student.build_from_mongo({})
 
     @pytest_inlineCallbacks
     def test_required_nested(self, instance):
@@ -262,6 +259,7 @@ class TestTxMongo(BaseDBTest):
             embedded_list = fields.ListField(fields.EmbeddedField(MyEmbeddedDocument), attribute='embedded_list')
 
         MySchema = MyDoc.Schema
+        MyDoc(embedded={}, embedded_list=[{}])  # Required fields are check on commit
         with pytest.raises(exceptions.ValidationError):
             yield MyDoc().commit()
         with pytest.raises(exceptions.ValidationError):

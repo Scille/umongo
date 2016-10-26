@@ -142,7 +142,7 @@ class TestFields(BaseTest):
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy()
-        d.load({'dict': {'a': 1, 'b': {'c': True}}})
+        d.from_mongo({'in_mongo_dict': {'a': 1, 'b': {'c': True}}})
         with pytest.raises(KeyError):
             d.get('in_mongo_dict')
         assert d.dump() == {'dict': {'a': 1, 'b': {'c': True}}}
@@ -184,6 +184,10 @@ class TestFields(BaseTest):
             a = fields.IntField(attribute='in_mongo_a')
             b = fields.IntField()
 
+        embedded = MyEmbeddedDocument()
+        assert embedded.to_mongo(update=True) is None
+        assert not embedded.is_modified()
+
         @self.instance.register
         class MyDoc(Document):
             embedded = fields.EmbeddedField(MyEmbeddedDocument, attribute='in_mongo_embedded')
@@ -196,7 +200,7 @@ class TestFields(BaseTest):
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy()
-        d.load(data={'embedded': {'a': 1, 'b': 2}})
+        d.from_mongo(data={'in_mongo_embedded': {'in_mongo_a': 1, 'b': 2}})
         assert d.dump() == {'embedded': {'a': 1, 'b': 2}}
         embedded = d.get('embedded')
         assert type(embedded) == MyEmbeddedDocument
@@ -211,6 +215,7 @@ class TestFields(BaseTest):
         assert d == d2
 
         embedded.a = 3
+        assert embedded.is_modified()
         assert embedded.to_mongo(update=True) == {'$set': {'in_mongo_a': 3}}
         assert d.to_mongo(update=True) == {'$set': {'in_mongo_embedded': {'in_mongo_a': 3, 'b': 2}}}
         embedded.clear_modified()
@@ -222,6 +227,8 @@ class TestFields(BaseTest):
         assert d.to_mongo(update=True) == {'$set': {'in_mongo_embedded': {'b': 2}}}
 
         d.set('embedded', MyEmbeddedDocument(a=4))
+        assert d.get('embedded').to_mongo(update=True) == {'$set': {'in_mongo_a': 4}}
+        d.get('embedded').clear_modified()
         assert d.get('embedded').to_mongo(update=True) is None
         assert d.to_mongo(update=True) == {'$set': {'in_mongo_embedded': {'in_mongo_a': 4}}}
 
@@ -268,6 +275,46 @@ class TestFields(BaseTest):
         with pytest.raises(KeyError):
             del embedded_doc['dummy']
 
+    def test_bad_embedded_document(self):
+
+        @self.instance.register
+        class MyEmbeddedDocument(EmbeddedDocument):
+            a = fields.IntField()
+
+        @self.instance.register
+        class MyDoc(Document):
+            e = fields.EmbeddedField(MyEmbeddedDocument)
+            l = fields.ListField(fields.EmbeddedField(MyEmbeddedDocument))
+            b = fields.IntField(required=True)
+
+        with pytest.raises(ValidationError) as exc:
+            MyDoc(l={})
+        assert exc.value.args[0] == {'l': ['Not a valid list.']}
+
+        with pytest.raises(ValidationError) as exc:
+            MyDoc(l=True)
+        assert exc.value.args[0] == {'l': ['Not a valid list.']}
+
+        with pytest.raises(ValidationError) as exc:
+            MyDoc(l="string is not a list")
+        assert exc.value.args[0] == {'l': ['Not a valid list.']}
+
+        with pytest.raises(ValidationError) as exc:
+            MyDoc(l=[42])
+        #assert exc.value.args[0] == {'l': {0: {'_schema': ['Invalid input type.']}}}
+
+        with pytest.raises(ValidationError) as exc:
+            MyDoc(l=[{}, 42])
+        #assert exc.value.args[0] == {'l': {1: {'_schema': ['Invalid input type.']}}}
+
+        with pytest.raises(ValidationError) as exc:
+            k = MyDoc(b=[{}])
+        assert exc.value.args[0] == {'b': ['Not a valid integer.']}
+
+        with pytest.raises(ValidationError) as exc:
+            k = MyDoc(e=[{}])
+        #assert exc.value.args[0] == {'e': {'_schema': ['Invalid input type.']}}
+
     def test_embedded_inheritance(self):
         @self.instance.register
         class EmbeddedParent(EmbeddedDocument):
@@ -310,10 +357,36 @@ class TestFields(BaseTest):
         doc = MyDoc(parent=child, child=child)
         assert doc.child == doc.parent
 
-        doc = MyDoc(child={'a': 1, '_cls': 'GrandChild'},
-                    parent={'_cls': 'EmbeddedChild', 'a': 1})
+        doc = MyDoc(child={'a': 1, 'cls': 'GrandChild'},
+                    parent={'cls': 'EmbeddedChild', 'a': 1})
         assert doc.child.to_mongo() == {'in_mongo_a_child': 1, '_cls': 'GrandChild'}
         assert doc.parent.to_mongo() == {'in_mongo_a_child': 1, '_cls': 'EmbeddedChild'}
+
+        with pytest.raises(ValidationError) as exc:
+            MyDoc(child={'a': 1, '_cls': 'GrandChild'})
+        assert exc.value.messages == {'child': {'_schema': ['Unknown field name _cls.']}}
+
+        # Try to build a non-child document
+        with pytest.raises(ValidationError) as exc:
+            MyDoc(child={'cls': 'OtherEmbedded'})
+        assert exc.value.messages == {'child': ['Unknown document `OtherEmbedded`.']}
+
+    def test_embedded_required_validate(self):
+
+        @self.instance.register
+        class MyEmbedded(EmbeddedDocument):
+            required = fields.IntField(required=True)
+
+        @self.instance.register
+        class MyDoc(Document):
+            embedded = fields.EmbeddedField(MyEmbedded)
+
+        doc = MyDoc(embedded={'required': 42})
+        doc.embedded.required_validate()
+
+        doc = MyDoc(embedded={})
+        with pytest.raises(ValidationError) as exc:
+            doc.embedded.required_validate()
 
     def test_list(self):
 

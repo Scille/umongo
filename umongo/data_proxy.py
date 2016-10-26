@@ -2,6 +2,7 @@ from marshmallow import ValidationError, missing
 
 from .abstract import BaseDataObject
 from .exceptions import FieldNotLoadedError
+from .i18n import gettext as _
 
 
 __all__ = ('data_proxy_factory', 'missing')
@@ -69,8 +70,8 @@ class BaseDataProxy:
             self._collect_partial_fields(data.keys(), as_mongo_fields=True)
         else:
             self.not_loaded_fields.clear()
-        self._add_missing_fields()
         self.clear_modified()
+        self._add_missing_fields()
 
     def dump(self):
         data, err = self.schema.dump(self._data)
@@ -99,12 +100,16 @@ class BaseDataProxy:
         if err:
             raise ValidationError(err)
         self._data = loaded_data
+        # Map the modified fields list on the the loaded data
+        self.clear_modified()
+        for key in loaded_data:
+            self._mark_as_modified(key)
         if partial:
             self._collect_partial_fields(data)
         else:
             self.not_loaded_fields.clear()
+        # Must be done last given it modify `loaded_data`
         self._add_missing_fields()
-        self.clear_modified()
 
     def get_by_mongo_name(self, name):
         value = self._data[name]
@@ -199,6 +204,20 @@ class BaseDataProxy:
                     self._data[mongo_name] = field.missing()
                 else:
                     self._data[mongo_name] = field.missing
+
+    def required_validate(self):
+        errors = {}
+        for name, field in self.schema.fields.items():
+            value = self._data[field.attribute or name]
+            if field.required and value is missing:
+                errors[name] = [_("Missing data for required field.")]
+            elif hasattr(field, '_required_validate'):
+                try:
+                    field._required_validate(value)
+                except ValidationError as exc:
+                    errors[name] = exc.messages
+        if errors:
+            raise ValidationError(errors)
 
     # Standards iterators providing oo and mongo worlds views
 

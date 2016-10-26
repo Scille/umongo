@@ -49,13 +49,13 @@ class TestDataProxy(BaseTest):
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy()
-        d.load({'a': 1, 'b': 2})
+        d.from_mongo({'a': 1, 'in_mongo_b': 2})
         assert d.to_mongo() == {'a': 1, 'in_mongo_b': 2}
 
         d.set('a', 3)
         assert d.to_mongo(update=True) == {'$set': {'a': 3}}
 
-        d.load({'a': 4, 'b': 5})
+        d.from_mongo({'a': 4, 'in_mongo_b': 5})
         assert d.to_mongo(update=True) is None
         assert d.to_mongo() == {'a': 4, 'in_mongo_b': 5}
 
@@ -70,13 +70,18 @@ class TestDataProxy(BaseTest):
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy()
+        assert d.get_modified_fields() == []
         d.load({'a': 1, 'b': 2})
+        assert list(sorted(d.get_modified_fields())) == ['a', 'b']
+        d.from_mongo({'a': 1, 'in_mongo_b': 2})
+        assert d.get_modified_fields() == []
         assert d.to_mongo() == {'a': 1, 'in_mongo_b': 2}
         assert d.to_mongo(update=True) is None
         d.set('a', 3)
         d.delete('b')
         assert d.to_mongo(update=True) == {'$set': {'a': 3}, '$unset': {'in_mongo_b': ''}}
         d.clear_modified()
+        assert d.get_modified_fields() == []
         assert d.to_mongo(update=True) is None
         assert d.to_mongo() == {'a': 3}
 
@@ -111,12 +116,12 @@ class TestDataProxy(BaseTest):
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy()
-        d.load({'a': 1, 'b': 2})
+        d.from_mongo({'a': 1, 'in_mongo_b': 2})
         d.set('a', 3)
         assert d.to_mongo() == {'a': 3, 'in_mongo_b': 2}
         assert d.to_mongo(update=True) == {'$set': {'a': 3}}
 
-        d.load({'a': 1, 'b': 2})
+        d.from_mongo({'a': 1, 'in_mongo_b': 2})
         d.set('b', 3)
         assert d.to_mongo() == {'a': 1, 'in_mongo_b': 3}
         assert d.to_mongo(update=True) == {'$set': {'in_mongo_b': 3}}
@@ -132,7 +137,7 @@ class TestDataProxy(BaseTest):
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy()
-        d.load({'a': 1, 'b': 2})
+        d.from_mongo({'a': 1, 'in_mongo_b': 2})
         d.delete('b')
         assert d.to_mongo() == {'a': 1}
         assert d.to_mongo(update=True) == {'$unset': {'in_mongo_b': ''}}
@@ -210,7 +215,8 @@ class TestDataProxy(BaseTest):
             b = fields.IntField(attribute='in_mongo_b')
 
         MyDataProxy = data_proxy_factory('My', MySchema())
-        d = MyDataProxy(data={'a': 1, 'b': 2})
+        d = MyDataProxy()
+        d.from_mongo({'a': 1, 'in_mongo_b': 2})
         assert d.get_by_mongo_name('in_mongo_b') == 2
         assert d.get_by_mongo_name('a') == 1
         with pytest.raises(KeyError):
@@ -359,3 +365,39 @@ class TestDataProxy(BaseTest):
         d.update({'normal': 'test'})
         assert d.partial is False
         assert not d.not_loaded_fields
+
+    def test_required_validate(self):
+
+        @self.instance.register
+        class MyEmbedded(EmbeddedDocument):
+            required = fields.IntField(required=True)
+
+        class MySchema(EmbeddedSchema):
+            # EmbeddedField need instance to retrieve implementation
+            listed = fields.ListField(fields.EmbeddedField(MyEmbedded, instance=self.instance))
+            embedded = fields.EmbeddedField(MyEmbedded, instance=self.instance)
+            required = fields.IntField(required=True)
+
+        MyDataProxy = data_proxy_factory('My', MySchema())
+        d = MyDataProxy()
+
+        d.load({'embedded': {'required': 42}, 'required': 42, 'listed': [{'required': 42}]})
+        d.required_validate()
+        # Empty list should not trigger required it embedded field require check
+        d.load({'embedded': {'required': 42}, 'required': 42})
+        d.required_validate()
+
+        d.load({'embedded': {'required': 42}})
+        with pytest.raises(ValidationError) as exc:
+            d.required_validate()
+        assert exc.value.messages == {'required': ['Missing data for required field.']}
+
+        d.load({'required': 42})
+        with pytest.raises(ValidationError) as exc:
+            d.required_validate()
+        assert exc.value.messages == {'embedded': {'required': ['Missing data for required field.']}}
+
+        d.load({'embedded': {'required': 42}, 'required': 42, 'listed': [{}]})
+        with pytest.raises(ValidationError) as exc:
+            d.required_validate()
+        assert exc.value.messages == {'listed': {0: {'required': ['Missing data for required field.']}}}

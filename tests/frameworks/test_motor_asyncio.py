@@ -283,19 +283,13 @@ class TestMotorAsyncio(BaseDBTest):
             Student = classroom_model.Student
             student = Student(birthday=datetime(1968, 6, 9))
 
-            with pytest.raises(exceptions.ValidationError) as exc:
-                yield from student.io_validate()
-            assert exc.value.messages == {'name': ['Missing data for required field.']}
-
+            # Required check should be done during commit
             with pytest.raises(exceptions.ValidationError) as exc:
                 yield from student.commit()
             assert exc.value.messages == {'name': ['Missing data for required field.']}
 
             student.name = 'Marty'
             yield from student.commit()
-
-            # with pytest.raises(exceptions.ValidationError):
-            #     Student.build_from_mongo({})
 
         loop.run_until_complete(do_test())
 
@@ -314,6 +308,7 @@ class TestMotorAsyncio(BaseDBTest):
                 embedded_list = fields.ListField(fields.EmbeddedField(MyEmbeddedDocument), attribute='embedded_list')
 
             MySchema = MyDoc.Schema
+            MyDoc(embedded={}, embedded_list=[{}])  # Required fields are check on commit
             with pytest.raises(exceptions.ValidationError):
                 yield from MyDoc().commit()
             with pytest.raises(exceptions.ValidationError):

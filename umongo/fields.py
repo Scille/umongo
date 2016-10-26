@@ -45,7 +45,7 @@ __all__ = (
 )
 
 
-# Republish supported mashmallow fields
+# Republish supported marshmallow fields
 
 
 # class RawField(BaseField, ma_fields.Raw):
@@ -118,6 +118,19 @@ class ListField(BaseField, ma_fields.List):
             kwargs.update(params)
         return ma_fields.List(self.container.as_marshmallow_field(
             mongo_world=mongo_world), **kwargs)
+
+    def _required_validate(self, value):
+        if value is missing or not hasattr(self.container, '_required_validate'):
+            return
+        required_validate = self.container._required_validate
+        errors = {}
+        for i, sub_value in enumerate(value):
+            try:
+                required_validate(sub_value)
+            except ValidationError as exc:
+                errors[i] = exc.messages
+        if errors:
+            raise ValidationError(errors)
 
 
 class StringField(BaseField, ma_fields.String):
@@ -403,8 +416,11 @@ class EmbeddedField(BaseField, ma_fields.Nested):
         if not isinstance(value, dict):
             raise ValidationError('dict or {} expected'.format(embedded_document_cls))
         # Handle inheritance deserialization here using `_cls` field as hint
-        if embedded_document_cls.opts.children and '_cls' in value:
-            to_use_cls_name = value.pop('_cls')
+        if embedded_document_cls.opts.children and 'cls' in value:
+            to_use_cls_name = value.pop('cls')
+            if to_use_cls_name not in embedded_document_cls.opts.children:
+                raise ValidationError(_('Unknown document `{document}`.').format(
+                    document=to_use_cls_name))
             try:
                 to_use_cls = embedded_document_cls.opts.instance.retrieve_embedded_document(
                     to_use_cls_name)
@@ -452,6 +468,10 @@ class EmbeddedField(BaseField, ma_fields.Nested):
             return
         for name, field in self.embedded_document_cls.schema.fields.items():
             sub_value = get_sub_value(name)
+            # `_validate_missing` doesn't check for required fields here, so we
+            # can safely skip missing values
+            if sub_value is missing:
+                continue
             try:
                 field._validate_missing(sub_value)
             except ValidationError as ve:
@@ -479,3 +499,10 @@ class EmbeddedField(BaseField, ma_fields.Nested):
         nested_ma_schema = self._embedded_document_cls.schema.as_marshmallow_schema(
             params=nested_params, mongo_world=mongo_world)
         return ma_fields.Nested(nested_ma_schema, **kwargs)
+
+    def _required_validate(self, value):
+        if value is missing:
+            # Validate against an empty struct to enforce required fields check
+            self._embedded_document_cls.DataProxy(data={}).required_validate()
+        else:
+            value.required_validate()

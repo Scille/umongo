@@ -34,11 +34,14 @@ def _is_child_embedded_document(bases):
 
 
 def _collect_fields(nmspc):
-    """Split dict between fields and non-fields elements"""
+    """
+    Split dict between fields and non-fields elements and retrieve marshmallow
+    tags if any.
+    """
     schema_nmspc = {}
     doc_nmspc = {}
     for key, item in nmspc.items():
-        if isinstance(item, Field):
+        if isinstance(item, Field) or hasattr(item, '__marshmallow_tags__'):
             schema_nmspc[key] = item
         else:
             doc_nmspc[key] = item

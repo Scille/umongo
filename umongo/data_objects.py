@@ -2,9 +2,10 @@ from bson import DBRef
 from collections import UserList, UserDict
 
 from .abstract import BaseDataObject, I18nErrorDict
+from .i18n import N_
 
 
-__all__ = ('List', 'Reference')
+__all__ = ('List', 'Dict', 'Reference')
 
 
 class List(BaseDataObject, UserList):
@@ -101,7 +102,7 @@ class Dict(BaseDataObject, UserDict):
 
 class Reference:
 
-    error_messages = I18nErrorDict(not_found='Reference not found for document {document}.')
+    error_messages = I18nErrorDict(not_found=N_('Reference not found for document {document}.'))
 
     def __init__(self, document_cls, pk):
         self.document_cls = document_cls

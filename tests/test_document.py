@@ -2,7 +2,8 @@ import pytest
 from datetime import datetime
 from bson import ObjectId, DBRef
 
-from umongo import Document, EmbeddedDocument, Schema, fields, exceptions
+from umongo import (Document, EmbeddedDocument, Schema, fields, exceptions,
+                    post_dump, pre_load, validates_schema)
 
 from .common import BaseTest
 
@@ -173,10 +174,16 @@ class TestDocument(BaseTest):
 
     def test_required_fields(self):
         # Should be able to instanciate document without their required fields
-        self.Student()
-        self.Student(gpa=2.8)
-        # Required check is done in `io_validate`, cannot go further without a dal
-        # TODO check this...
+        student = self.Student()
+        with pytest.raises(exceptions.ValidationError):
+            student.required_validate()
+
+        student = self.Student(gpa=2.8)
+        with pytest.raises(exceptions.ValidationError):
+            student.required_validate()
+
+        student = self.Student(gpa=2.8, name='Marty')
+        student.required_validate()
 
     def test_auto_id_field(self):
         my_id = ObjectId('5672d47b1d41c88dcd37ef05')
@@ -241,7 +248,14 @@ class TestDocument(BaseTest):
             name = fields.StrField()
             vehicle = fields.EmbeddedField(Vehicle)
 
+        driver = Driver()
+        assert driver.is_modified()
+        driver.is_created = True
+        assert not driver.is_modified()
+
         driver = Driver(name='Marty')
+        assert driver.is_modified()
+        driver.clear_modified()
         assert driver.is_modified()
         driver.is_created = True
         assert not driver.is_modified()
@@ -250,6 +264,8 @@ class TestDocument(BaseTest):
         driver.clear_modified()
         assert not driver.is_modified()
         vehicle = Vehicle(name='Hoverboard')
+        assert vehicle.is_modified()
+        vehicle.clear_modified()
         assert not vehicle.is_modified()
         driver.vehicle = vehicle
         assert driver.is_modified()
@@ -344,6 +360,47 @@ class TestConfig(BaseTest):
         assert DocChild1Child.opts.collection_name is 'col1'
         assert DocChild1Child.opts.allow_inheritance is False
         assert DocChild2.opts.collection_name == 'col2'
+
+    def test_marshmallow_tags(self):
+
+        @self.instance.register
+        class Animal(Document):
+            name = fields.StrField(attribute='_id')  # Overwrite automatic pk
+            class Meta:
+                allow_inheritance = True
+
+        @self.instance.register
+        class Dog(Animal):
+            pass
+
+        @self.instance.register
+        class Duck(Animal):
+            @post_dump
+            def dump_custom_cls_name(self, data):
+                data['race'] = data.pop('cls')
+                return data
+
+            @pre_load
+            def load_custom_cls_name(self, data):
+                data.pop('race', None)
+                return data
+
+            @validates_schema(pass_original=True)
+            def custom_validate(self, data, original_data):
+                if original_data['name'] != 'Donald':
+                    raise exceptions.ValidationError('Not suitable name for duck !', 'name')
+
+        duck = Duck(name='Donald')
+        dog = Dog(name='Pluto')
+        assert 'load_custom_cls_name' not in dir(Duck)
+        assert 'dump_custom_cls_name' not in dir(Duck)
+        assert duck.dump() == {'name': 'Donald', 'race': 'Duck'}
+        assert dog.dump() == {'name': 'Pluto', 'cls': 'Dog'}
+        assert Duck(name='Donald', race='Duck')._data == duck._data
+
+        with pytest.raises(exceptions.ValidationError) as exc:
+            Duck(name='Roger')
+        exc.value.args[0] == {'name': 'Not suitable name for duck !'}
 
     def test_bad_inheritance(self):
         with pytest.raises(exceptions.DocumentDefinitionError) as exc:

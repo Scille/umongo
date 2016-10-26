@@ -1,7 +1,7 @@
 from .abstract import BaseSchema
 
 
-__all__ = ('Schema', 'EmbeddedSchema', 'on_need_add_id_field')
+__all__ = ('Schema', 'EmbeddedSchema', 'on_need_add_id_field', 'add_child_field')
 
 
 def on_need_add_id_field(bases, fields):

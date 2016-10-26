@@ -40,6 +40,9 @@ def schema_validator_check_unknown_fields(self, data, original_data):
 
     ..note:: Unknown fields with `missing` value will be ignored
     """
+    # Just skip if dummy data have been passed to the schema
+    if not isinstance(original_data, dict):
+        return
     loadable_fields = [k for k, v in self.fields.items() if not v.dump_only]
     unknown_fields = {key for key, value in original_data.items()
                       if value is not missing and key not in loadable_fields}
@@ -134,7 +137,7 @@ class ObjectId(ma_fields.Field):
 
 class Reference(ObjectId):
     """
-    Mashmallow field for :class:`umongo.fields.ReferenceField`
+    Marshmallow field for :class:`umongo.fields.ReferenceField`
     """
 
     def __init__(self, *args, mongo_world=False, **kwargs):
@@ -154,7 +157,7 @@ class Reference(ObjectId):
 
 class GenericReference(ma_fields.Field):
     """
-    Mashmallow field for :class:`umongo.fields.GenericReferenceField`
+    Marshmallow field for :class:`umongo.fields.GenericReferenceField`
     """
 
     def __init__(self, *args, mongo_world=False, **kwargs):

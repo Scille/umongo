@@ -1,11 +1,27 @@
 from bson import DBRef
 
+from marshmallow import pre_load, post_load, pre_dump, post_dump, validates_schema  # republishing
+
 from .abstract import BaseDataObject
 from .data_proxy import missing
 from .exceptions import (NotCreatedError, NoDBDefinedError,
                          AbstractDocumentError, DocumentDefinitionError)
 from .schema import Schema
 from .template import Implementation, Template, MetaImplementation
+
+
+__all__ = (
+    'DocumentTemplate',
+    'Document',
+    'DocumentOpts',
+    'MetaDocumentImplementation',
+    'DocumentImplementation',
+    'pre_load',
+    'post_load',
+    'pre_dump',
+    'post_dump',
+    'validates_schema'
+)
 
 
 class DocumentTemplate(Template):
@@ -16,6 +32,10 @@ class DocumentTemplate(Template):
         Once defined, this class must be registered inside a
         :class:`umongo.instance.BaseInstance` to obtain it corresponding
         :class:`umongo.document.DocumentImplementation`.
+    .. note::
+        You can provide marshmallow tags (e.g. `marshmallow.pre_load`
+        or `marshmallow.post_dump`) to this class that will be passed
+        to the marshmallow schema internally used for this document.
     """
     pass
 
@@ -230,6 +250,9 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
         Returns True if and only if the document was modified since last commit.
         """
         return not self.is_created or self._data.is_modified()
+
+    def required_validate(self):
+        self._data.required_validate()
 
     def items(self):
         return self._data.items()

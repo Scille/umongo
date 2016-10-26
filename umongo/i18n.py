@@ -19,3 +19,11 @@ def set_gettext(gettext):
     """
     global _gettext
     _gettext = gettext
+
+
+def N_(message):
+    """
+    Dummy function to mark strings as translatable for babel indexing.
+    see https://docs.python.org/3.5/library/gettext.html#deferred-translations
+    """
+    return message

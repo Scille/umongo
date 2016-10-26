@@ -204,17 +204,13 @@ class TestPymongo(BaseDBTest):
         Student = classroom_model.Student
         student = Student(birthday=datetime(1968, 6, 9))
 
-        with pytest.raises(exceptions.ValidationError):
-            student.io_validate()
-
-        with pytest.raises(exceptions.ValidationError):
+        # required should be called during commit
+        with pytest.raises(exceptions.ValidationError) as exc:
             student.commit()
+        assert exc.value.messages == {'name': ['Missing data for required field.']}
 
         student.name = 'Marty'
         student.commit()
-        # TODO ?
-        # with pytest.raises(exceptions.ValidationError):
-        #     Student.build_from_mongo({})
 
     def test_required_nested(self, instance):
         @instance.register
@@ -228,6 +224,7 @@ class TestPymongo(BaseDBTest):
             embedded_list = fields.ListField(fields.EmbeddedField(MyEmbeddedDocument), attribute='embedded_list')
 
         MySchema = MyDoc.Schema
+        MyDoc(embedded={}, embedded_list=[{}])  # Required fields are check on commit
         with pytest.raises(exceptions.ValidationError):
             MyDoc().commit()
         with pytest.raises(exceptions.ValidationError):

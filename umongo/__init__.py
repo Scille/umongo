@@ -6,7 +6,14 @@ from .frameworks import (
     MotorTornadoInstance,
     MongoMockInstance
 )
-from .document import Document
+from .document import (
+    Document,
+    pre_load,
+    post_load,
+    pre_dump,
+    post_dump,
+    validates_schema
+)
 from .exceptions import (
     UMongoError,
     ValidationError,
@@ -39,6 +46,11 @@ __all__ = (
     'MongoMockInstance',
 
     'Document',
+    'pre_load',
+    'post_load',
+    'pre_dump',
+    'post_dump',
+    'validates_schema',
     'EmbeddedDocument',
 
     'UMongoError',
