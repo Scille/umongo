@@ -1,3 +1,4 @@
+import json
 from bson import ObjectId, DBRef
 import pytest
 from datetime import datetime
@@ -176,6 +177,17 @@ class TestFields(BaseTest):
         d3.get('dict').set_modified()
         assert d3.to_mongo(update=True) == {'$set': {'in_mongo_dict': {'field': 'value'}}}
         assert d3.to_mongo() == {'in_mongo_dict': {'field': 'value'}}
+
+        # Test dict serialization
+        @self.instance.register
+        class AdvancedUser(Document):
+            test = fields.DictField()
+
+        ma_schema_cls = AdvancedUser.schema.as_marshmallow_schema()
+        schema = ma_schema_cls()
+        test = AdvancedUser(test={'lol': 2, 'rofl': 1})
+        s = schema.dump(test)
+        json.dumps(s)
 
     def test_embedded_document(self):
 
