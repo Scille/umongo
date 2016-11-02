@@ -180,9 +180,14 @@ class TestFields(BaseTest):
     def test_embedded_document(self):
 
         @self.instance.register
+        class OtherEmbedded(EmbeddedDocument):
+            f = fields.IntField()
+
+        @self.instance.register
         class MyEmbeddedDocument(EmbeddedDocument):
             a = fields.IntField(attribute='in_mongo_a')
             b = fields.IntField()
+            c = fields.EmbeddedField(OtherEmbedded)
 
         embedded = MyEmbeddedDocument()
         assert embedded.to_mongo(update=True) is None
@@ -191,6 +196,8 @@ class TestFields(BaseTest):
         @self.instance.register
         class MyDoc(Document):
             embedded = fields.EmbeddedField(MyEmbeddedDocument, attribute='in_mongo_embedded')
+
+        MyDoc(embedded={'c': {'f': 69}})
 
         MySchema = MyDoc.Schema
 
@@ -317,9 +324,18 @@ class TestFields(BaseTest):
 
     def test_embedded_inheritance(self):
         @self.instance.register
+        class OtherEmbedded(EmbeddedDocument):
+            f = fields.IntField()
+
+        @self.instance.register
+        class OtherEmbeddedChild(OtherEmbedded):
+            g = fields.IntField()
+
+        @self.instance.register
         class EmbeddedParent(EmbeddedDocument):
             a = fields.IntField(attribute='in_mongo_a_parent')
             b = fields.IntField()
+            e = fields.EmbeddedField(OtherEmbedded)
 
         @self.instance.register
         class EmbeddedChild(EmbeddedParent):
@@ -331,13 +347,13 @@ class TestFields(BaseTest):
             d = fields.IntField()
 
         @self.instance.register
-        class OtherEmbedded(EmbeddedDocument):
-            pass
-
-        @self.instance.register
         class MyDoc(Document):
             parent = fields.EmbeddedField(EmbeddedParent)
             child = fields.EmbeddedField(EmbeddedChild)
+            l = fields.ListField(fields.EmbeddedField(EmbeddedParent))
+
+        MyDoc(parent={'e': {'f': 2}})
+        MyDoc(parent={'e': {'cls': 'OtherEmbeddedChild', 'g': 2}})
 
         assert 'EmbeddedChild' in EmbeddedParent.opts.children
         assert 'OtherEmbedded' not in EmbeddedParent.opts.children

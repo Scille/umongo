@@ -91,6 +91,9 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
             use it determine the EmbeddedDocument class to instanciate
         """
         # If a _cls is specified, we have to use this document class
+        print('build_from_mongo')
+        print(type(data))
+        print(data)
         if use_cls and '_cls' in data:
             cls = cls.opts.instance.retrieve_embedded_document(data['_cls'])
         doc = cls()
@@ -122,6 +125,7 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
     # Data-proxy accessor shortcuts
 
     def __getitem__(self, name):
+        print("name", name)
         value = self._data.get(name)
         return value if value is not missing else None
 
