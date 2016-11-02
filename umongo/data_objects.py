@@ -1,5 +1,4 @@
 from bson import DBRef
-from collections import UserList, UserDict
 
 from .abstract import BaseDataObject, I18nErrorDict
 from .i18n import N_
@@ -8,7 +7,7 @@ from .i18n import N_
 __all__ = ('List', 'Dict', 'Reference')
 
 
-class List(BaseDataObject, UserList):
+class List(BaseDataObject, list):
 
     __slots__ = ('container_field', '_modified')
 
@@ -82,7 +81,7 @@ class List(BaseDataObject, UserList):
 
 
 # TODO: Dict is to much raw: you need to use `set_modified` by hand !
-class Dict(BaseDataObject, UserDict):
+class Dict(BaseDataObject, dict):
 
     __slots__ = ('_modified', )
 

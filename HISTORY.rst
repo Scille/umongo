@@ -5,6 +5,7 @@ History
 dev
 ---
 
+* data_objects `Dict` and `List` inherit builtins `dict` and `list`
 * Document&EmbeddedDocument store fields passed during initialization
   as modified (see #50)
 * Required field inside embedded document are handled correctly (see #61)

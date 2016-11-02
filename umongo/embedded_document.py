@@ -81,6 +81,22 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
     def required_validate(self):
         self._data.required_validate()
 
+    @classmethod
+    def build_from_mongo(cls, data, use_cls=True):
+        """
+        Create an embedded document instance from MongoDB data
+
+        :param data: data as retrieved from MongoDB
+        :param use_cls: if the data contains a ``_cls`` field,
+            use it determine the EmbeddedDocument class to instanciate
+        """
+        # If a _cls is specified, we have to use this document class
+        if use_cls and '_cls' in data:
+            cls = cls.opts.instance.retrieve_embedded_document(data['_cls'])
+        doc = cls()
+        doc.from_mongo(data)
+        return doc
+
     def from_mongo(self, data):
         self._data.from_mongo(data)
 

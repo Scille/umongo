@@ -371,6 +371,14 @@ class TestFields(BaseTest):
             MyDoc(child={'cls': 'OtherEmbedded'})
         assert exc.value.messages == {'child': ['Unknown document `OtherEmbedded`.']}
 
+        # Test embedded child deserialization from mongo
+        child = EmbeddedChild(c=69)
+        doc = MyDoc(parent=child)
+        mongo_data = doc.to_mongo()
+        doc2 = MyDoc.build_from_mongo(mongo_data)
+        assert isinstance(doc2.parent, EmbeddedChild)
+        assert doc._data == doc2._data
+
     def test_embedded_required_validate(self):
 
         @self.instance.register
