@@ -410,6 +410,8 @@ class EmbeddedField(BaseField, ma_fields.Nested):
         return value.dump()
 
     def _deserialize(self, value, attr, data):
+        print("_deserialize")
+        print(value)
         embedded_document_cls = self.embedded_document_cls
         if isinstance(value, embedded_document_cls):
             return value
