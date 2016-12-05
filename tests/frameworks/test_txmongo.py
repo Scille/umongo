@@ -219,6 +219,31 @@ class TestTxMongo(BaseDBTest):
         }
 
     @pytest_inlineCallbacks
+    def test_validation_on_commit(self, instance):
+
+        def io_validate(field, value):
+            raise exceptions.ValidationError('Ho boys !')
+
+        @instance.register
+        class Dummy(Document):
+            required_name = fields.StrField(required=True)
+            always_io_fail = fields.IntField(io_validate=io_validate)
+
+        with pytest.raises(exceptions.ValidationError) as exc:
+            yield Dummy().commit()
+        assert exc.value.messages == {'required_name': ['Missing data for required field.']}
+        with pytest.raises(exceptions.ValidationError) as exc:
+            yield Dummy(required_name='required', always_io_fail=42).commit()
+        assert exc.value.messages == {'always_io_fail': ['Ho boys !']}
+
+        dummy = Dummy(required_name='required')
+        yield dummy.commit()
+        del dummy.required_name
+        with pytest.raises(exceptions.ValidationError) as exc:
+            yield dummy.commit()
+        assert exc.value.messages == {'required_name': ['Missing data for required field.']}
+
+    @pytest_inlineCallbacks
     def test_reference(self, classroom_model):
         teacher = classroom_model.Teacher(name='M. Strickland')
         yield teacher.commit()
@@ -232,45 +257,6 @@ class TestTxMongo(BaseDBTest):
         with pytest.raises(exceptions.ValidationError) as exc:
             yield course.io_validate()
         assert exc.value.messages == {'teacher': ['Reference not found for document Teacher.']}
-
-    @pytest_inlineCallbacks
-    def test_required(self, classroom_model):
-        Student = classroom_model.Student
-        student = Student(birthday=datetime(1968, 6, 9))
-
-        # Required check should be done during commit
-        with pytest.raises(exceptions.ValidationError) as exc:
-            yield student.commit()
-        assert exc.value.messages == {'name': ['Missing data for required field.']}
-
-        student.name = 'Marty'
-        yield student.commit()
-
-    @pytest_inlineCallbacks
-    def test_required_nested(self, instance):
-        @instance.register
-        class MyEmbeddedDocument(EmbeddedDocument):
-            required_field = fields.IntField(required=True)
-            optional_field = fields.IntField()
-
-        @instance.register
-        class MyDoc(Document):
-            embedded = fields.EmbeddedField(MyEmbeddedDocument, attribute='in_mongo_embedded')
-            embedded_list = fields.ListField(fields.EmbeddedField(MyEmbeddedDocument), attribute='embedded_list')
-
-        MySchema = MyDoc.Schema
-        MyDoc(embedded={}, embedded_list=[{}])  # Required fields are check on commit
-        with pytest.raises(exceptions.ValidationError):
-            yield MyDoc().commit()
-        with pytest.raises(exceptions.ValidationError):
-            yield MyDoc(embedded={'optional_field': 1}).commit()
-        with pytest.raises(exceptions.ValidationError):
-            yield MyDoc(embedded={'required_field': 1}, embedded_list=[{'optionial_field': 1}]).commit()
-
-        doc = MyDoc(embedded={'required_field': 1}, embedded_list=[])
-        yield doc.commit()
-        doc = MyDoc(embedded={'required_field': 1}, embedded_list=[{'required_field': 1}])
-        yield doc.commit()
 
     @pytest_inlineCallbacks
     def test_io_validate(self, instance, classroom_model):

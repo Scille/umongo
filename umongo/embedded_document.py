@@ -1,6 +1,7 @@
 from .document import Implementation, Template
 from .data_objects import BaseDataObject
 from .data_proxy import missing
+from .exceptions import DocumentDefinitionError, AbstractDocumentError
 
 
 __all__ = (
@@ -30,18 +31,52 @@ EmbeddedDocument = EmbeddedDocumentTemplate
 class EmbeddedDocumentOpts:
     """
     Configuration for an :class:`umongo.embedded_document.EmbeddedDocument`.
+
+    Should be passed as a Meta class to the :class:`Document`
+
+    .. code-block:: python
+
+        @instance.register
+        class MyEmbeddedDoc(EmbeddedDocument):
+            class Meta:
+                abstract = True
+
+        assert MyEmbeddedDoc.opts.abstract == True
+
+
+    ==================== ====================== ===========
+    attribute            configurable in Meta   description
+    ==================== ====================== ===========
+    template             no                     Origine template of the Document
+    instance             no                     Implementation's instance
+    abstract             yes                    Document has no collection
+                                                and can only be inherited
+    allow_inheritance    yes                    Allow the document to be subclassed
+    is_child             no                     Document inherit of a non-abstract document
+    offspring            no                     List of EmbeddedDocuments inheriting this one
+    ==================== ====================== ===========
     """
 
     def __repr__(self):
-        return ('<{ClassName}(instance={self.instance}, template={self.template}, '
-                'is_child={self.is_child}, children={self.children})>'
+        return ('<{ClassName}('
+                'instance={self.instance}, '
+                'template={self.template}, '
+                'abstract={self.abstract}, '
+                'allow_inheritance={self.allow_inheritance}, '
+                'is_child={self.is_child}, '
+                'offspring={self.offspring})>'
                 .format(ClassName=self.__class__.__name__, self=self))
 
-    def __init__(self, instance, template, is_child=False, children=None):
+    def __init__(self, instance, template, abstract=False, allow_inheritance=True,
+                 is_child=False, offspring=None):
         self.instance = instance
         self.template = template
+        self.abstract = abstract
+        self.allow_inheritance = allow_inheritance
         self.is_child = is_child
-        self.children = set(children) if children else set()
+        self.offspring = set(offspring) if offspring else set()
+        if self.abstract and not self.allow_inheritance:
+            raise DocumentDefinitionError("Abstract embedded document cannot disable inheritance")
 
 
 class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
@@ -52,9 +87,12 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
 
     __slots__ = ('_callback', '_data', '_modified')
     __real_attributes = None
-    opts = EmbeddedDocumentOpts(None, EmbeddedDocumentTemplate)
+    opts = EmbeddedDocumentOpts(None, EmbeddedDocumentTemplate, abstract=True)
 
     def __init__(self, **kwargs):
+        super().__init__()
+        if self.opts.abstract:
+            raise AbstractDocumentError("Cannot instantiate an abstract EmbeddedDocument")
         self._modified = False
         self._data = self.DataProxy(kwargs)
 

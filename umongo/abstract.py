@@ -31,16 +31,13 @@ class BaseSchema(MaSchema):
                 field.map_to_field(mongo_path, name, func)
 
     def as_marshmallow_schema(self, params=None, base_schema_cls=MaSchema,
-                              check_unknown_fields=True, missing_accessor=True,
-                              mongo_world=False):
+                              check_unknown_fields=True, mongo_world=False):
         """
         Return a pure-marshmallow version of this schema class.
 
         :param params: Per-field dict to pass parameters to their field creation.
         :param base_schema_cls: Class the schema will inherit from (
             default: :class:`marshmallow.Schema`).
-        :param missing_accessor: Provide the schema with a custom `get_attribute`
-            method to access umongo missing fields instead of returning `None` (default: True).
         :param check_unknown_fields: Unknown fields are considered as errors (default: True).
         :param mongo_world: If True the schema will work against the mongo world
             instead of the OO world (default: False).
@@ -52,7 +49,9 @@ class BaseSchema(MaSchema):
         if check_unknown_fields:
             nmspc['_%s__check_unknown_fields' % name] = validates_schema(
                 pass_original=True)(schema_validator_check_unknown_fields)
-        if missing_accessor:
+        # By default OO world returns `missing` fields as `None`,
+        # disable this behavior here to let marshmallow deals with it
+        if not mongo_world:
             nmspc['get_attribute'] = schema_from_umongo_get_attribute
         return type(name, (base_schema_cls, ), nmspc)
 
@@ -118,7 +117,7 @@ class BaseField(ma_fields.Field):
         return super().serialize(attr, obj, accessor=accessor)
 
     def _validate_missing(self, value):
-        # Overwirte marshmallow.Field._validate_missing given it also checks
+        # Overwrite marshmallow.Field._validate_missing given it also checks
         # for missing required fields (this is done at commit time in umongo
         # using `DataProxy.required_validate`).
         if value is None and getattr(self, 'allow_none', False) is False:
@@ -179,6 +178,7 @@ class BaseField(ma_fields.Field):
                                 'dump_only', 'missing', 'error_messages')}
         if mongo_world and self.attribute:
             params['attribute'] = self.attribute
+        params.update(self.metadata)
         return params
 
     def as_marshmallow_field(self, params=None, mongo_world=False):

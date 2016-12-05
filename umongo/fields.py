@@ -225,7 +225,7 @@ class StrictDateTimeField(BaseField, ma_bonus_fields.StrictDateTime):
         else:
             # If datetime is TZ aware, convert it to UTC and remove TZ info
             if date.tzinfo is not None and date.tzinfo.utcoffset(date) is not None:
-                date.astimezone(tzutc())
+                date = date.astimezone(tzutc())
             date = date.replace(tzinfo=None)
         return date
 
@@ -414,11 +414,12 @@ class EmbeddedField(BaseField, ma_fields.Nested):
         if isinstance(value, embedded_document_cls):
             return value
         if not isinstance(value, dict):
-            raise ValidationError('dict or {} expected'.format(embedded_document_cls))
-        # Handle inheritance deserialization here using `_cls` field as hint
-        if embedded_document_cls.opts.children and 'cls' in value:
+            raise ValidationError('dict or {} expected'.format(embedded_document_cls.__name__))
+        # Handle inheritance deserialization here using `cls` field as hint
+        if embedded_document_cls.opts.offspring and 'cls' in value:
             to_use_cls_name = value.pop('cls')
-            if to_use_cls_name not in embedded_document_cls.opts.children:
+            if not any(o for o in embedded_document_cls.opts.offspring
+                       if o.__name__ == to_use_cls_name):
                 raise ValidationError(_('Unknown document `{document}`.').format(
                     document=to_use_cls_name))
             try:
@@ -490,8 +491,5 @@ class EmbeddedField(BaseField, ma_fields.Nested):
         return ma_fields.Nested(nested_ma_schema, **kwargs)
 
     def _required_validate(self, value):
-        if value is missing:
-            # Validate against an empty struct to enforce required fields check
-            self._embedded_document_cls.DataProxy(data={}).required_validate()
-        else:
+        if value is not missing:
             value.required_validate()

@@ -1,4 +1,5 @@
 import re
+import inspect
 from copy import copy
 from marshmallow.fields import Field
 
@@ -98,7 +99,6 @@ def _build_document_opts(instance, template, name, nmspc, bases):
     kwargs['template'] = template
     kwargs['abstract'] = getattr(meta, 'abstract', False)
     kwargs['allow_inheritance'] = getattr(meta, 'allow_inheritance', None)
-    kwargs['base_schema_cls'] = getattr(meta, 'base_schema_cls', Schema)
     kwargs['is_child'] = _is_child(bases)
 
     # Handle option inheritance and integrity checks
@@ -106,8 +106,6 @@ def _build_document_opts(instance, template, name, nmspc, bases):
         if not issubclass(base, DocumentImplementation):
             continue
         popts = base.opts
-        # Notify the parent of it newborn !
-        popts.children.add(name)
         if not popts.allow_inheritance:
             raise DocumentDefinitionError("Document %r doesn't allow inheritance" % base)
         if kwargs['abstract'] and not popts.abstract:
@@ -128,6 +126,29 @@ def _build_document_opts(instance, template, name, nmspc, bases):
         collection_name = camel_to_snake(name)
 
     return DocumentOpts(collection_name=collection_name, **kwargs)
+
+
+def _build_embedded_document_opts(instance, template, name, nmspc, bases):
+    kwargs = {}
+    meta = nmspc.get('Meta')
+    kwargs['instance'] = instance
+    kwargs['template'] = template
+    kwargs['abstract'] = getattr(meta, 'abstract', False)
+    kwargs['allow_inheritance'] = getattr(meta, 'allow_inheritance', True)
+    kwargs['is_child'] = _is_child_embedded_document(bases)
+
+    # Handle option inheritance and integrity checks
+    for base in bases:
+        if not issubclass(base, EmbeddedDocumentImplementation):
+            continue
+        popts = base.opts
+        if not popts.allow_inheritance:
+            raise DocumentDefinitionError("EmbeddedDocument %r doesn't allow inheritance" % base)
+        if kwargs['abstract'] and not popts.abstract:
+            raise DocumentDefinitionError(
+                "Abstract embedded document should have all it parents abstract")
+
+    return EmbeddedDocumentOpts(**kwargs)
 
 
 class BaseBuilder:
@@ -218,6 +239,13 @@ class BaseBuilder:
 
         implementation = type(name, bases, nmspc)
         self._templates_lookup[template] = implementation
+        # Notify the parent & grand parents of the newborn !
+        for base in bases:
+            for parent in inspect.getmro(base):
+                if (not issubclass(parent, DocumentImplementation) or
+                        parent is DocumentImplementation):
+                    continue
+                parent.opts.offspring.add(implementation)
         return implementation
 
     def build_embedded_document_from_template(self, template):
@@ -228,8 +256,9 @@ class BaseBuilder:
         assert issubclass(template, EmbeddedDocumentTemplate)
         name = template.__name__
         bases = self._convert_bases(template.__bases__)
-        opts = EmbeddedDocumentOpts(
-            self.instance, template, is_child=_is_child_embedded_document(bases))
+        opts = _build_embedded_document_opts(
+            self.instance, template, name, template.__dict__, bases)
+
         nmspc, schema_template_fields = _collect_fields(template.__dict__)
         nmspc['opts'] = opts
 
@@ -241,12 +270,6 @@ class BaseBuilder:
         # If EmbeddedDocument is a child, _cls field must be added to the schema
         if opts.is_child:
             add_child_field(name, schema_nmspc)
-        # Notify the parents of their newborn !
-        for base in bases:
-            if (not issubclass(base, EmbeddedDocumentImplementation) or
-                    base is EmbeddedDocumentImplementation):
-                continue
-            base.opts.children.add(name)
 
         # Create schema by retrieving inherited schema classes
         schema_bases = tuple([base.Schema for base in bases
@@ -261,4 +284,11 @@ class BaseBuilder:
 
         implementation = type(name, bases, nmspc)
         self._templates_lookup[template] = implementation
+        # Notify the parent & grand parents of the newborn !
+        for base in bases:
+            for parent in inspect.getmro(base):
+                if (not issubclass(parent, EmbeddedDocumentImplementation) or
+                        parent is EmbeddedDocumentImplementation):
+                    continue
+                parent.opts.offspring.add(implementation)
         return implementation

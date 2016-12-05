@@ -6,7 +6,6 @@ from .abstract import BaseDataObject
 from .data_proxy import missing
 from .exceptions import (NotCreatedError, NoDBDefinedError,
                          AbstractDocumentError, DocumentDefinitionError)
-from .schema import Schema
 from .template import Implementation, Template, MetaImplementation
 
 
@@ -71,9 +70,8 @@ class DocumentOpts:
     collection_name      yes                    Name of the collection to store
                                                 the document into
     is_child             no                     Document inherit of a non-abstract document
-    base_schema_cls      yes                    Base Schema class to use
     indexes              yes                    List of custom indexes
-    children             no                     List of Document inheriting this one
+    offspring            no                     List of Documents inheriting this one
     ==================== ====================== ===========
 
     """
@@ -86,23 +84,20 @@ class DocumentOpts:
                 'allow_inheritance={self.allow_inheritance}, '
                 'collection_name={self.collection_name}, '
                 'is_child={self.is_child}, '
-                'base_schema_cls={self.base_schema_cls}, '
                 'indexes={self.indexes}, '
-                'children={self.children})>'
+                'offspring={self.offspring})>'
                 .format(ClassName=self.__class__.__name__, self=self))
 
     def __init__(self, instance, template, collection_name=None, abstract=False,
-                 allow_inheritance=None, base_schema_cls=Schema, indexes=None,
-                 is_child=False, children=None):
+                 allow_inheritance=None, indexes=None, is_child=False, offspring=None):
         self.instance = instance
         self.template = template
         self.collection_name = collection_name if not abstract else None
         self.abstract = abstract
         self.allow_inheritance = abstract if allow_inheritance is None else allow_inheritance
-        self.base_schema_cls = base_schema_cls
         self.indexes = indexes or []
         self.is_child = is_child
-        self.children = set(children) if children else set()
+        self.offspring = set(offspring) if offspring else set()
         if self.abstract and not self.allow_inheritance:
             raise DocumentDefinitionError("Abstract document cannot disable inheritance")
 
@@ -132,7 +127,7 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
 
     __slots__ = ('is_created', '_data')
     __real_attributes = None
-    opts = DocumentOpts(None, DocumentTemplate, abstract=True, allow_inheritance=True)
+    opts = DocumentOpts(None, DocumentTemplate, abstract=True)
 
     def __init__(self, **kwargs):
         super().__init__()

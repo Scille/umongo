@@ -145,7 +145,8 @@ class BaseDataProxy:
     def set(self, name, value, to_raise=KeyError):
         name, field = self._get_field(name, to_raise)
         value = field._deserialize(value, name, None)
-        field._validate(value)
+        if value is not None or not getattr(field, 'allow_none', False):
+            field._validate(value)
         self._data[name] = value
         self._mark_as_modified(name)
 

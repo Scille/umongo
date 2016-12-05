@@ -21,7 +21,7 @@ requirements = [
 
 setup(
     name='umongo',
-    version='0.10.0',
+    version='0.12.0',
     description="sync/async MongoDB ODM, yes.",
     long_description=readme + '\n\n' + history,
     author="Emmanuel Leblond",
@@ -32,7 +32,7 @@ setup(
     install_requires=requirements,
     extras_require={
         'pymongo': ['pymongo>=3.2.1'],
-        'motor': ['motor>=0.6.2'],
+        'motor': ['motor >= 0.7, < 1.0'],
         'txmongo': ['txmongo>=16.0.1'],
         'mongomock': ['mongomock', 'pymongo']  # pymongo needed for bson module
     },

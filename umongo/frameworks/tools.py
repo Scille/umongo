@@ -11,10 +11,11 @@ def cook_find_filter(doc_cls, filter):
         filter = filter or {}
         # Current document shares the collection with a parent,
         # we must use the _cls field to discriminate
-        if doc_cls.opts.children:
-            # Current document has itself children, we also have
+        if doc_cls.opts.offspring:
+            # Current document has itself offspring, we also have
             # to search through them
-            filter['_cls'] = {'$in': list(doc_cls.opts.children) + [doc_cls.__name__]}
+            filter['_cls'] = {
+                '$in': [o.__name__ for o in doc_cls.opts.offspring] + [doc_cls.__name__]}
         else:
             filter['_cls'] = doc_cls.__name__
     return filter

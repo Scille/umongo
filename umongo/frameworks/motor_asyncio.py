@@ -130,6 +130,7 @@ class MotorAsyncIODocument(DocumentImplementation):
                     additional_filter = yield from self.__coroutined_pre_update()
                     if additional_filter:
                         query.update(map_query(additional_filter, self.schema.fields))
+                    self.required_validate()
                     yield from self.io_validate(validate_all=io_validate_all)
                     payload = self._data.to_mongo(update=True)
                     ret = yield from self.collection.update(query, payload)

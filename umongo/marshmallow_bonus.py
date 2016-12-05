@@ -111,7 +111,7 @@ class StrictDateTime(ma_fields.DateTime):
         else:
             # If datetime is TZ aware, convert it to UTC and remove TZ info
             if date.tzinfo is not None and date.tzinfo.utcoffset(date) is not None:
-                date.astimezone(tzutc())
+                date = date.astimezone(tzutc())
             date = date.replace(tzinfo=None)
         return date
 

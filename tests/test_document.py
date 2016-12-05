@@ -294,7 +294,35 @@ class TestDocument(BaseTest):
         class Child(ParentAsTemplate):
             pass
 
-        assert Parent.opts.children == {'Child'}
+    def test_grand_child_inheritance(self):
+        @self.instance.register
+        class GrandParent(Document):
+            class Meta:
+                allow_inheritance = True
+
+        @self.instance.register
+        class Parent(GrandParent):
+            class Meta:
+                allow_inheritance = True
+
+        @self.instance.register
+        class Uncle(GrandParent):
+            class Meta:
+                allow_inheritance = True
+
+        @self.instance.register
+        class Child(Parent):
+            pass
+
+        @self.instance.register
+        class Cousin(Uncle):
+            pass
+
+        assert GrandParent.opts.offspring == {Parent, Uncle, Child, Cousin}
+        assert Parent.opts.offspring == {Child}
+        assert Uncle.opts.offspring == {Cousin}
+        assert Child.opts.offspring == set()
+        assert Cousin.opts.offspring == set()
 
     def test_instanciate_template(self):
 
@@ -329,7 +357,7 @@ class TestConfig(BaseTest):
         assert Doc.opts.instance is self.instance
         assert Doc.opts.is_child is False
         assert Doc.opts.indexes == []
-        assert Doc.opts.children == set()
+        assert Doc.opts.offspring == set()
 
     def test_inheritance(self):
 
