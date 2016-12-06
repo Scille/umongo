@@ -319,6 +319,21 @@ class TestFields(BaseTest):
         repr_d = repr(d.get('list'))
         assert repr_d == "<object umongo.data_objects.List([2, 3, 4, 5])>"
 
+    def test_embedded_field(self):
+
+        @self.instance.register
+        class EmbeddedDocument_A(EmbeddedDocument):
+            field = fields.IntField()
+
+        @self.instance.register
+        class EmbeddedDocument_B(EmbeddedDocument):
+            embedded_a = fields.EmbeddedField('EmbeddedDocument_A')
+            embedded_c = fields.EmbeddedField('EmbeddedDocument_C')
+
+        @self.instance.register
+        class EmbeddedDocument_C(EmbeddedDocument):
+            field = fields.IntField()
+
     def test_complexe_list(self):
 
         @self.instance.register
