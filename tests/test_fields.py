@@ -8,6 +8,7 @@ from uuid import UUID
 from umongo.data_proxy import data_proxy_factory
 from umongo import Document, EmbeddedDocument, Schema, EmbeddedSchema, fields, Reference
 from umongo.data_objects import List, Dict
+from umongo.exceptions import NotRegisteredDocumentError
 
 from .common import BaseTest
 
@@ -332,6 +333,12 @@ class TestFields(BaseTest):
             embedded_list_a = fields.ListField(
                 fields.EmbeddedField('EmbeddedDocument_A')
             )
+
+        # Can't make Marshmallow Schema before every EmbeddedField is resolved
+        with pytest.raises(NotRegisteredDocumentError):
+            schema = EmbeddedDocument_B.schema.as_marshmallow_schema()
+        with pytest.raises(NotRegisteredDocumentError):
+            schema = EmbeddedDocument_B.schema.fields['embedded_c'].as_marshmallow_field()
 
         @self.instance.register
         class EmbeddedDocument_C(EmbeddedDocument):
