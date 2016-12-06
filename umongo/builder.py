@@ -190,9 +190,9 @@ class BaseBuilder:
         field.instance = self.instance
         if isinstance(field, ListField):
             self._patch_field(field.container)
-        if isinstance(field, EmbeddedField):
-            for embedded_field in field.schema.fields.values():
-                self._patch_field(embedded_field)
+#        if isinstance(field, EmbeddedField):
+#            for embedded_field in field.schema.fields.values():
+#                self._patch_field(embedded_field)
 
     def _build_schema(self, template, schema_bases, schema_nmspc):
         # Recursively set the `instance` attribute to all fields
@@ -235,7 +235,8 @@ class BaseBuilder:
 
         # _build_document_opts cannot determine the indexes given we need to
         # visit the document's fields which weren't defined at this time
-        opts.indexes = _collect_indexes(nmspc.get('Meta'), schema.fields, bases)
+        #opts.indexes = _collect_indexes(nmspc.get('Meta'), schema.fields, bases)
+        opts.indexes_args = nmspc.get('Meta'), schema.fields, bases
 
         implementation = type(name, bases, nmspc)
         self._templates_lookup[template] = implementation

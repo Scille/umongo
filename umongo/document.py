@@ -95,12 +95,22 @@ class DocumentOpts:
         self.collection_name = collection_name if not abstract else None
         self.abstract = abstract
         self.allow_inheritance = abstract if allow_inheritance is None else allow_inheritance
-        self.indexes = indexes or []
+        self._indexes = indexes or []
+        self._indexes_computed = False
         self.is_child = is_child
         self.offspring = set(offspring) if offspring else set()
         if self.abstract and not self.allow_inheritance:
             raise DocumentDefinitionError("Abstract document cannot disable inheritance")
 
+    @property
+    def indexes(self):
+        if not self._indexes_computed:
+            from .builder import _collect_indexes
+            if getattr(self, 'indexes_args', None):
+                self._indexes = _collect_indexes(*self.indexes_args)
+            self._indexes_computed = True
+
+        return self._indexes
 
 class MetaDocumentImplementation(MetaImplementation):
 

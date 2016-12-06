@@ -326,13 +326,24 @@ class TestFields(BaseTest):
             field = fields.IntField()
 
         @self.instance.register
-        class EmbeddedDocument_B(EmbeddedDocument):
+        class EmbeddedDocument_B(Document):
             embedded_a = fields.EmbeddedField('EmbeddedDocument_A')
             embedded_c = fields.EmbeddedField('EmbeddedDocument_C')
+            embedded_list_a = fields.ListField(
+                fields.EmbeddedField('EmbeddedDocument_A')
+            )
 
         @self.instance.register
         class EmbeddedDocument_C(EmbeddedDocument):
             field = fields.IntField()
+
+        @self.instance.register
+        class EmbeddedDocument_D(Document):
+            embedded_list_b = fields.ListField(
+                fields.EmbeddedField('EmbeddedDocument_B')
+            )
+            embedded_b = fields.EmbeddedField('EmbeddedDocument_B')
+
 
     def test_complexe_list(self):
 

@@ -402,6 +402,16 @@ class EmbeddedField(BaseField, ma_fields.Nested):
         if not self._embedded_document_cls:
             self._embedded_document_cls = self.instance.retrieve_embedded_document(
                 self.embedded_document)
+
+            def _patch_field(instance, field):
+                # Recursively set the `instance` attribute to all fields
+                field.instance = instance
+                if isinstance(field, ListField):
+                    _patch_field(instance, field.container)
+
+            for embedded_field in self.schema.fields.values():
+                _patch_field(self.instance, embedded_field)
+
         return self._embedded_document_cls
 
     def _serialize(self, value, attr, obj):
@@ -488,7 +498,7 @@ class EmbeddedField(BaseField, ma_fields.Nested):
             kwargs.update(params)
         else:
             nested_params = None
-        nested_ma_schema = self._embedded_document_cls.schema.as_marshmallow_schema(
+        nested_ma_schema = self.embedded_document_cls.schema.as_marshmallow_schema(
             params=nested_params, mongo_world=mongo_world)
         return ma_fields.Nested(nested_ma_schema, **kwargs)
 
