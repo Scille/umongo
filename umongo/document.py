@@ -112,6 +112,7 @@ class DocumentOpts:
 
         return self._indexes
 
+
 class MetaDocumentImplementation(MetaImplementation):
 
     @property

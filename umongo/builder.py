@@ -11,7 +11,8 @@ from .embedded_document import (
 from .exceptions import DocumentDefinitionError, NotRegisteredDocumentError
 from .schema import Schema, on_need_add_id_field, add_child_field
 from .indexes import parse_index
-from .fields import ListField, EmbeddedField
+# from .fields import ListField, EmbeddedField
+from .fields import ListField
 
 
 def camel_to_snake(name):
@@ -235,7 +236,7 @@ class BaseBuilder:
 
         # _build_document_opts cannot determine the indexes given we need to
         # visit the document's fields which weren't defined at this time
-        #opts.indexes = _collect_indexes(nmspc.get('Meta'), schema.fields, bases)
+        # opts.indexes = _collect_indexes(nmspc.get('Meta'), schema.fields, bases)
         opts.indexes_args = nmspc.get('Meta'), schema.fields, bases
 
         implementation = type(name, bases, nmspc)
