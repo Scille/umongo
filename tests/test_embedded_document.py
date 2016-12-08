@@ -1,4 +1,5 @@
 import pytest
+from copy import copy, deepcopy
 from marshmallow import ValidationError
 
 from umongo.data_proxy import data_proxy_factory
@@ -302,3 +303,17 @@ class TestEmbeddedDocument(BaseTest):
                 class Meta:
                     abstract = True
         assert exc.value.args[0] == "Abstract embedded document should have all it parents abstract"
+
+    def test_copy(self):
+        @self.instance.register
+        class MyEmbeddedDocument(EmbeddedDocument):
+            a = fields.IntField()
+        embedded = MyEmbeddedDocument(a=42)
+        copy(embedded)
+
+    def test_deepcopy(self):
+        @self.instance.register
+        class MyEmbeddedDocument(EmbeddedDocument):
+            a = fields.IntField()
+        embedded = MyEmbeddedDocument(a=42)
+        deepcopy(embedded)

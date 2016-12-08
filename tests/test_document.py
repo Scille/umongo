@@ -1,5 +1,6 @@
 import pytest
 from datetime import datetime
+from copy import copy, deepcopy
 from bson import ObjectId, DBRef
 
 from umongo import (Document, EmbeddedDocument, Schema, fields, exceptions,
@@ -331,6 +332,14 @@ class TestDocument(BaseTest):
 
         with pytest.raises(NotImplementedError):
             Doc()
+
+    def test_copy(self):
+        john = self.Student(name='John Doe', birthday=datetime(1995, 12, 12), gpa=3.0)
+        copy(john)
+
+    def test_deepcopy(self):
+        john = self.Student(name='John Doe', birthday=datetime(1995, 12, 12), gpa=3.0)
+        deepcopy(john)
 
 
 class TestConfig(BaseTest):
