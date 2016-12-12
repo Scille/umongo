@@ -1,6 +1,6 @@
 from .exceptions import (
     NotRegisteredDocumentError, AlreadyRegisteredDocumentError, NoDBDefinedError)
-from .document import DocumentTemplate, DocumentImplementation
+from .document import DocumentTemplate
 from .template import get_template
 
 
