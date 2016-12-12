@@ -1,6 +1,6 @@
 from .exceptions import (
     NotRegisteredDocumentError, AlreadyRegisteredDocumentError, NoDBDefinedError)
-from .document import DocumentTemplate
+from .document import DocumentTemplate, DocumentImplementation
 from .template import get_template
 
 
@@ -150,9 +150,10 @@ class LazyLoaderInstance(BaseInstance):
 
     """
 
-    def __init__(self, templates=()):
+    def __init__(self, templates=(), auto_indexes=False):
         self._db = None
         super().__init__(templates=templates)
+        self.auto_indexes = auto_indexes
 
     @property
     def db(self):
@@ -164,9 +165,19 @@ class LazyLoaderInstance(BaseInstance):
         """
         Set the database to use whithin this instance.
 
+        For all documents already registered when init is called, indexes
+        are ensured if either this Instance was instantiated with auto_indexes=True,
+        or the document itself has auto_indexes=True in its Meta class.
+
         .. note::
             The documents registered in the instance cannot be used
             before this function is called.
         """
         assert self.BUILDER_CLS.is_compatible_with(db)
         self._db = db
+        self.ensure_indexes(self.auto_indexes)
+
+    def ensure_indexes(self, auto_indexes=False):
+        for implementation in self._doc_lookup.values():
+            if auto_indexes or implementation.opts.auto_indexes:
+                implementation.ensure_indexes()

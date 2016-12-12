@@ -98,6 +98,7 @@ def _build_document_opts(instance, template, name, nmspc, bases):
     kwargs['instance'] = instance
     kwargs['template'] = template
     kwargs['abstract'] = getattr(meta, 'abstract', False)
+    kwargs['auto_indexes'] = getattr(meta, 'auto_indexes', False)
     kwargs['allow_inheritance'] = getattr(meta, 'allow_inheritance', None)
     kwargs['is_child'] = _is_child(bases)
 
