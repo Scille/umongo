@@ -65,6 +65,15 @@ class PyMongoInstance(LazyLoaderInstance):
         super().__init__(*args, **kwargs)
 
 
+class PyMongoInstanceAutoFetch(LazyLoaderInstance):
+    """
+    :class:`umongo.instance.LazyLoaderInstance` implementation for pymongo
+    """
+    def __init__(self, *args, **kwargs):
+        self.BUILDER_CLS = import_module('umongo.frameworks.pymongo').PyMongoBuilderAutoFetch
+        super().__init__(*args, **kwargs)
+
+
 class TxMongoInstance(LazyLoaderInstance):
     """
     :class:`umongo.instance.LazyLoaderInstance` implementation for txmongo
