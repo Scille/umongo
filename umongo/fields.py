@@ -113,9 +113,13 @@ class ListField(BaseField, ma_fields.List):
         # difference (`_id` vs `id`)
         field_kwargs = self._extract_marshmallow_field_params(mongo_world)
         if params:
+            container_params = params.pop('params', None)
             field_kwargs.update(params)
-        return ma_fields.List(self.container.as_marshmallow_field(
-            mongo_world=mongo_world, **kwargs), **field_kwargs)
+        else:
+            container_params = None
+        container_ma_schema = self.container.as_marshmallow_field(
+            mongo_world=mongo_world, params=container_params, **kwargs)
+        return ma_fields.List(container_ma_schema, **field_kwargs)
 
     def _required_validate(self, value):
         if value is missing or not hasattr(self.container, '_required_validate'):
