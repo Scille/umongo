@@ -184,8 +184,7 @@ class BaseField(ma_fields.Field):
         params.update(self.metadata)
         return params
 
-    def as_marshmallow_field(self, params=None, base_schema_cls=MaSchema,
-                             check_unknown_fields=True, mongo_world=False):
+    def as_marshmallow_field(self, params=None, mongo_world=False, **kwargs):
         """
         Return a pure-marshmallow version of this field.
 

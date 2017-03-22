@@ -2,7 +2,7 @@ from datetime import datetime
 from dateutil.tz import tzutc
 
 from marshmallow import ValidationError, missing
-from marshmallow import fields as ma_fields, Schema as MaSchema
+from marshmallow import fields as ma_fields
 from bson import DBRef, ObjectId
 
 # from .registerer import retrieve_document
@@ -109,17 +109,14 @@ class ListField(BaseField, ma_fields.List):
         if hasattr(self.container, 'map_to_field'):
             self.container.map_to_field(mongo_path, path, func)
 
-    def as_marshmallow_field(self, params=None, base_schema_cls=MaSchema,
-                             check_unknown_fields=True, mongo_world=False):
+    def as_marshmallow_field(self, params=None, mongo_world=False, **kwargs):
         # Overwrite default `as_marshmallow_field` to handle deserialization
         # difference (`_id` vs `id`)
         field_kwargs = self._extract_marshmallow_field_params(mongo_world)
         if params:
             field_kwargs.update(params)
         return ma_fields.List(self.container.as_marshmallow_field(
-            base_schema_cls=base_schema_cls,
-            check_unknown_fields=check_unknown_fields,
-            mongo_world=mongo_world), **field_kwargs)
+            mongo_world=mongo_world, **kwargs), **field_kwargs)
 
     def _required_validate(self, value):
         if value is missing or not hasattr(self.container, '_required_validate'):
@@ -488,8 +485,7 @@ class EmbeddedField(BaseField, ma_fields.Nested):
             if hasattr(field, 'map_to_field'):
                 field.map_to_field(cur_mongo_path, cur_path, func)
 
-    def as_marshmallow_field(self, params=None, base_schema_cls=MaSchema,
-                             check_unknown_fields=True, mongo_world=False):
+    def as_marshmallow_field(self, params=None, mongo_world=False, **kwargs):
         # Overwrite default `as_marshmallow_field` to handle nesting
         field_kwargs = self._extract_marshmallow_field_params(mongo_world)
         if params:
@@ -498,10 +494,7 @@ class EmbeddedField(BaseField, ma_fields.Nested):
         else:
             nested_params = None
         nested_ma_schema = self._embedded_document_cls.schema.as_marshmallow_schema(
-            params=nested_params,
-            base_schema_cls=base_schema_cls,
-            check_unknown_fields=check_unknown_fields,
-            mongo_world=mongo_world)
+            params=nested_params, mongo_world=mongo_world, **kwargs)
         return ma_fields.Nested(nested_ma_schema, **field_kwargs)
 
     def _required_validate(self, value):
