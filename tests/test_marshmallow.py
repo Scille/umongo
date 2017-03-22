@@ -75,6 +75,36 @@ class TestMarshmallow(BaseTest):
         assert not ret.errors
         assert ret.data == {'birthday': datetime(1990, 10, 23)}
 
+    def test_customize_nested_and_container_params(self):
+        @self.instance.register
+        class Accessory(EmbeddedDocument):
+            brief = fields.StrField(attribute='id', required=True)
+            value = fields.IntField()
+
+        @self.instance.register
+        class Bag(Document):
+            id = fields.EmbeddedField(Accessory, attribute='_id', required=True)
+            names = fields.ListField(fields.StringField())
+            content = fields.ListField(fields.EmbeddedField(Accessory))
+
+        ma_field = Bag.schema.fields['id'].as_marshmallow_field(params={
+            'load_only': True,
+            'params': {'value': {'dump_only': True}}})
+        assert ma_field.load_only == True
+        assert ma_field.nested._declared_fields['value'].dump_only
+        ma_field = Bag.schema.fields['names'].as_marshmallow_field(params={
+            'load_only': True,
+            'params': {'dump_only': True}})
+        assert ma_field.load_only == True
+        assert ma_field.container.dump_only == True
+        ma_field = Bag.schema.fields['content'].as_marshmallow_field(params={
+            'load_only': True,
+            'params': {'required': True,
+            'params': {'value': {'dump_only': True}}}})
+        assert ma_field.load_only == True
+        assert ma_field.container.required == True
+        assert ma_field.container.nested._declared_fields['value'].dump_only
+
     def test_keep_attributes(self):
         @self.instance.register
         class Vehicle(Document):
