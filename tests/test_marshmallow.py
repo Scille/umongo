@@ -105,6 +105,34 @@ class TestMarshmallow(BaseTest):
         assert ma_field.container.required == True
         assert ma_field.container.nested._declared_fields['value'].dump_only
 
+    def test_pass_meta_attributes(self):
+        @self.instance.register
+        class Accessory(EmbeddedDocument):
+            brief = fields.StrField(attribute='id', required=True)
+            value = fields.IntField()
+
+        @self.instance.register
+        class Bag(Document):
+            id = fields.EmbeddedField(Accessory, attribute='_id', required=True)
+            content = fields.ListField(fields.EmbeddedField(Accessory))
+
+        ma_schema = Bag.schema.as_marshmallow_schema(meta={'exclude': ('id',)})
+        assert ma_schema.Meta.exclude == ('id',)
+        ma_schema = Bag.schema.as_marshmallow_schema(params={
+            'id': {'meta': {'exclude': ('value',)}}})
+        assert ma_schema._declared_fields['id'].nested.Meta.exclude == ('value',)
+        ma_schema = Bag.schema.as_marshmallow_schema(params={
+            'content': {'params': {'meta': {'exclude': ('value',)}}}})
+        assert ma_schema._declared_fields['content'].container.nested.Meta.exclude == ('value',)
+
+        class DumpOnlyIdSchema(marshmallow.Schema):
+            class Meta:
+                dump_only = ('id',)
+
+        ma_custom_base_schema = Bag.schema.as_marshmallow_schema(base_schema_cls=DumpOnlyIdSchema, meta={'exclude': ('content',)})
+        assert ma_custom_base_schema.Meta.exclude == ('content',)
+        assert ma_custom_base_schema.Meta.dump_only == ('id',)
+
     def test_keep_attributes(self):
         @self.instance.register
         class Vehicle(Document):

@@ -31,7 +31,7 @@ class BaseSchema(MaSchema):
                 field.map_to_field(mongo_path, name, func)
 
     def as_marshmallow_schema(self, params=None, base_schema_cls=MaSchema,
-                              check_unknown_fields=True, mongo_world=False):
+                              check_unknown_fields=True, mongo_world=False, meta=None):
         """
         Return a pure-marshmallow version of this schema class.
 
@@ -41,6 +41,7 @@ class BaseSchema(MaSchema):
         :param check_unknown_fields: Unknown fields are considered as errors (default: True).
         :param mongo_world: If True the schema will work against the mongo world
             instead of the OO world (default: False).
+        :param meta: Optional dict with attributes for the schema's Meta class
         """
         params = params or {}
         nmspc = {name: field.as_marshmallow_field(params=params.get(name),
@@ -56,7 +57,9 @@ class BaseSchema(MaSchema):
         # disable this behavior here to let marshmallow deals with it
         if not mongo_world:
             nmspc['get_attribute'] = schema_from_umongo_get_attribute
-        return type(name, (base_schema_cls, ), nmspc)
+        if meta:
+            nmspc['Meta'] = type('Meta', (base_schema_cls.Meta,), meta)
+        return type(name, (base_schema_cls,), nmspc)
 
 
 class I18nErrorDict(dict):
