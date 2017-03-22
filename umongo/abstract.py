@@ -43,7 +43,10 @@ class BaseSchema(MaSchema):
             instead of the OO world (default: False).
         """
         params = params or {}
-        nmspc = {name: field.as_marshmallow_field(params=params.get(name), mongo_world=mongo_world)
+        nmspc = {name: field.as_marshmallow_field(params=params.get(name),
+                                                  base_schema_cls=base_schema_cls,
+                                                  check_unknown_fields=check_unknown_fields,
+                                                  mongo_world=mongo_world)
                  for name, field in self.fields.items()}
         name = 'Marshmallow%s' % type(self).__name__
         if check_unknown_fields:
@@ -181,7 +184,8 @@ class BaseField(ma_fields.Field):
         params.update(self.metadata)
         return params
 
-    def as_marshmallow_field(self, params=None, mongo_world=False):
+    def as_marshmallow_field(self, params=None, base_schema_cls=MaSchema,
+                             check_unknown_fields=True, mongo_world=False):
         """
         Return a pure-marshmallow version of this field.
 
