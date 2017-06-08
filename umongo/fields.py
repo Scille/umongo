@@ -495,8 +495,10 @@ class EmbeddedField(BaseField, ma_fields.Nested):
             field_kwargs.update(params)
         else:
             nested_params = None
+        schema_kwargs = {k: v for k, v in kwargs.items()
+                         if k in ('base_schema_cls', 'check_unknown_fields')}
         nested_ma_schema = self._embedded_document_cls.schema.as_marshmallow_schema(
-            params=nested_params, mongo_world=mongo_world, **kwargs)
+            params=nested_params, mongo_world=mongo_world, **schema_kwargs)
         return ma_fields.Nested(nested_ma_schema, **field_kwargs)
 
     def _required_validate(self, value):
