@@ -416,8 +416,10 @@ class EmbeddedField(BaseField, ma_fields.Nested):
         embedded_document_cls = self.embedded_document_cls
         if isinstance(value, embedded_document_cls):
             return value
+        if not isinstance(value, dict):
+            raise ValidationError('dict or {} expected'.format(embedded_document_cls.__name__))
         # Handle inheritance deserialization here using `cls` field as hint
-        if embedded_document_cls.opts.offspring and isinstance(value, dict) and 'cls' in value:
+        if embedded_document_cls.opts.offspring and 'cls' in value:
             to_use_cls_name = value.pop('cls')
             if not any(o for o in embedded_document_cls.opts.offspring
                        if o.__name__ == to_use_cls_name):
@@ -428,13 +430,9 @@ class EmbeddedField(BaseField, ma_fields.Nested):
                     to_use_cls_name)
             except NotRegisteredDocumentError as e:
                 raise ValidationError(str(e))
-            return to_use_cls(**value)
         else:
-            # `Nested._deserialize` calls schema.load without partial=True
-            data, errors = self.schema.load(value, partial=True)
-            if errors:
-                raise ValidationError(errors, data=data)
-            return self._deserialize_from_mongo(data)
+            to_use_cls = embedded_document_cls
+        return to_use_cls(**value)
 
     def _serialize_to_mongo(self, obj):
         return obj.to_mongo()

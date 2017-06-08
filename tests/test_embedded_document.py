@@ -158,19 +158,19 @@ class TestEmbeddedDocument(BaseTest):
 
         with pytest.raises(ValidationError) as exc:
             MyDoc(l=[42])
-        assert exc.value.args[0] == {'l': {0: {'_schema': ['Invalid input type.']}}}
+        assert exc.value.args[0] == {'l': {0: ['dict or MyEmbeddedDocument expected']}}
 
         with pytest.raises(ValidationError) as exc:
             MyDoc(l=[{}, 42])
-        assert exc.value.args[0] == {'l': {1: {'_schema': ['Invalid input type.']}}}
+        assert exc.value.args[0] == {'l': {1: ['dict or MyEmbeddedDocument expected']}}
 
         with pytest.raises(ValidationError) as exc:
-            k = MyDoc(b=[{}])
+            MyDoc(b=[{}])
         assert exc.value.args[0] == {'b': ['Not a valid integer.']}
 
         with pytest.raises(ValidationError) as exc:
-            k = MyDoc(e=[{}])
-        assert exc.value.args[0] == {'e': {'_schema': ['Invalid input type.']}}
+            MyDoc(e=[{}])
+        assert exc.value.args[0] == {'e': ['dict or MyEmbeddedDocument expected']}
 
     def test_inheritance(self):
         @self.instance.register
