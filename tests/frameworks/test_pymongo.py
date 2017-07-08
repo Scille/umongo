@@ -9,6 +9,7 @@ from ..fixtures import classroom_model, instance
 from umongo import (Document, EmbeddedDocument, fields, exceptions, Reference,
                     Instance, PyMongoInstance, NoDBDefinedError)
 
+from umongo.builder import camel_to_snake
 
 # Check if the required dependancies are met to run this driver's tests
 major, minor, _ = get_pymongo_version()
@@ -556,6 +557,83 @@ class TestPymongo(BaseDBTest):
         UniqueIndexChildDoc.ensure_indexes()
         indexes = [e for e in UniqueIndexChildDoc.collection.list_indexes()]
         assert name_sorted(indexes) == name_sorted(expected_indexes)
+
+    def test_auto_indexes(self, db):
+
+        class ImplicitAutoIndexFalseDoc(Document):
+            name = fields.StrField()
+
+            class Meta:
+                indexes = ['name']
+
+        class ExplicitAutoIndexFalseDoc(Document):
+            name = fields.StrField()
+
+            class Meta:
+                indexes = ['name']
+                auto_indexes = False
+
+        class ExplicitAutoIndexTrueDoc(Document):
+            name = fields.StrField()
+
+            class Meta:
+                indexes = ['name']
+                auto_indexes = True
+
+        def expected_indexes(document, name_index_created):
+
+            ns = '{}.{}'.format(TEST_DB, camel_to_snake(document.__name__))
+            indexes = [
+                {
+                    'key': {'_id': 1},
+                    'name': '_id_',
+                    'ns': ns,
+                    'v': 1
+                },
+            ]
+            if name_index_created:
+                indexes.append(
+                    {
+                        'key': {'name': 1},
+                        'name': 'name_1',
+                        'ns': ns,
+                        'v': 1
+                    }
+                )
+            return indexes
+
+        implicit_auto_indexes_false_instance = PyMongoInstance()
+        explicit_auto_indexes_true_instance = PyMongoInstance(auto_indexes=True)
+        explicit_auto_indexes_false_instance = PyMongoInstance(auto_indexes=False)
+
+        for kwargs in ({}, {'auto_indexes': True}, {'auto_indexes': True}):
+            for document, doc_auto_index in (
+                (ImplicitAutoIndexFalseDoc, False),
+                (ExplicitAutoIndexFalseDoc, False),
+                (ExplicitAutoIndexTrueDoc, True),
+            ):
+                instance = PyMongoInstance(**kwargs)
+                auto_index = kwargs.get('auto_indexes', False) or doc_auto_index
+                Doc = instance.register(document)
+                instance.init(db)
+                # Commit to ensure database is created otherwise list_indexes fails
+                Doc().commit()
+                indexes = [e for e in Doc.collection.list_indexes()]
+                assert name_sorted(indexes) == name_sorted(expected_indexes(Doc, auto_index))
+                Doc.collection.drop()
+                Doc.collection.drop_indexes()
+                instance.ensure_indexes(auto_indexes=False)
+                Doc().commit()
+                indexes = [e for e in Doc.collection.list_indexes()]
+                assert name_sorted(indexes) == name_sorted(expected_indexes(Doc, doc_auto_index))
+                Doc.collection.drop()
+                Doc.collection.drop_indexes()
+                instance.ensure_indexes(auto_indexes=True)
+                Doc().commit()
+                indexes = [e for e in Doc.collection.list_indexes()]
+                assert name_sorted(indexes) == name_sorted(expected_indexes(Doc, True))
+                Doc.collection.drop()
+                Doc.collection.drop_indexes()
 
     def test_inheritance_search(self, instance):
 

@@ -71,6 +71,7 @@ class DocumentOpts:
                                                 the document into
     is_child             no                     Document inherit of a non-abstract document
     indexes              yes                    List of custom indexes
+    auto_indexes         yes                    Automatically ensure indexes at Instance init
     offspring            no                     List of Documents inheriting this one
     ==================== ====================== ===========
 
@@ -85,17 +86,20 @@ class DocumentOpts:
                 'collection_name={self.collection_name}, '
                 'is_child={self.is_child}, '
                 'indexes={self.indexes}, '
+                'auto_indexes={self.auto_indexes}, '
                 'offspring={self.offspring})>'
                 .format(ClassName=self.__class__.__name__, self=self))
 
     def __init__(self, instance, template, collection_name=None, abstract=False,
-                 allow_inheritance=None, indexes=None, is_child=False, offspring=None):
+                 allow_inheritance=None, indexes=None, is_child=False, offspring=None,
+                 auto_indexes=False):
         self.instance = instance
         self.template = template
         self.collection_name = collection_name if not abstract else None
         self.abstract = abstract
         self.allow_inheritance = abstract if allow_inheritance is None else allow_inheritance
         self.indexes = indexes or []
+        self.auto_indexes = auto_indexes
         self.is_child = is_child
         self.offspring = set(offspring) if offspring else set()
         if self.abstract and not self.allow_inheritance:
