@@ -16,6 +16,8 @@
     :target: https://coveralls.io/github/Scille/umongo?branch=master
     :alt: Code coverage
 
+https://umongo.readthedocs.io/en/latest/userguide.html
+
 μMongo is a Python MongoDB ODM. It inception comes from two needs:
 the lack of async ODM and the difficulty to do document (un)serialization
 with existing ODMs.
