@@ -85,7 +85,6 @@ class List(BaseDataObject, list):
                 obj.clear_modified()
 
 
-# TODO: Dict is to much raw: you need to use `set_modified` by hand !
 class Dict(BaseDataObject, dict):
 
     __slots__ = ('_modified', )
@@ -93,6 +92,19 @@ class Dict(BaseDataObject, dict):
     def __init__(self, *args, **kwargs):
         self._modified = False
         super().__init__(*args, **kwargs)
+
+    def __setitem__(self, key, value):
+        if not self.get(key) == value:
+            self.set_modified()
+        return super().__setitem__(key, value)
+
+    def __delitem__(self, key):
+        self.set_modified()
+        return super().__delitem__(key)
+
+    def pop(self, key):
+        self.set_modified()
+        return super().pop(key)
 
     def is_modified(self):
         return self._modified
