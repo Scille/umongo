@@ -121,6 +121,9 @@ class PyMongoDocument(DocumentImplementation):
                 self.is_created = True
                 self.post_insert(ret)
         except DuplicateKeyError as exc:
+            # no exception details so reraise it
+            if not exc.details:
+                raise
             # Need to dig into error message to find faulting index
             errmsg = exc.details['errmsg']
             for index in self.opts.indexes:
