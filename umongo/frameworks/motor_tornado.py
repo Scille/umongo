@@ -248,15 +248,14 @@ class MotorTornadoDocument(DocumentImplementation):
         return WrappedCursor(cls, cls.collection.find(*args, filter=filter, **kwargs))
 
     @classmethod
-    @asyncio.coroutine
-    def ensure_indexes(cls):
+    async def ensure_indexes(cls):
         """
         Check&create if needed the Document's indexes in database
         """
         for index in cls.opts.indexes:
             kwargs = index.document.copy()
             keys = [(k, d) for k, d in kwargs.pop('key').items()]
-            yield from cls.collection.create_index(keys, **kwargs)
+            await cls.collection.create_index(keys, **kwargs)
 
 
 # Run multiple validators and collect all errors in one
