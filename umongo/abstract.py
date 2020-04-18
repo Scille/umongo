@@ -160,13 +160,12 @@ class BaseField(ma_fields.Field):
                 'attribute={self.attribute!r}, '
                 'validate={self.validate}, required={self.required}, '
                 'load_only={self.load_only}, dump_only={self.dump_only}, '
-                'marshmallow_missing={self.marshmallow_missing}, '
-                'marshmallow_default={self.marshmallow_default}, '
                 'allow_none={self.allow_none}, '
                 'error_messages={self.error_messages}, '
                 'io_validate={self.io_validate}, '
                 'io_validate_recursive={self.io_validate_recursive}, '
                 'unique={self.unique}, '
+                'marshmallow_kwargs={self._ma_kwargs!r}, '
                 'instance={self.instance})>'
                 .format(ClassName=self.__class__.__name__, self=self))
 
