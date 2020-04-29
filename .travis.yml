@@ -1,5 +1,4 @@
 language: python
-dist: xenial
 cache: pip
 
 services:
@@ -28,9 +27,9 @@ jobs:
   include:
 
     - { python: '3.8', env: TOXENV=lint }
-    - { python: '3.5', env: TOXENV=py35-pymongo }
-    - { python: '3.5', env: TOXENV=py35-motor1 }
-    - { python: '3.5', env: TOXENV=py35-txmongo }
+    - { python: '3.6', env: TOXENV=py36-pymongo }
+    - { python: '3.6', env: TOXENV=py36-motor1 }
+    - { python: '3.6', env: TOXENV=py36-txmongo }
     - { python: '3.8', env: TOXENV=py38-pymongo }
     - { python: '3.8', env: TOXENV=py38-motor2 }
     - { python: '3.8', env: TOXENV=py38-txmongo }
@@ -44,9 +43,9 @@ jobs:
       deploy:
           provider: pypi
           distributions: sdist bdist_wheel
-          user: touilleMan
+          user: __token__
           password:
-            secure: CqBHylDHDlEqMBCFNCt1Wph+FGW3quow5iP6FRF+P4iOaNxCTQCs221/Owjx0AWofe4oYZJsKQR1C0FVEmTGvzId9PMOCd5B0tpGQTHZrxSynHC9c//lF68sXdQKo35+TXCk6cypdnKUDE8XW/lK52jOO5sczh6hXhu2rB1EghXwjpMUA2Kxmn4HIBLGLGlithG9uvUlyoYecGUpWu2evaoEw5FUdHkZZmyKZFuzXrxLTDLiKy6KBzRs2RE0cGmZDSa9afCcNstkJakK9lGk7w1GKodAshbMMwnGn9XTTxyUObTLpiTq7FXgMJMX8YWpkrJnK1YH9a/SiqD9pI/QeMhNV2C1PI3+sneDuu42zhz2palhD9b7gO+gGqQVnQ5TtLZlxl1Z8pI2sOdQc+M6L/AeYinzaUpR55AsjvWcKGp4azjUe6HWAdr/blUZ/5LHLQHGpua8Dq7W8miZ1+AEo3n+WuYRrX1l2fB8eWs25Rli6jZAUmngZtqaQs5l77osBZsOW3gBO+8uzVSBs9kKw16peHyY3YBe+loD5Sy7L9T7kqJgdTEGqixYCbgxVPv17TsyuiZyRBAas7fVJeuBR7Clx0C3p2RVX7ViXwOltaDLYoWW98/Pt4emNYopQJSGNtR8mMUmW8fxPyE2kThM7siGi8MhYZ4YHawuiAD10wY=
+            secure: YcJeJYhusFGlUPKH2WsI6ZIxNiQk+viKd/i28HskuVDpPIeJaFKQ1JZQ8NXrXTpc0ViJos6agkMrGlLYGX9v8dkxUjakrP90lyyKiP6YlAYCm9iPmJWh+bF3mDUz/ClKfYaGAQ7eqVH4/P859LpGL8KxKHiJZvwECaSASWUQ/87yRvdhk/aXHhtbO/lYiGuNs4Q5BW2run8SvYDLyMeQzRIWaA8CFLyyUShs0fI2EyBzvCvZkMExJ6fEJXTo/ef/DHQf+6Rb5LmMPuGIq2ps86PP/Mj4gOa71PjKzDLiRcypctUexVfBNIdRhJkK2dRGBkx/qRzwmkO4/wWMN/1rmX/Xr4CKzQ6pW5+4NsyooXBRtyKSPYeKVgP9nZJmxUd5old/bqcd0LPNCg5tqdp5RrFZyeFIcMbfg3G+8o9hKFfJwXWZMINFkdkdOL8NtW7V58CgPMYaPj9lmj7DQxSEXDUj6IK1132Cfoa494lW1cobLq28xrX3Jj1WMYX8bDlN62Kf0X6oiMjI83nBu2GGEiyKSat4GcqVwRJCuzSUP5xQ7G9rCyNzvJoFvKKZaorLAQmiGjR12hthR18ME7r4t36t37RgWKGBV+PHszZWCg2KeeahpPyJlqLBqW80vN9aVebOf8Oyrmix6+ypRNW3MhM3M1WTM+KYyQKQum2lL4I=
           on:
             tags: true
             repo: Scille/umongo

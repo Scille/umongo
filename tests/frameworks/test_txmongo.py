@@ -13,7 +13,7 @@ from ..common import BaseDBTest, TEST_DB, con
 # Check if the required dependencies are met to run this driver's tests
 dep_error = None
 try:
-    import pytest_twisted as _
+    import pytest_twisted
     from txmongo import MongoConnection
     from twisted.internet.defer import Deferred, inlineCallbacks, succeed
 except ImportError:
@@ -31,7 +31,7 @@ except ImportError:
 
     pytest_inlineCallbacks = skip_wrapper
 else:
-    pytest_inlineCallbacks = pytest.inlineCallbacks
+    pytest_inlineCallbacks = pytest_twisted.inlineCallbacks
 
 from umongo import Document, EmbeddedDocument, fields, exceptions, Reference
 
@@ -408,7 +408,6 @@ class TestTxMongo(BaseDBTest):
             no_indexed = fields.IntField()
 
             class Meta:
-                collection = 'simple_index_doc'
                 indexes = ['indexed']
 
         yield SimpleIndexDoc.collection.drop_indexes()
@@ -445,7 +444,6 @@ class TestTxMongo(BaseDBTest):
             no_indexed = fields.IntField()
 
             class Meta:
-                collection = 'simple_index_doc'
                 indexes = ['indexed']
 
         yield SimpleIndexDoc.collection.drop_indexes()
@@ -481,9 +479,6 @@ class TestTxMongo(BaseDBTest):
             not_unique = fields.StrField(unique=False)
             sparse_unique = fields.IntField(unique=True)
             required_unique = fields.IntField(unique=True, required=True)
-
-            class Meta:
-                collection = 'unique_index_doc'
 
         yield UniqueIndexDoc.collection.drop()
         yield UniqueIndexDoc.collection.drop_indexes()
@@ -537,7 +532,6 @@ class TestTxMongo(BaseDBTest):
             not_unique = fields.StrField()
 
             class Meta:
-                collection = 'unique_index_compound_doc'
                 # Must define custom index to do that
                 indexes = [{'key': ('compound1', 'compound2'), 'unique': True}]
 
@@ -595,7 +589,6 @@ class TestTxMongo(BaseDBTest):
             unique = fields.IntField(unique=True)
 
             class Meta:
-                collection = 'unique_index_inheritance_doc'
                 allow_inheritance = True
 
         @instance.register
@@ -662,7 +655,6 @@ class TestTxMongo(BaseDBTest):
             pf = fields.IntField()
 
             class Meta:
-                collection = 'inheritance_search'
                 allow_inheritance = True
 
         @instance.register

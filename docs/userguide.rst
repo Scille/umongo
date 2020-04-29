@@ -17,10 +17,10 @@ In μMongo 3 worlds are considered:
 Client world
 ------------
 
-This is the data from outside μMongo, it can be JSON dict from your web framework
+This is the data from outside μMongo, it can be a JSON dict from your web framework
 (i.g. ``request.get_json()`` with `flask <http://flask.pocoo.org/>`_ or
 ``json.loads(request.raw_post_data)`` in `django <https://www.djangoproject.com/>`_)
-or it could be regular Python dict with Python-typed data
+or it could be a regular Python dict with Python-typed data
 
 JSON dict example
 
@@ -517,16 +517,14 @@ by subclassing it:
     >>> patch_dog_schema.load({'name': 'Scruffy', 'breed': 'Golden retriever'}).errors
     {'_schema': ['Unknown field name breed.']}
     >>> ret = patch_dog_schema.load({'name': 'Scruffy'})
-    >>> ret.errors
-    {}
-    >>> ret.data
+    >>> ret
     {'name': 'Scruffy'}
 
 Finally we can integrated the validated data into OO world:
 
 .. code-block:: python
 
-    >>> my_dog.update(ret.data)
+    >>> my_dog.update(ret)
     >>> my_dog.name
     'Scruffy'
 
@@ -616,7 +614,6 @@ marshmallow and umongo.
 
 In marshmallow ``default`` contains the value to use during serialization
 (i.e. calling ``schema.dump(doc)``) and ``missing`` the value for deserialization.
- where the field is
 
 In umongo however there is only a ``default`` attribute which will be used when
 creating (or loading from user world) a document where this field is missing.
@@ -625,7 +622,7 @@ mongo world.
 
 So when you use ``as_marshmallow_field``, the resulting marshmallow field's
 ``missing``&``default`` will be by default both infered from the umongo's
-``default`` field. You can want to overwrite this behavior by using
+``default`` field. You can overwrite this behavior by using
 ``marshmallow_missing``/``marshmallow_default`` attributes:
 
 .. code-block:: python
@@ -633,14 +630,14 @@ So when you use ``as_marshmallow_field``, the resulting marshmallow field's
     @instance.register
     class Employee(Document):
         name = fields.StrField(default='John Doe')
-        birthday = fields.DateTimeField(marshmallow_missing='2000-01-01T00:00:00Z')
+        birthday = fields.DateTimeField(marshmallow_missing=dt.datetime(2000, 1, 1))
         # You can use `missing` singleton to overwrite `default` field inference
         skill = fields.StrField(default='Dummy', marshmallow_default=missing)
 
     ret = Employee.schema.as_marshmallow_schema()().load({})
-    assert ret.data == {'name': 'John Doe', 'birthday': datetime(2000, 1, 1, 0, 0, tzinfo=tzutc()), 'skill': 'Dummy'}
+    assert ret == {'name': 'John Doe', 'birthday': datetime(2000, 1, 1, 0, 0, tzinfo=tzutc()), 'skill': 'Dummy'}
     ret = Employee.schema.as_marshmallow_schema()().dump({})
-    assert ret.data == {'name': 'John Doe', 'birthday': '2000-01-01T00:00:00+00:00'}  # Note `skill` hasn't been serialized
+    assert ret == {'name': 'John Doe', 'birthday': '2000-01-01T00:00:00+00:00'}  # Note `skill` hasn't been serialized
 
 
 Field validate & io_validate

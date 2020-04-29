@@ -1,13 +1,13 @@
 """
 Frameworks
 ==========
-
 """
 
 from importlib import import_module
 
 from ..exceptions import NoCompatibleBuilderError
 from ..instance import LazyLoaderInstance
+from .pymongo import PyMongoBuilder
 
 
 __all__ = (
@@ -102,11 +102,7 @@ class MongoMockInstance(LazyLoaderInstance):
 
 
 # try to load all the builders by default
-try:
-    from .pymongo import PyMongoBuilder
-    register_builder(PyMongoBuilder)
-except ImportError:  # pragma: no cover
-    pass
+register_builder(PyMongoBuilder)
 try:
     from .txmongo import TxMongoBuilder
     register_builder(TxMongoBuilder)

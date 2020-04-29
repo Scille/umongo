@@ -4,12 +4,11 @@ from uuid import UUID
 
 import pytest
 
-from dateutil.tz.tz import tzutc, tzoffset
 from bson import ObjectId, DBRef, Decimal128
 from marshmallow import ValidationError, missing
 
 from umongo.data_proxy import data_proxy_factory
-from umongo import Document, EmbeddedDocument, Schema, EmbeddedSchema, fields, Reference
+from umongo import Document, EmbeddedDocument, BaseSchema, fields, Reference, validate
 from umongo.data_objects import List, Dict
 
 from .common import BaseTest
@@ -46,8 +45,10 @@ class TestRequired(BaseTest):
             embedded = fields.EmbeddedField(MyEmbedded)
             embedded_required = fields.EmbeddedField(MyEmbedded, required=True)
             embedded_list = fields.ListField(fields.EmbeddedField(MyEmbedded))
+            embedded_dict = fields.DictField(values=fields.EmbeddedField(MyEmbedded))
 
-        MyDoc(embedded={}, embedded_list=[{}])  # Required fields are check on commit
+        # Required fields are checked on commit
+        MyDoc(embedded={}, embedded_list=[{}], embedded_dict={'a': {}})
         # Don't check required fields in not required missing embedded
         MyDoc(embedded_required={'required_field': 42}).required_validate()
         # Now trigger required fails
@@ -58,17 +59,32 @@ class TestRequired(BaseTest):
             MyDoc(embedded_required={'optional_field': 1}).required_validate()
         assert exc.value.messages == {'embedded_required': {'required_field': ['Missing data for required field.']}}
         with pytest.raises(ValidationError) as exc:
-            MyDoc(embedded={'optional_field': 1},
-                  embedded_required={'required_field': 42}).required_validate()
+            MyDoc(
+                embedded={'optional_field': 1},
+                embedded_required={'required_field': 42}
+            ).required_validate()
         assert exc.value.messages == {'embedded': {'required_field': ['Missing data for required field.']}}
         with pytest.raises(ValidationError) as exc:
-            MyDoc(embedded={'required_field': 1}, embedded_list=[{'optional_field': 1}], embedded_required={'required_field': 42}).required_validate()
-        assert exc.value.messages == {'embedded_list': {0: {'required_field': ['Missing data for required field.']}}}
+            MyDoc(
+                embedded={'required_field': 1},
+                embedded_list=[{'optional_field': 1}],
+                embedded_dict={'a': {'optional_field': 1}},
+                embedded_required={'required_field': 42}
+            ).required_validate()
+        assert exc.value.messages == {
+            'embedded_list': {0: {'required_field': ['Missing data for required field.']}},
+            'embedded_dict': {'a': {'value': {'required_field': ['Missing data for required field.']}}},
+        }
 
         # Check valid constructions
-        doc = MyDoc(embedded={'required_field': 1}, embedded_list=[], embedded_required={'required_field': 42})
+        doc = MyDoc(embedded={'required_field': 1}, embedded_list=[], embedded_dict={}, embedded_required={'required_field': 42})
         doc.required_validate()
-        doc = MyDoc(embedded={'required_field': 1}, embedded_list=[{'required_field': 1}], embedded_required={'required_field': 42})
+        doc = MyDoc(
+            embedded={'required_field': 1},
+            embedded_list=[{'required_field': 1}],
+            embedded_dict={'a': {'required_field': 1}},
+            embedded_required={'required_field': 42},
+        )
         doc.required_validate()
 
 
@@ -76,22 +92,20 @@ class TestFields(BaseTest):
 
     def test_basefields(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             string = fields.StringField()
             uuid = fields.UUIDField()
             number = fields.NumberField()
             integer = fields.IntegerField()
             decimal = fields.DecimalField()
             boolean = fields.BooleanField()
-            formattedstring = fields.FormattedStringField('Hello {to_format}')
             float = fields.FloatField()
-            # localdatetime = fields.LocalDateTimeField()
             url = fields.UrlField()
             email = fields.EmailField()
             constant = fields.ConstantField("const")
 
-        s = MySchema(strict=True)
-        data, err = s.load({
+        s = MySchema()
+        data = s.load({
             'string': 'value',
             'uuid': '8c58b5fc-b902-40c8-9d55-e9beb0906f80',
             'number': 1.0,
@@ -103,7 +117,6 @@ class TestFields(BaseTest):
             'email': "jdoe@example.com",
             'constant': 'forget me'
         })
-        assert not err
         assert data == {
             'string': 'value',
             'uuid': UUID('8c58b5fc-b902-40c8-9d55-e9beb0906f80'),
@@ -116,21 +129,19 @@ class TestFields(BaseTest):
             'email': "jdoe@example.com",
             'constant': 'const'
         }
-        dumped, err = s.dump({
+        dumped = s.dump({
             'string': 'value',
             'uuid': UUID('8c58b5fc-b902-40c8-9d55-e9beb0906f80'),
             'number': 1.0,
             'integer': 2,
             'decimal': 3.0,
             'boolean': True,
-            'formattedstring': 'forget me',
             'to_format': 'World',
             'float': 4.0,
             'url': "http://www.example.com/subject",
             'email': "jdoe@example.com",
             'constant': 'forget me'
         })
-        assert not err
         assert dumped == {
             'string': 'value',
             'uuid': '8c58b5fc-b902-40c8-9d55-e9beb0906f80',
@@ -138,7 +149,6 @@ class TestFields(BaseTest):
             'integer': 2,
             'decimal': 3.0,
             'boolean': True,
-            'formattedstring': 'Hello World',
             'float': 4.0,
             'url': "http://www.example.com/subject",
             'email': "jdoe@example.com",
@@ -149,115 +159,75 @@ class TestFields(BaseTest):
 
     def test_datetime(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             a = fields.DateTimeField()
-            b = fields.LocalDateTimeField()
 
-        s = MySchema(strict=True)
-        data, _ = s.load({'a': dt.datetime(2016, 8, 6)})
+        s = MySchema()
+        data = s.load({'a': dt.datetime(2016, 8, 6)})
         assert data['a'] == dt.datetime(2016, 8, 6)
-        data, _ = s.load({'a': "2016-08-06T00:00:00Z"})
-        assert data['a'] == dt.datetime(2016, 8, 6, tzinfo=tzutc())
-        data, _ = s.load({'a': "2016-08-06T00:00:00"})
+        data = s.load({'a': "2016-08-06T00:00:00Z"})
+        assert data['a'] == dt.datetime(2016, 8, 6, tzinfo=dt.timezone.utc)
+        data = s.load({'a': "2016-08-06T00:00:00"})
         assert data['a'] == dt.datetime(2016, 8, 6)
         with pytest.raises(ValidationError):
             s.load({'a': "dummy"})
 
-        # Test DateTimeField and LocalDateTimeField round to milliseconds
+        # Test DateTimeField rounds to milliseconds
         s = MySchema()
-        data, _ = s.load({
+        data = s.load({
             'a': dt.datetime(2016, 8, 6, 12, 30, 30, 123456),
-            'b': dt.datetime(2016, 8, 6, 12, 30, 30, 123456),
         })
         assert data['a'].microsecond == 123000
-        assert data['b'].microsecond == 123000
         s = MySchema()
-        data, _ = s.load({
+        data = s.load({
             'a': dt.datetime(2016, 8, 6, 12, 59, 59, 999876),
-            'b': dt.datetime(2016, 8, 6, 12, 59, 59, 999876),
         })
         assert data['a'].hour == 13
-        assert data['b'].hour == 13
         assert data['a'].minute == 0
-        assert data['b'].minute == 0
         assert data['a'].second == 0
-        assert data['b'].second == 0
         assert data['a'].microsecond == 0
-        assert data['b'].microsecond == 0
 
-    def test_strictdatetime(self):
+    def test_aware_datetime(self):
 
-        class MySchema(EmbeddedSchema):
-            a = fields.StrictDateTimeField()
-            b = fields.StrictDateTimeField(load_as_tz_aware=False)
-            c = fields.StrictDateTimeField(load_as_tz_aware=True)
+        timezone_2h = dt.timezone(dt.timedelta(hours=2), "test")
 
-        # Test _deserialize
-        s = MySchema(strict=True)
+        class MySchema(BaseSchema):
+            a = fields.AwareDateTimeField()
+            b = fields.AwareDateTimeField(default_timezone=timezone_2h)
 
-        for date in (
-            dt.datetime(2016, 8, 6),
-            dt.datetime(2016, 8, 6, tzinfo=tzutc()),
-            "2016-08-06T00:00:00Z",
-            "2016-08-06T00:00:00",
-        ):
-            data, _ = s.load({'a': date, 'b': date, 'c': date})
-            assert data['a'] == dt.datetime(2016, 8, 6)
-            assert data['b'] == dt.datetime(2016, 8, 6)
-            assert data['c'] == dt.datetime(2016, 8, 6, tzinfo=tzutc())
-
-        for date in (
-            "2016-08-06T00:00:00+02:00",
-            dt.datetime(2016, 8, 6, tzinfo=tzoffset(None, 7200)),
-        ):
-            data, _ = s.load({'a': date, 'b': date, 'c': date})
-            assert data['a'] == dt.datetime(2016, 8, 5, 22, 0)
-            assert data['b'] == dt.datetime(2016, 8, 5, 22, 0)
-            assert data['c'] == dt.datetime(2016, 8, 6, tzinfo=tzoffset(None, 7200))
-
+        s = MySchema()
+        data = s.load({'a': dt.datetime(2016, 8, 6, tzinfo=dt.timezone.utc)})
+        assert data['a'] == dt.datetime(2016, 8, 6, tzinfo=dt.timezone.utc)
+        data = s.load({'a': "2016-08-06T00:00:00Z"})
+        assert data['a'] == dt.datetime(2016, 8, 6, tzinfo=dt.timezone.utc)
+        with pytest.raises(ValidationError):
+            data = s.load({'a': "2016-08-06T00:00:00"})
         with pytest.raises(ValidationError):
             s.load({'a': "dummy"})
 
-        # Test _deserialize_from_mongo
+        # Test AwareDateTimeField deserializes as aware
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy()
-
-        for date in (
-            dt.datetime(2016, 8, 6),
-            dt.datetime(2016, 8, 6, tzinfo=tzutc()),
-        ):
-            d.from_mongo({'a': date, 'b': date, 'c': date})
-            assert d.get('a') == dt.datetime(2016, 8, 6)
-            assert d.get('b') == dt.datetime(2016, 8, 6)
-            assert d.get('c') == dt.datetime(2016, 8, 6, tzinfo=tzutc())
-
-        for date in (
-            dt.datetime(2016, 8, 6, tzinfo=tzoffset(None, 7200)),
-        ):
-            d.from_mongo({'a': date, 'b': date, 'c': date})
-            assert d.get('a') == dt.datetime(2016, 8, 5, 22, 0)
-            assert d.get('b') == dt.datetime(2016, 8, 5, 22, 0)
-            assert d.get('c') == dt.datetime(2016, 8, 6, tzinfo=tzoffset(None, 7200))
-
-        # Test StrictDateTimeField rounds to milliseconds
-        s = MySchema()
-        data, _ = s.load({'a': dt.datetime(2016, 8, 6, 12, 30, 30, 123456)})
-        assert data['a'].microsecond == 123000
-        data, _ = s.load({'a': dt.datetime(2016, 8, 6, 12, 59, 59, 999876)})
-        assert data['a'].hour == 13
-        assert data['a'].minute == 0
-        assert data['a'].second == 0
-        assert data['a'].microsecond == 0
+        d.from_mongo(
+            {
+                'a': dt.datetime(2016, 8, 6),
+                'b': dt.datetime(2016, 8, 6),
+            }
+        )
+        assert d.get('a') == dt.datetime(2016, 8, 6, tzinfo=dt.timezone.utc)
+        assert d.get('a').tzinfo == dt.timezone.utc
+        assert d.get('b') == dt.datetime(2016, 8, 6, tzinfo=dt.timezone.utc)
+        assert d.get('b').tzinfo == timezone_2h
 
     def test_date(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             a = fields.DateField()
 
-        s = MySchema(strict=True)
-        data, _ = s.load({'a': dt.date(2016, 8, 6)})
+        s = MySchema()
+        data = s.load({'a': dt.date(2016, 8, 6)})
         assert data['a'] == dt.date(2016, 8, 6)
-        data, _ = s.load({'a': "2016-08-06"})
+        data = s.load({'a': "2016-08-06"})
         assert data['a'] == dt.date(2016, 8, 6)
         with pytest.raises(ValidationError):
             s.load({'a': "dummy"})
@@ -272,8 +242,15 @@ class TestFields(BaseTest):
 
     def test_dict(self):
 
-        class MySchema(Schema):
+        class MySchema(BaseSchema):
             dict = fields.DictField(attribute='in_mongo_dict', allow_none=True)
+            kdict = fields.DictField(keys=fields.StringField(validate=validate.Length(0, 1)))
+            vdict = fields.DictField(values=fields.IntField(validate=validate.Range(max=5)))
+            kvdict = fields.DictField(
+                keys=fields.StringField(validate=validate.Length(0, 1)),
+                values=fields.IntField(validate=validate.Range(max=5))
+            )
+            dtdict = fields.DictField(values=fields.DateTimeField)
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy()
@@ -284,18 +261,22 @@ class TestFields(BaseTest):
         assert d.get('dict') == {'a': 1, 'b': {'c': True}}
         assert d.to_mongo() == {'in_mongo_dict': {'a': 1, 'b': {'c': True}}}
 
-        # Must manually set_dirty to take the changes into account
         dict_ = d.get('dict')
         dict_['a'] = 1
-        assert d.to_mongo(update=True) is None
-        dict_.set_modified()
         assert d.to_mongo(update=True) == {'$set': {'in_mongo_dict': {'a': 1, 'b': {'c': True}}}}
         dict_.clear_modified()
         assert d.to_mongo(update=True) is None
 
+        # Test repr readability
+        repr_d = repr(d.get('dict'))
+        assert any(
+            repr_d == "<object umongo.data_objects.Dict({})>".format(d)
+            for d in ("{'a': 1, 'b': {'c': True}}", "{'b': {'c': True}, 'a': 1}")
+        )
+
         d2 = MyDataProxy({'dict': {'a': 1, 'b': {'c': True}}})
         assert d2.to_mongo() == {'in_mongo_dict': {'a': 1, 'b': {'c': True}}}
-
+        assert d2.to_mongo(update=True) == {'$set': {'in_mongo_dict': {'a': 1, 'b': {'c': True}}}}
         d2.set('dict', {})
         assert d2.to_mongo() == {'in_mongo_dict': {}}
         assert d2.to_mongo(update=True) == {'$set': {'in_mongo_dict': {}}}
@@ -311,23 +292,38 @@ class TestFields(BaseTest):
 
         d3.from_mongo({'in_mongo_dict': {}})
         assert d3._data.get('in_mongo_dict') == {}
-        d3.get('dict')['field'] = 'value'
-        assert d3.to_mongo(update=True) is None
-        d3.get('dict').set_modified()
-        assert d3.to_mongo(update=True) == {'$set': {'in_mongo_dict': {'field': 'value'}}}
-        assert d3.to_mongo() == {'in_mongo_dict': {'field': 'value'}}
+        d3.get('dict')['c'] = 3
+        assert d3.to_mongo(update=True) == {'$set': {'in_mongo_dict': {'c': 3}}}
+        assert d3.to_mongo() == {'in_mongo_dict': {'c': 3}}
 
         d4 = MyDataProxy({'dict': None})
         assert d4.to_mongo() == {'in_mongo_dict': None}
         d4.from_mongo({'in_mongo_dict': None})
         assert d4.get('dict') is None
 
+        with pytest.raises(ValidationError) as exc:
+            MyDataProxy({'kdict': {'ab': 1}})
+        assert exc.value.messages == {'kdict': {'ab': {'key': ['Length must be between 0 and 1.']}}}
+        with pytest.raises(ValidationError) as exc:
+            MyDataProxy({'vdict': {'a': 9}})
+        assert exc.value.messages == {
+            'vdict': {'a': {'value': ['Must be less than or equal to 5.']}}}
+        with pytest.raises(ValidationError) as exc:
+            MyDataProxy({'kvdict': {'ab': 9}})
+        assert exc.value.messages == {'kvdict': {'ab': {
+            'key': ['Length must be between 0 and 1.'],
+            'value': ['Must be less than or equal to 5.']
+        }}}
+
+        d5 = MyDataProxy({'dtdict': {'a': "2016-08-06T00:00:00"}})
+        assert d5.to_mongo() == {'dtdict': {'a': dt.datetime(2016, 8, 6)}}
+
     def test_dict_default(self):
 
-        class MySchema(Schema):
+        class MySchema(BaseSchema):
             # Passing a mutable as default is a bad idea in real life
-            d_dict = fields.DictField(default={'1': 1, '2': 2})
-            c_dict = fields.DictField(default=lambda: {'1': 1, '2': 2})
+            d_dict = fields.DictField(values=fields.IntField, default={'1': 1, '2': 2})
+            c_dict = fields.DictField(values=fields.IntField, default=lambda: {'1': 1, '2': 2})
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy()
@@ -349,9 +345,70 @@ class TestFields(BaseTest):
         assert isinstance(d.get('d_dict'), Dict)
         assert isinstance(d.get('c_dict'), Dict)
 
+    def test_complex_dict(self):
+
+        @self.instance.register
+        class MyEmbeddedDocument(EmbeddedDocument):
+            field = fields.IntField()
+
+        @self.instance.register
+        class ToRefDoc(Document):
+            pass
+
+        @self.instance.register
+        class MyDoc(Document):
+            embeds = fields.DictField(values=fields.EmbeddedField(MyEmbeddedDocument))
+            refs = fields.DictField(values=fields.ReferenceField(ToRefDoc))
+
+        MySchema = MyDoc.Schema
+
+        obj_id1 = ObjectId()
+        obj_id2 = ObjectId()
+        to_ref_doc1 = ToRefDoc.build_from_mongo(data={'_id': obj_id1})
+        MyDataProxy = data_proxy_factory('My', MySchema())
+        d = MyDataProxy()
+        d.load({
+            'embeds': {
+                'a': MyEmbeddedDocument(field=1),
+                'b': {'field': 2},
+            },
+            'refs': {
+                '1': to_ref_doc1,
+                '2': Reference(ToRefDoc, obj_id2),
+            }
+        })
+        assert d.to_mongo() == {
+            'embeds': {'a': {'field': 1}, 'b': {'field': 2}},
+            'refs': {'1': obj_id1, '2': obj_id2},
+        }
+        assert isinstance(d.get('embeds'), Dict)
+        assert isinstance(d.get('refs'), Dict)
+        for e in d.get('refs').values():
+            assert isinstance(e, Reference)
+        for e in d.get('embeds').values():
+            assert isinstance(e, MyEmbeddedDocument)
+        # Test dict modification as well
+        refs_dict = d.get('refs')
+        refs_dict.update({'3': to_ref_doc1, '4': Reference(ToRefDoc, obj_id2)})
+        for e in refs_dict.values():
+            assert isinstance(e, Reference)
+        embeds_dict = d.get('embeds')
+        embeds_dict.update({'c': MyEmbeddedDocument(field=3), 'd': {'field': 4}})
+        for e in embeds_dict.values():
+            assert isinstance(e, MyEmbeddedDocument)
+        # Modifying an EmbeddedDocument inside a dict should count a dict modification
+        d.clear_modified()
+        d.get('refs')['1'] = obj_id2
+        assert d.to_mongo(update=True) == {'$set': {'refs': {
+            '1': obj_id2, '2': obj_id2, '3': obj_id1, '4': obj_id2}}}
+        d.clear_modified()
+        d.get('embeds')['b'].field = 42
+        assert d.to_mongo(update=True) == {'$set': {'embeds': {
+            'a': {'field': 1}, 'b': {'field': 42}, 'c': {'field': 3}, 'd': {'field': 4}}}}
+
     def test_list(self):
 
-        class MySchema(Schema):
+        class MySchema(BaseSchema):
             list = fields.ListField(fields.IntField(), attribute='in_mongo_list', allow_none=True)
 
         MyDataProxy = data_proxy_factory('My', MySchema())
@@ -436,7 +493,7 @@ class TestFields(BaseTest):
 
     def test_list_default(self):
 
-        class MySchema(Schema):
+        class MySchema(BaseSchema):
             d_list = fields.ListField(fields.IntField(), default=(1, 2, 3))
             c_list = fields.ListField(fields.IntField(), default=lambda: (1, 2, 3))
 
@@ -525,7 +582,7 @@ class TestFields(BaseTest):
 
     def test_objectid(self):
 
-        class MySchema(Schema):
+        class MySchema(BaseSchema):
             objid = fields.ObjectIdField(attribute='in_mongo_objid')
 
         MyDataProxy = data_proxy_factory('My', MySchema())
@@ -696,7 +753,7 @@ class TestFields(BaseTest):
 
     def test_decimal(self):
 
-        class MySchema(Schema):
+        class MySchema(BaseSchema):
             price = fields.DecimalField(attribute='in_mongo_price')
 
         MyDataProxy = data_proxy_factory('My', MySchema())

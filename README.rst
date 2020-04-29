@@ -55,7 +55,7 @@ Quick example
         friends = fields.ListField(fields.ReferenceField("User"))
 
         class Meta:
-            collection = db.user
+            collection_name = "user"
 
     # Make sure that unique indexes are created
     User.ensure_indexes()

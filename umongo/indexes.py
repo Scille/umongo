@@ -5,23 +5,22 @@ def explicit_key(index):
     if isinstance(index, (list, tuple)):
         assert len(index) == 2, 'Must be a (`key`, `direction`) tuple'
         return index
-    elif index.startswith('+'):
+    if index.startswith('+'):
         return (index[1:], ASCENDING)
-    elif index.startswith('-'):
+    if index.startswith('-'):
         return (index[1:], DESCENDING)
-    elif index.startswith('$'):
+    if index.startswith('$'):
         return (index[1:], TEXT)
-    elif index.startswith('#'):
+    if index.startswith('#'):
         return (index[1:], HASHED)
-    else:
-        return (index, ASCENDING)
+    return (index, ASCENDING)
 
 
 def parse_index(index, base_compound_field=None):
     keys = None
     args = {}
     if isinstance(index, IndexModel):
-        keys = [(k, d) for k, d in index.document['key'].items()]
+        keys = index.document['key'].items()
         args = {k: v for k, v in index.document.items() if k != 'key'}
     elif isinstance(index, (tuple, list)):
         # Compound indexes

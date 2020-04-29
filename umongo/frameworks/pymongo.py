@@ -6,7 +6,9 @@ from ..builder import BaseBuilder
 from ..document import DocumentImplementation
 from ..data_proxy import missing
 from ..data_objects import Reference
-from ..exceptions import NotCreatedError, UpdateError, DeleteError, ValidationError
+from ..exceptions import (
+    NotCreatedError, UpdateError, DeleteError, ValidationError, NoneReferenceError
+)
 from ..fields import ReferenceField, ListField, EmbeddedField
 from ..query_mapper import map_query
 
@@ -117,7 +119,7 @@ class PyMongoDocument(DocumentImplementation):
                 payload = self._data.to_mongo(update=False)
                 ret = self.collection.insert_one(payload)
                 # TODO: check ret ?
-                self._data.set_by_mongo_name('_id', ret.inserted_id)
+                self._data.set(self.pk_field, ret.inserted_id)
                 self.is_created = True
                 self.post_insert(ret)
         except DuplicateKeyError as exc:
@@ -130,12 +132,11 @@ class PyMongoDocument(DocumentImplementation):
                     if len(keys) == 1:
                         msg = self.schema.fields[keys[0]].error_messages['unique']
                         raise ValidationError({keys[0]: msg})
-                    else:
-                        fields = self.schema.fields
-                        # Compound index (sort value to make testing easier)
-                        keys = sorted(keys)
-                        raise ValidationError({k: fields[k].error_messages[
-                            'unique_compound'].format(fields=keys) for k in keys})
+                    fields = self.schema.fields
+                    # Compound index (sort value to make testing easier)
+                    keys = sorted(keys)
+                    raise ValidationError({k: fields[k].error_messages[
+                        'unique_compound'].format(fields=keys) for k in keys})
             # Unknown index, cannot wrap the error so just reraise it
             raise
         self._data.clear_modified()
@@ -235,8 +236,8 @@ def _run_validators(validators, field, value):
         for validator in validators:
             try:
                 validator(field, value)
-            except ValidationError as ve:
-                errors.extend(ve.messages)
+            except ValidationError as exc:
+                errors.extend(exc.messages)
         if errors:
             raise ValidationError(errors)
 
@@ -255,8 +256,8 @@ def _io_validate_data_proxy(schema, data_proxy, partial=None):
                 field.io_validate_recursive(field, value)
             if field.io_validate:
                 _run_validators(field.io_validate, field, value)
-        except ValidationError as ve:
-            errors[name] = ve.messages
+        except ValidationError as exc:
+            errors[name] = exc.messages
     if errors:
         raise ValidationError(errors)
 
@@ -267,14 +268,14 @@ def _reference_io_validate(field, value):
 
 def _list_io_validate(field, value):
     errors = {}
-    validators = field.container.io_validate
+    validators = field.inner.io_validate
     if not validators:
         return
-    for i, e in enumerate(value):
+    for idx, val in enumerate(value):
         try:
-            _run_validators(validators, field.container, e)
-        except ValidationError as ev:
-            errors[i] = ev.messages
+            _run_validators(validators, field.inner, val)
+        except ValidationError as exc:
+            errors[idx] = exc.messages
     if errors:
         raise ValidationError(errors)
 
@@ -292,7 +293,7 @@ class PyMongoReference(Reference):
     def fetch(self, no_data=False, force_reload=False):
         if not self._document or force_reload:
             if self.pk is None:
-                raise ReferenceError('Cannot retrieve a None Reference')
+                raise NoneReferenceError('Cannot retrieve a None Reference')
             self._document = self.document_cls.find_one(self.pk)
             if not self._document:
                 raise ValidationError(self.error_messages['not_found'].format(

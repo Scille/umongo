@@ -1,65 +1,54 @@
+"""umongo exceptions"""
 from marshmallow import ValidationError  # noqa, republishing
 
 
 class UMongoError(Exception):
-    pass
-
-
-# class ValidationError(ValidationError, UMongoError):
-#     pass
-
-
-class AbstractDocumentError(UMongoError):
-    pass
-
-
-class DocumentDefinitionError(UMongoError):
-    pass
-
-
-class NoDBDefinedError(UMongoError):
-    pass
-
-
-class NotRegisteredDocumentError(UMongoError):
-    pass
-
-
-class AlreadyRegisteredDocumentError(UMongoError):
-    pass
-
-
-class BuilderNotDefinedError(UMongoError):
-    pass
-
-
-class UpdateError(UMongoError):
-    pass
-
-
-class DeleteError(UMongoError):
-    pass
-
-
-class MissingSchemaError(UMongoError):
-    pass
-
-
-class NotCreatedError(UMongoError):
-    pass
-
-
-class NoCollectionDefinedError(UMongoError):
-    pass
-
-
-class FieldNotLoadedError(UMongoError):
-    pass
+    """Base umongo error"""
 
 
 class NoCompatibleBuilderError(UMongoError):
-    pass
+    """Can't find builder compatible with database"""
+
+
+class AbstractDocumentError(UMongoError):
+    """Raised when instantiating an abstract document"""
+
+
+class DocumentDefinitionError(UMongoError):
+    """Error in document definition"""
+
+
+class NoDBDefinedError(UMongoError):
+    """No database defined"""
+
+
+class NotRegisteredDocumentError(UMongoError):
+    """Document not registered"""
+
+
+class AlreadyRegisteredDocumentError(UMongoError):
+    """Document already registerd"""
+
+
+class UpdateError(UMongoError):
+    """Error while updating document"""
+
+
+class DeleteError(UMongoError):
+    """Error while deleting document"""
+
+
+class AlreadyCreatedError(UMongoError):
+    """Modifying id of an already created document"""
+
+
+class NotCreatedError(UMongoError):
+    """Document does not exist in database"""
+
+
+class NoneReferenceError(UMongoError):
+    """Retrieving a None reference"""
 
 
 class UnknownFieldInDBError(UMongoError):
-    pass
+    """Data from database contains unknown field"""

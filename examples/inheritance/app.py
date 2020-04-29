@@ -13,7 +13,7 @@ class Vehicle(Document):
     model = fields.StrField(required=True)
 
     class Meta:
-        collection = db.vehicle
+        collection_name = "vehicle"
         allow_inheritance = True
 
 

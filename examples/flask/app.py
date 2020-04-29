@@ -37,7 +37,7 @@ class User(Document):
     password = fields.StrField()  # Don't store it in clear in real life !
 
     class Meta:
-        collection = db.user
+        collection_name = "user"
 
 
 def populate_db():
@@ -84,7 +84,7 @@ class UserNoPassSchema(User.schema.as_marshmallow_schema()):
 no_pass_schema = UserNoPassSchema()
 
 def dump_user_no_pass(u):
-    return no_pass_schema.dump(u).data
+    return no_pass_schema.dump(u)
 
 
 @app.route('/', methods=['GET'])

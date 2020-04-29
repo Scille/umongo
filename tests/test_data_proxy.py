@@ -4,7 +4,7 @@ from bson import ObjectId
 from marshmallow import ValidationError, missing
 
 from umongo.data_proxy import data_proxy_factory, BaseDataProxy, BaseNonStrictDataProxy
-from umongo import EmbeddedSchema, fields, EmbeddedDocument, validate, exceptions
+from umongo import BaseSchema, fields, EmbeddedDocument, validate, exceptions
 
 from .common import BaseTest
 
@@ -13,7 +13,7 @@ class TestDataProxy(BaseTest):
 
     def test_repr(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             field_a = fields.IntField(attribute='mongo_field_a')
             field_b = fields.StrField()
 
@@ -27,7 +27,7 @@ class TestDataProxy(BaseTest):
 
     def test_simple(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             a = fields.IntField()
             b = fields.IntField()
 
@@ -45,7 +45,7 @@ class TestDataProxy(BaseTest):
 
     def test_load(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             a = fields.IntField()
             b = fields.IntField(attribute='in_mongo_b')
 
@@ -66,20 +66,17 @@ class TestDataProxy(BaseTest):
 
     def test_modify(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             a = fields.IntField()
             b = fields.IntField(attribute='in_mongo_b')
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy()
         assert d.get_modified_fields() == set()
-        assert d.get_modified_fields_by_mongo_name() == set()
         d.load({'a': 1, 'b': 2})
         assert d.get_modified_fields() == {'a', 'b'}
-        assert d.get_modified_fields_by_mongo_name() == {'a', 'in_mongo_b'}
         d.from_mongo({'a': 1, 'in_mongo_b': 2})
         assert d.get_modified_fields() == set()
-        assert d.get_modified_fields_by_mongo_name() == set()
         assert d.to_mongo() == {'a': 1, 'in_mongo_b': 2}
         assert d.to_mongo(update=True) is None
         d.set('a', 3)
@@ -87,26 +84,22 @@ class TestDataProxy(BaseTest):
         assert d.to_mongo(update=True) == {'$set': {'a': 3}, '$unset': {'in_mongo_b': ''}}
         d.clear_modified()
         assert d.get_modified_fields() == set()
-        assert d.get_modified_fields_by_mongo_name() == set()
         assert d.to_mongo(update=True) is None
         assert d.to_mongo() == {'a': 3}
 
     def test_list_field_modify(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             a = fields.ListField(fields.IntField())
             b = fields.ListField(fields.IntField(), attribute='in_mongo_b')
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy()
         assert d.get_modified_fields() == set()
-        assert d.get_modified_fields_by_mongo_name() == set()
         d.load({'a': [1], 'b': [2, 2]})
         assert d.get_modified_fields() == {'a', 'b'}
-        assert d.get_modified_fields_by_mongo_name() == {'a', 'in_mongo_b'}
         d.from_mongo({'a': [1], 'in_mongo_b': [2, 2]})
         assert d.get_modified_fields() == set()
-        assert d.get_modified_fields_by_mongo_name() == set()
         assert d.to_mongo() == {'a': [1], 'in_mongo_b': [2, 2]}
         assert d.to_mongo(update=True) is None
         d.set('a', [3, 3, 3])
@@ -114,7 +107,6 @@ class TestDataProxy(BaseTest):
         assert d.to_mongo(update=True) == {'$set': {'a': [3, 3, 3]}, '$unset': {'in_mongo_b': ''}}
         d.clear_modified()
         assert d.get_modified_fields() == set()
-        assert d.get_modified_fields_by_mongo_name() == set()
         assert d.to_mongo() == {'a': [3, 3, 3]}
         assert d.to_mongo(update=True) is None
         d.clear_modified()
@@ -122,21 +114,18 @@ class TestDataProxy(BaseTest):
         d._data['a'].append(1)
         d._data['in_mongo_b'].append(2)
         assert d.get_modified_fields() == {'a', 'b'}
-        assert d.get_modified_fields_by_mongo_name() == {'a', 'in_mongo_b'}
         assert d.to_mongo() == {'a': [1, 1], 'in_mongo_b': [2, 2, 2]}
         assert d.to_mongo(update=True) == {'$set': {'a': [1, 1], 'in_mongo_b': [2, 2, 2]}}
         d.clear_modified()
         del d._data['a'][0]
         del d._data['in_mongo_b'][0]
         assert d.get_modified_fields() == {'a', 'b'}
-        assert d.get_modified_fields_by_mongo_name() == {'a', 'in_mongo_b'}
         assert d.to_mongo() == {'a': [1], 'in_mongo_b': [2, 2]}
         assert d.to_mongo(update=True) == {'$set': {'a': [1], 'in_mongo_b': [2, 2]}}
         d.clear_modified()
         d._data['a'].clear()
         d._data['in_mongo_b'].clear()
         assert d.get_modified_fields() == {'a', 'b'}
-        assert d.get_modified_fields_by_mongo_name() == {'a', 'in_mongo_b'}
         assert d.to_mongo() == {'a': [], 'in_mongo_b': []}
         assert d.to_mongo(update=True) == {'$set': {'a': [], 'in_mongo_b': []}}
 
@@ -146,7 +135,7 @@ class TestDataProxy(BaseTest):
         class MyEmbedded(EmbeddedDocument):
             aa = fields.IntField()
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             # EmbeddedField need instance to retrieve implementation
             a = fields.EmbeddedField(MyEmbedded, instance=self.instance)
             b = fields.ListField(fields.IntField)
@@ -165,7 +154,7 @@ class TestDataProxy(BaseTest):
 
     def test_set(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             a = fields.IntField()
             b = fields.IntField(attribute='in_mongo_b')
             c = fields.StrField(
@@ -199,7 +188,7 @@ class TestDataProxy(BaseTest):
 
     def test_del(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             a = fields.IntField()
             b = fields.IntField(attribute='in_mongo_b')
 
@@ -217,7 +206,7 @@ class TestDataProxy(BaseTest):
 
     def test_route_naming(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             in_front = fields.IntField(attribute='in_mongo')
 
         MyDataProxy = data_proxy_factory('My', MySchema())
@@ -236,7 +225,7 @@ class TestDataProxy(BaseTest):
 
     def test_from_mongo(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             in_front = fields.IntField(attribute='in_mongo')
 
         MyDataProxy = data_proxy_factory('My', MySchema())
@@ -248,7 +237,7 @@ class TestDataProxy(BaseTest):
 
     def test_equality(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             a = fields.IntField()
             b = fields.IntField(attribute='in_mongo_b')
 
@@ -268,7 +257,7 @@ class TestDataProxy(BaseTest):
 
     def test_share_ressources(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             a = fields.IntField()
             b = fields.IntField(attribute='in_mongo_b')
 
@@ -281,35 +270,15 @@ class TestDataProxy(BaseTest):
         d2.load({'b': 2})
         assert d1 != d2
 
-    def test_access_by_mongo_name(self):
-
-        class MySchema(EmbeddedSchema):
-            a = fields.IntField()
-            b = fields.IntField(attribute='in_mongo_b')
-
-        MyDataProxy = data_proxy_factory('My', MySchema())
-        d = MyDataProxy()
-        d.from_mongo({'a': 1, 'in_mongo_b': 2})
-        assert d.get_by_mongo_name('in_mongo_b') == 2
-        assert d.get_by_mongo_name('a') == 1
-        with pytest.raises(KeyError):
-            d.get_by_mongo_name('b')
-        d.set_by_mongo_name('in_mongo_b', 3)
-        assert d.to_mongo(update=True) == {'$set': {'in_mongo_b': 3}}
-        assert d.get_by_mongo_name('in_mongo_b') == 3
-        d.delete_by_mongo_name('in_mongo_b')
-        assert d.to_mongo(update=True) == {'$unset': {'in_mongo_b': ''}}
-
     def test_set_to_missing_fields(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             a = fields.IntField()
             b = fields.IntField(attribute='in_mongo_b')
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy(data={'a': 1})
         assert d.get('b') is missing
-        assert d.get_by_mongo_name('in_mongo_b') is missing
         assert d._data['in_mongo_b'] is missing
         d.set('b', 2)
         assert d.get('b') == 2
@@ -322,7 +291,7 @@ class TestDataProxy(BaseTest):
         default_value = ObjectId('507f1f77bcf86cd799439011')
         default_callable = lambda: ObjectId('507f1f77bcf86cd799439012')
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             no_default = fields.ObjectIdField()
             with_default = fields.ObjectIdField(default=default_value)
             with_callable_default = fields.ObjectIdField(default=default_callable)
@@ -353,106 +322,17 @@ class TestDataProxy(BaseTest):
 
     def test_validate(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             with_max = fields.IntField(validate=validate.Range(max=99))
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy(data={})
         with pytest.raises(ValidationError) as exc:
             MyDataProxy(data={'with_max': 100})
-        assert exc.value.args[0] == {'with_max': ['Must be at most 99.']}
+        assert exc.value.args[0] == {'with_max': ['Must be less than or equal to 99.']}
         with pytest.raises(ValidationError) as exc:
             d.set('with_max', 100)
-        assert exc.value.args[0] == ['Must be at most 99.']
-
-    def test_partial(self):
-
-        class MySchema(EmbeddedSchema):
-            with_default = fields.StrField(default='default_value')
-            normal = fields.StrField()
-            loaded = fields.StrField()
-            loaded_but_empty = fields.StrField()
-            normal_with_attribute = fields.StrField(attribute='in_mongo_field')
-
-        MyDataProxy = data_proxy_factory('My', MySchema())
-        d = MyDataProxy()
-        d.from_mongo({'loaded': "foo", 'loaded_but_empty': missing}, partial=True)
-        assert d.partial is True
-        for field in ('with_default', 'normal'):
-            with pytest.raises(exceptions.FieldNotLoadedError):
-                d.get(field)
-            with pytest.raises(exceptions.FieldNotLoadedError):
-                d.set(field, "test")
-            with pytest.raises(exceptions.FieldNotLoadedError):
-                d.delete(field)
-        assert d.get('loaded') == "foo"
-        assert d.get('loaded_but_empty') is missing
-        d.set('loaded_but_empty', "bar")
-        assert d.get('loaded_but_empty') == "bar"
-        d.delete('loaded')
-        # Can still access the deleted field
-        assert d.get('loaded') is missing
-
-        # Same test, but using `load`
-        d = MyDataProxy()
-        d.load({'loaded': "foo", 'loaded_but_empty': missing}, partial=True)
-        assert d.partial is True
-        for field in ('with_default', 'normal'):
-            with pytest.raises(exceptions.FieldNotLoadedError):
-                d.get(field)
-            with pytest.raises(exceptions.FieldNotLoadedError):
-                d.set(field, "test")
-            with pytest.raises(exceptions.FieldNotLoadedError):
-                d.delete(field)
-        assert d.get('loaded') == "foo"
-        assert d.get('loaded_but_empty') is missing
-        d.set('loaded_but_empty', "bar")
-        assert d.get('loaded_but_empty') == "bar"
-        d.delete('loaded')
-        # Can still access the deleted field
-        assert d.get('loaded') is missing
-
-        # Not partial
-        d = MyDataProxy()
-        d.from_mongo({'loaded': "foo", 'loaded_but_empty': missing})
-        assert d.partial is False
-        assert d.get('with_default') == 'default_value'
-        assert d.get('normal') is missing
-        assert d.get('loaded') == "foo"
-        assert d.get('loaded_but_empty') == missing
-        # Same test with load
-        d = MyDataProxy()
-        d.load({'loaded': "foo", 'loaded_but_empty': missing})
-        assert d.partial is False
-        assert d.partial is False
-        assert d.get('with_default') == 'default_value'
-        assert d.get('normal') is missing
-        assert d.get('loaded') == "foo"
-        assert d.get('loaded_but_empty') == missing
-
-        # Partial, then not partial
-        d = MyDataProxy()
-        d.from_mongo({'loaded': "foo", 'loaded_but_empty': missing}, partial=True)
-        assert d.partial is True
-        d.from_mongo({'loaded': "foo", 'loaded_but_empty': missing})
-        assert d.partial is False
-        # Same test with load
-        d = MyDataProxy()
-        d.load({'loaded': "foo", 'loaded_but_empty': missing}, partial=True)
-        assert d.partial is True
-        d.load({'loaded': "foo", 'loaded_but_empty': missing})
-        assert d.partial is False
-
-        # Partial, then update turns it into not partial
-        d = MyDataProxy()
-        d.from_mongo({'loaded': "foo", 'loaded_but_empty': missing}, partial=True)
-        assert len(d.not_loaded_fields) == 3
-        d.update({'with_default': 'test', 'normal_with_attribute': 'foo'})
-        assert len(d.not_loaded_fields) == 1
-        assert d.partial is True
-        d.update({'normal': 'test'})
-        assert d.partial is False
-        assert not d.not_loaded_fields
+        assert exc.value.args[0] == ['Must be less than or equal to 99.']
 
     def test_required_validate(self):
 
@@ -460,18 +340,25 @@ class TestDataProxy(BaseTest):
         class MyEmbedded(EmbeddedDocument):
             required = fields.IntField(required=True)
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             # EmbeddedField need instance to retrieve implementation
-            listed = fields.ListField(fields.EmbeddedField(MyEmbedded, instance=self.instance))
-            embedded = fields.EmbeddedField(MyEmbedded, instance=self.instance)
             required = fields.IntField(required=True)
+            embedded = fields.EmbeddedField(MyEmbedded, instance=self.instance)
+            listed = fields.ListField(fields.EmbeddedField(MyEmbedded, instance=self.instance))
+            dicted = fields.DictField(
+                values=fields.EmbeddedField(MyEmbedded, instance=self.instance))
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy()
 
-        d.load({'embedded': {'required': 42}, 'required': 42, 'listed': [{'required': 42}]})
+        d.load({
+            'required': 42,
+            'embedded': {'required': 42},
+            'listed': [{'required': 42}],
+            'dicted': {'a': {'required': 42}}
+        })
         d.required_validate()
-        # Empty list should not trigger required it embedded field require check
+        # Empty list/dict should not trigger required if embedded field has required fields
         d.load({'embedded': {'required': 42}, 'required': 42})
         d.required_validate()
 
@@ -489,13 +376,16 @@ class TestDataProxy(BaseTest):
             d.required_validate()
         assert exc.value.messages == {'embedded': {'required': ['Missing data for required field.']}}
 
-        d.load({'embedded': {'required': 42}, 'required': 42, 'listed': [{}]})
+        d.load({'embedded': {'required': 42}, 'required': 42, 'listed': [{}], 'dicted': {'a': {}}})
         with pytest.raises(ValidationError) as exc:
             d.required_validate()
-        assert exc.value.messages == {'listed': {0: {'required': ['Missing data for required field.']}}}
+        assert exc.value.messages == {
+            'listed': {0: {'required': ['Missing data for required field.']}},
+            'dicted': {'a': {'value': {'required': ['Missing data for required field.']}}},
+        }
 
     def test_unkown_field_in_db(self):
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             field = fields.IntField(attribute='mongo_field')
 
         DataProxy = data_proxy_factory('My', MySchema())
@@ -506,7 +396,7 @@ class TestDataProxy(BaseTest):
             d.from_mongo({'mongo_field': 42, 'xxx': 'foo'})
 
     def test_iterators(self):
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             field_a = fields.IntField(attribute='mongo_field_a')
             field_b = fields.IntField(attribute='mongo_field_b')
 
@@ -515,24 +405,20 @@ class TestDataProxy(BaseTest):
         d.from_mongo({'mongo_field_a': 42, 'mongo_field_b': 24})
 
         assert set(d.keys()) == {'mongo_field_a', 'mongo_field_b'}
-        assert set(d.keys_by_mongo_name()) == {'mongo_field_a', 'mongo_field_b'}
         assert set(d.values()) == {42, 24}
         assert set(d.items()) == {('field_a', 42), ('field_b', 24)}
-        assert set(d.items_by_mongo_name()) == {('mongo_field_a', 42), ('mongo_field_b', 24)}
 
         d.load({'field_a': 100, 'field_b': 200})
         assert set(d.keys()) == {'mongo_field_a', 'mongo_field_b'}
-        assert set(d.keys_by_mongo_name()) == {'mongo_field_a', 'mongo_field_b'}
         assert set(d.values()) == {100, 200}
         assert set(d.items()) == {('field_a', 100), ('field_b', 200)}
-        assert set(d.items_by_mongo_name()) == {('mongo_field_a', 100), ('mongo_field_b', 200)}
 
 
 class TestNonStrictDataProxy(BaseTest):
 
     def test_build(self):
 
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             pass
 
         strict_proxy = data_proxy_factory('My', MySchema(), strict=True)
@@ -541,13 +427,13 @@ class TestNonStrictDataProxy(BaseTest):
         assert issubclass(non_strict_proxy, BaseNonStrictDataProxy)
 
     def test_basic(self):
-        class MySchema(EmbeddedSchema):
+        class MySchema(BaseSchema):
             field_a = fields.IntField(attribute='mongo_field_a')
 
         NonStrictDataProxy = data_proxy_factory('My', MySchema(), strict=False)
         with pytest.raises(exceptions.ValidationError) as exc:
             NonStrictDataProxy({'field_a': 42, 'xxx': 'foo'})
-        assert exc.value.messages == {'_schema': ['Unknown field name xxx.']}
+        assert exc.value.messages == {'xxx': ['Unknown field.']}
         d = NonStrictDataProxy()
         d.from_mongo({'mongo_field_a': 42, 'xxx': 'foo'})
         assert d._data == {'mongo_field_a': 42}

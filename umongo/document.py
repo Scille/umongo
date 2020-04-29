@@ -5,9 +5,10 @@ from marshmallow import pre_load, post_load, pre_dump, post_dump, validates_sche
 
 from .abstract import BaseDataObject
 from .data_proxy import missing
-from .exceptions import (NotCreatedError, NoDBDefinedError,
+from .exceptions import (AlreadyCreatedError, NotCreatedError, NoDBDefinedError,
                          AbstractDocumentError, DocumentDefinitionError)
 from .template import Implementation, Template, MetaImplementation
+from .data_objects import Reference
 
 
 __all__ = (
@@ -37,7 +38,6 @@ class DocumentTemplate(Template):
         or `marshmallow.post_dump`) to this class that will be passed
         to the marshmallow schema internally used for this document.
     """
-    pass
 
 
 Document = DocumentTemplate
@@ -76,9 +76,7 @@ class DocumentOpts:
     indexes              yes                    List of custom indexes
     offspring            no                     List of Documents inheriting this one
     ==================== ====================== ===========
-
     """
-
     def __repr__(self):
         return ('<{ClassName}('
                 'instance={self.instance}, '
@@ -148,14 +146,13 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
             self.__module__, self.__class__.__name__, dict(self._data.items()))
 
     def __eq__(self, other):
-        from .data_objects import Reference
         if self.pk is None:
             return self is other
-        elif isinstance(other, self.__class__) and other.pk is not None:
+        if isinstance(other, self.__class__) and other.pk is not None:
             return self.pk == other.pk
-        elif isinstance(other, DBRef):
+        if isinstance(other, DBRef):
             return other.collection == self.collection.name and other.id == self.pk
-        elif isinstance(other, Reference):
+        if isinstance(other, Reference):
             return isinstance(self, other.document_cls) and self.pk == other.pk
         return NotImplemented
 
@@ -190,7 +187,7 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
                      has already been commited to database given ``_id``
                      field could be generated before insertion
         """
-        value = self._data.get_by_mongo_name('_id')
+        value = self._data.get(self.pk_field)
         return value if value is not missing else None
 
     @property
@@ -204,7 +201,7 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
         return DBRef(collection=self.collection.name, id=self.pk)
 
     @classmethod
-    def build_from_mongo(cls, data, partial=False, use_cls=False):
+    def build_from_mongo(cls, data, use_cls=False):
         """
         Create a document instance from MongoDB data
 
@@ -216,17 +213,16 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
         if use_cls and '_cls' in data:
             cls = cls.opts.instance.retrieve_document(data['_cls'])
         doc = cls()
-        doc.from_mongo(data, partial=partial)
+        doc.from_mongo(data)
         return doc
 
-    def from_mongo(self, data, partial=False):
+    def from_mongo(self, data):
         """
         Update the document with the MongoDB data
 
         :param data: data as retrieved from MongoDB
         """
-        # TODO: handle partial
-        self._data.from_mongo(data, partial=partial)
+        self._data.from_mongo(data)
         self.is_created = True
 
     def to_mongo(self, update=False):
@@ -237,14 +233,13 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
                        update payload instead of containing the entire document
         """
         if update and not self.is_created:
-            raise NotCreatedError('Must create the document before'
-                                  ' using update')
+            raise NotCreatedError('Must create the document before using update')
         return self._data.to_mongo(update=update)
 
     def update(self, data):
-        """
-        Update the document with the given data.
-        """
+        """Update the document with the given data."""
+        if self.is_created and self.pk_field in data.keys():
+            raise AlreadyCreatedError("Can't modify id of a created document")
         self._data.update(data)
 
     def dump(self):
@@ -277,11 +272,21 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
         value = self._data.get(name)
         return value if value is not missing else None
 
+    def __setitem__(self, name, value):
+        if self.is_created and name == self.pk_field:
+            raise AlreadyCreatedError("Can't modify id of a created document")
+        self._data.set(name, value)
+
     def __delitem__(self, name):
+        if self.is_created and name == self.pk_field:
+            raise AlreadyCreatedError("Can't modify id of a created document")
         self._data.delete(name)
 
-    def __setitem__(self, name, value):
-        self._data.set(name, value)
+    def __getattr__(self, name):
+        if name[:2] == name[-2:] == '__':
+            raise AttributeError(name)
+        value = self._data.get(name, to_raise=AttributeError)
+        return value if value is not missing else None
 
     def __setattr__(self, name, value):
         # Try to retrieve name among class's attributes and __slots__
@@ -292,13 +297,9 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
         if name in self.__real_attributes:
             object.__setattr__(self, name, value)
         else:
+            if self.is_created and name == self.pk_field:
+                raise AlreadyCreatedError("Can't modify id of a created document")
             self._data.set(name, value, to_raise=AttributeError)
-
-    def __getattr__(self, name):
-        if name[:2] == name[-2:] == '__':
-            raise AttributeError(name)
-        value = self._data.get(name, to_raise=AttributeError)
-        return value if value is not missing else None
 
     def __delattr__(self, name):
         if not self.__real_attributes:
@@ -306,6 +307,8 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
         if name in self.__real_attributes:
             object.__delattr__(self, name)
         else:
+            if self.is_created and name == self.pk_field:
+                raise AlreadyCreatedError("Can't modify pk of a created document")
             self._data.delete(name, to_raise=AttributeError)
 
     # Callbacks
@@ -316,7 +319,6 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
 
         .. note:: If you use an async driver, this callback can be asynchronous.
         """
-        pass
 
     def pre_update(self):
         """
@@ -326,7 +328,6 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
 
         .. note:: If you use an async driver, this callback can be asynchronous.
         """
-        pass
 
     def pre_delete(self):
         """
@@ -336,7 +337,6 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
 
         .. note:: If you use an async driver, this callback can be asynchronous.
         """
-        pass
 
     def post_insert(self, ret):
         """
@@ -345,7 +345,6 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
 
         .. note:: If you use an async driver, this callback can be asynchronous.
         """
-        pass
 
     def post_update(self, ret):
         """
@@ -354,7 +353,6 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
 
         .. note:: If you use an async driver, this callback can be asynchronous.
         """
-        pass
 
     def post_delete(self, ret):
         """
@@ -363,4 +361,3 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
 
         .. note:: If you use an async driver, this callback can be asynchronous.
         """
-        pass

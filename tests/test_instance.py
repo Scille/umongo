@@ -4,12 +4,16 @@ import pytest
 
 from bson import ObjectId
 
-from umongo import (Document, fields, AlreadyRegisteredDocumentError, EmbeddedDocument,
-                    NotRegisteredDocumentError, NoDBDefinedError)
+from umongo import Document, fields, EmbeddedDocument
 from umongo.instance import Instance
 from umongo.document import DocumentTemplate, DocumentImplementation
 from umongo.embedded_document import EmbeddedDocumentTemplate, EmbeddedDocumentImplementation
-from umongo.frameworks import MongoMockInstance, MotorAsyncIOInstance, TxMongoInstance, PyMongoInstance
+from umongo.frameworks import (
+    MongoMockInstance, MotorAsyncIOInstance, TxMongoInstance, PyMongoInstance
+)
+from umongo.exceptions import (
+    AlreadyRegisteredDocumentError, NotRegisteredDocumentError, NoDBDefinedError
+)
 
 from .common import MockedDB, MockedInstance
 

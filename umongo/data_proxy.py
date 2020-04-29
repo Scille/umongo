@@ -1,7 +1,7 @@
 from marshmallow import ValidationError, missing
 
 from .abstract import BaseDataObject
-from .exceptions import FieldNotLoadedError, UnknownFieldInDBError
+from .exceptions import UnknownFieldInDBError
 from .i18n import gettext as _
 
 
@@ -10,35 +10,29 @@ __all__ = ('data_proxy_factory', 'missing')
 
 class BaseDataProxy:
 
-    __slots__ = ('not_loaded_fields', '_data', '_modified_data')
+    __slots__ = ('_data', '_modified_data')
     schema = None
     _fields = None
     _fields_from_mongo_key = None
 
     def __init__(self, data=None):
-        self.not_loaded_fields = set()
         # Inside data proxy, data are stored in mongo world representation
         self._modified_data = set()
+        self._data = {}
         self.load(data or {})
-
-    @property
-    def partial(self):
-        # TODO: rename to `is_partialy_loaded` ?
-        return bool(self.not_loaded_fields)
 
     def to_mongo(self, update=False):
         if update:
             return self._to_mongo_update()
-        else:
-            return self._to_mongo()
+        return self._to_mongo()
 
     def _to_mongo(self):
         mongo_data = {}
-        for k, v in self._data.items():
-            field = self._fields_from_mongo_key[k]
-            v = field.serialize_to_mongo(v)
-            if v is not missing:
-                mongo_data[k] = v
+        for key, val in self._data.items():
+            field = self._fields_from_mongo_key[key]
+            val = field.serialize_to_mongo(val)
+            if val is not missing:
+                mongo_data[key] = val
         return mongo_data
 
     def _to_mongo_update(self):
@@ -48,93 +42,59 @@ class BaseDataProxy:
         for name in self.get_modified_fields():
             field = self._fields[name]
             name = field.attribute or name
-            v = field.serialize_to_mongo(self._data[name])
-            if v is missing:
+            val = field.serialize_to_mongo(self._data[name])
+            if val is missing:
                 unset_data.append(name)
             else:
-                set_data[name] = v
+                set_data[name] = val
         if set_data:
             mongo_data['$set'] = set_data
         if unset_data:
             mongo_data['$unset'] = {k: "" for k in unset_data}
         return mongo_data or None
 
-    def from_mongo(self, data, partial=False):
+    def from_mongo(self, data):
         self._data = {}
-        for k, v in data.items():
+        for key, val in data.items():
             try:
-                field = self._fields_from_mongo_key[k]
+                field = self._fields_from_mongo_key[key]
             except KeyError:
-                raise UnknownFieldInDBError(
-                    _('{cls}: unknown "{key}" field found in DB.'
-                    .format(key=k, cls=self.__class__.__name__)))
-            self._data[k] = field.deserialize_from_mongo(v)
-        if partial:
-            self._collect_partial_fields(data.keys(), as_mongo_fields=True)
-        else:
-            self.not_loaded_fields.clear()
+                raise UnknownFieldInDBError(_(
+                    '{cls}: unknown "{key}" field found in DB.'
+                    .format(key=key, cls=self.__class__.__name__)
+                ))
+            self._data[key] = field.deserialize_from_mongo(val)
         self.clear_modified()
         self._add_missing_fields()
 
     def dump(self):
-        data, err = self.schema.dump(self._data)
-        if err:
-            raise ValidationError(err)
-        return data
+        return self.schema.dump(self._data)
 
     def _mark_as_modified(self, key):
         self._modified_data.add(key)
 
     def update(self, data):
         # Always use marshmallow partial load to skip required checks
-        loaded_data, err = self.schema.load(data, partial=True)
-        if err:
-            raise ValidationError(err)
+        loaded_data = self.schema.load(data, partial=True)
         self._data.update(loaded_data)
-        if self.not_loaded_fields:
-            for k in loaded_data:
-                self.not_loaded_fields.discard(self._fields_from_mongo_key[k])
         for key in loaded_data:
             self._mark_as_modified(key)
 
-    def load(self, data, partial=False):
+    def load(self, data):
         # Always use marshmallow partial load to skip required checks
-        loaded_data, err = self.schema.load(data, partial=True)
-        if err:
-            raise ValidationError(err)
+        loaded_data = self.schema.load(data, partial=True)
         self._data = loaded_data
         # Map the modified fields list on the the loaded data
         self.clear_modified()
         for key in loaded_data:
             self._mark_as_modified(key)
-        if partial:
-            self._collect_partial_fields(data)
-        else:
-            self.not_loaded_fields.clear()
-        # Must be done last given it modify `loaded_data`
+        # TODO: mark added missing fields as modified?
         self._add_missing_fields()
-
-    def get_by_mongo_name(self, name):
-        value = self._data[name]
-        if self._fields_from_mongo_key[name] in self.not_loaded_fields:
-            raise FieldNotLoadedError(name)
-        return value
-
-    def set_by_mongo_name(self, name, value):
-        self._data[name] = value
-        if self._fields_from_mongo_key[name] in self.not_loaded_fields:
-            raise FieldNotLoadedError(name)
-        self._mark_as_modified(name)
-
-    def delete_by_mongo_name(self, name):
-        self.set_by_mongo_name(name, missing)
 
     def _get_field(self, name, to_raise):
         if name not in self._fields:
             raise to_raise(name)
         field = self._fields[name]
-        if field in self.not_loaded_fields:
-            raise FieldNotLoadedError(name)
         name = field.attribute or name
         return name, field
 
@@ -165,12 +125,9 @@ class BaseDataProxy:
     def __eq__(self, other):
         if isinstance(other, dict):
             return self._data == other
-        elif hasattr(other, '_data'):
+        if hasattr(other, '_data'):
             return self._data == other._data
         return NotImplemented
-
-    def get_modified_fields_by_mongo_name(self):
-        return {self._fields[name].attribute or name for name in self.get_modified_fields()}
 
     def get_modified_fields(self):
         modified = set()
@@ -184,23 +141,16 @@ class BaseDataProxy:
 
     def clear_modified(self):
         self._modified_data.clear()
-        for v in self._data.values():
-            if isinstance(v, BaseDataObject):
-                v.clear_modified()
+        for val in self._data.values():
+            if isinstance(val, BaseDataObject):
+                val.clear_modified()
 
     def is_modified(self):
-        return (bool(self._modified_data) or
+        return (
+            bool(self._modified_data) or
             any(isinstance(v, BaseDataObject) and v.is_modified()
-                for v in self._data.values()))
-
-    def _collect_partial_fields(self, loaded_fields, as_mongo_fields=False):
-        if as_mongo_fields:
-            self.not_loaded_fields = set(
-                self._fields_from_mongo_key[k]
-                for k in self._fields_from_mongo_key.keys() - set(loaded_fields))
-        else:
-            self.not_loaded_fields = set(
-                self._fields[k] for k in self._fields.keys() - set(loaded_fields))
+                for v in self._data.values())
+        )
 
     def _add_missing_fields(self):
         # TODO: we should be able to do that by configuring marshmallow...
@@ -229,17 +179,12 @@ class BaseDataProxy:
     # Standards iterators providing oo and mongo worlds views
 
     def items(self):
-        return ((key, self._data[field.attribute or key])
-                 for key, field in self._fields.items())
-
-    def items_by_mongo_name(self):
-        return self._data.items()
+        return (
+            (key, self._data[field.attribute or key]) for key, field in self._fields.items()
+        )
 
     def keys(self):
         return (field.attribute or key for key, field in self._fields.items())
-
-    def keys_by_mongo_name(self):
-        return self._data.keys()
 
     def values(self):
         return self._data.values()
@@ -262,19 +207,15 @@ class BaseNonStrictDataProxy(BaseDataProxy):
         mongo_data.update(self._additional_data)
         return mongo_data
 
-    def from_mongo(self, data, partial=False):
+    def from_mongo(self, data):
         self._data = {}
-        for k, v in data.items():
+        for key, val in data.items():
             try:
-                field = self._fields_from_mongo_key[k]
+                field = self._fields_from_mongo_key[key]
             except KeyError:
-                self._additional_data[k] = v
+                self._additional_data[key] = val
             else:
-                self._data[k] = field.deserialize_from_mongo(v)
-        if partial:
-            self._collect_partial_fields(data.keys(), as_mongo_fields=True)
-        else:
-            self.not_loaded_fields.clear()
+                self._data[key] = field.deserialize_from_mongo(val)
         self.clear_modified()
         self._add_missing_fields()
 

@@ -2,7 +2,66 @@
 History
 =======
 
-2.2.0 (unreleased)
+3.0.0b4 (2020-04-27)
+--------------------
+
+Features:
+
+* *Backwards-incompatible*: Remove partial load feature (see #256).
+* *Backwards-incompatible*: Add ``Document.pk_field`` and remove
+  ``BaseDataProxy.*_by_mongo_name methods`` (see #257).
+* *Backwards-incompatible*: Raise AlreadyCreatedError when modifying pk of
+  created document (see #258).
+
+3.0.0b3 (2020-04-26)
+--------------------
+
+Features:
+
+* *Backwards-incompatible*: Replace ``ReferenceError`` with
+  ``NoneReferenceError``. Review the list of exceptions importable from
+  root ``umongo`` module. (see #251)
+
+Bug fixes:
+
+* Don't modify data when calling ``set_by_mongo_name`` on a field that was not
+  loaded in a partial load. (see #253)
+
+Other changes:
+
+* *Backwards-incompatible*: Drop Python 3.5 support (see #248).
+
+3.0.0b2 (2020-04-18)
+--------------------
+
+Features:
+
+* Use fields for keys/values in DictField (see #245).
+
+Bug fixes:
+
+* Fix BaseField.__repr__ (see #247).
+
+3.0.0b1 (2020-03-29)
+--------------------
+
+Features:
+
+* Support marshmallow 3 (see #154).
+* All field parameters beginning with ``"marshmallow_"`` are passed to the
+  marshmallow schema, rather than only a given list of known parameters.
+  (see #228)
+
+Other changes:
+
+* *Backwards-incompatible*: Drop support for marshmallow 2. See marshmallow
+  upgrading guide for a comprehensive list of changes. (see #154)
+* *Backwards-incompatible*: ``StrictDateTimeField`` is removed as marshmallow
+  now provides ``NaiveDateTimeField`` and ``AwareDateTimeField``. (see #154)
+* *Backwards-incompatible*: ``default`` shall now be provided in deserialized
+  form. (see #154)
+
+2.2.0 (2019-12-18)
 ------------------
 
 Bug fixes:

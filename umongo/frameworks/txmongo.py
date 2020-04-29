@@ -1,14 +1,16 @@
-from txmongo.database import Database
 from twisted.internet.defer import (
     inlineCallbacks, Deferred, DeferredList, returnValue, maybeDeferred)
 from txmongo import filter as qf
+from txmongo.database import Database
 from pymongo.errors import DuplicateKeyError
 
 from ..builder import BaseBuilder
 from ..document import DocumentImplementation
 from ..data_proxy import missing
 from ..data_objects import Reference
-from ..exceptions import NotCreatedError, UpdateError, DeleteError, ValidationError
+from ..exceptions import (
+    NotCreatedError, UpdateError, DeleteError, ValidationError, NoneReferenceError
+)
 from ..fields import ReferenceField, ListField, EmbeddedField
 from ..query_mapper import map_query
 
@@ -80,7 +82,7 @@ class TxMongoDocument(DocumentImplementation):
                 payload = self._data.to_mongo(update=False)
                 ret = yield self.collection.insert_one(payload)
                 # TODO: check ret ?
-                self._data.set_by_mongo_name('_id', ret.inserted_id)
+                self._data.set(self.pk_field, ret.inserted_id)
                 self.is_created = True
                 yield maybeDeferred(self.post_insert, ret)
         except DuplicateKeyError as exc:
@@ -93,12 +95,15 @@ class TxMongoDocument(DocumentImplementation):
                     if len(keys) == 1:
                         msg = self.schema.fields[keys[0]].error_messages['unique']
                         raise ValidationError({keys[0]: msg})
-                    else:
-                        fields = self.schema.fields
-                        # Compound index (sort value to make testing easier)
-                        keys = sorted(keys)
-                        raise ValidationError({k: fields[k].error_messages[
-                            'unique_compound'].format(fields=keys) for k in keys})
+                    fields = self.schema.fields
+                    # Compound index (sort value to make testing easier)
+                    keys = sorted(keys)
+                    raise ValidationError(
+                        {
+                            k: fields[k].error_messages['unique_compound'].format(fields=keys)
+                            for k in keys
+                        }
+                    )
         self._data.clear_modified()
         return ret
 
@@ -142,9 +147,8 @@ class TxMongoDocument(DocumentImplementation):
         """
         if validate_all:
             return _io_validate_data_proxy(self.schema, self._data)
-        else:
-            return _io_validate_data_proxy(
-                self.schema, self._data, partial=self._data.get_modified_fields())
+        return _io_validate_data_proxy(
+            self.schema, self._data, partial=self._data.get_modified_fields())
 
     @classmethod
     @inlineCallbacks
@@ -179,8 +183,7 @@ class TxMongoDocument(DocumentImplementation):
                 return ([cls.build_from_mongo(e, use_cls=True) for e in result[0]], cursor)
 
             return wrap_raw_results(raw_cursor_or_list)
-        else:
-            return [cls.build_from_mongo(e, use_cls=True) for e in raw_cursor_or_list]
+        return [cls.build_from_mongo(e, use_cls=True) for e in raw_cursor_or_list]
 
     @classmethod
     def count(cls, spec=None, **kwargs):
@@ -200,7 +203,7 @@ class TxMongoDocument(DocumentImplementation):
         for index in cls.opts.indexes:
             kwargs = index.document.copy()
             keys = kwargs.pop('key')
-            index = qf.sort([(k, d) for k, d in keys.items()])
+            index = qf.sort(keys.items())
             yield cls.collection.create_index(index, **kwargs)
 
 
@@ -226,8 +229,8 @@ def _run_validators(validators, field, value):
     for validator in validators:
         try:
             defer = validator(field, value)
-        except ValidationError as ve:
-            errors.extend(ve.messages)
+        except ValidationError as exc:
+            errors.extend(exc.messages)
         else:
             assert isinstance(defer, Deferred), 'io_validate functions must return a Deferred'
             defer.addErrback(_errback_factory(errors))
@@ -255,8 +258,8 @@ def _io_validate_data_proxy(schema, data_proxy, partial=None):
                 defer = _run_validators(field.io_validate, field, value)
                 defer.addErrback(_errback_factory(errors, name))
                 defers.append(defer)
-        except ValidationError as ve:
-            errors[name] = ve.messages
+        except ValidationError as exc:
+            errors[name] = exc.messages
     yield DeferredList(defers)
     if errors:
         raise ValidationError(errors)
@@ -268,14 +271,14 @@ def _reference_io_validate(field, value):
 
 @inlineCallbacks
 def _list_io_validate(field, value):
-    validators = field.container.io_validate
+    validators = field.inner.io_validate
     if not validators or not value:
         return
     errors = {}
     defers = []
-    for i, e in enumerate(value):
-        defer = _run_validators(validators, field.container, e)
-        defer.addErrback(_errback_factory(errors, i))
+    for idx, exc in enumerate(value):
+        defer = _run_validators(validators, field.inner, exc)
+        defer.addErrback(_errback_factory(errors, idx))
         defers.append(defer)
     yield DeferredList(defers)
     if errors:
@@ -296,7 +299,7 @@ class TxMongoReference(Reference):
     def fetch(self, no_data=False, force_reload=False):
         if not self._document or force_reload:
             if self.pk is None:
-                raise ReferenceError('Cannot retrieve a None Reference')
+                raise NoneReferenceError('Cannot retrieve a None Reference')
             self._document = yield self.document_cls.find_one(self.pk)
             if not self._document:
                 raise ValidationError(self.error_messages['not_found'].format(

@@ -32,8 +32,7 @@ class MetaImplementation(MetaTemplate):
         if 'opts' not in nmspc:
             # Inheritance to avoid metaclass conflicts
             return super().__new__(cls, name, bases, nmspc)
-        else:
-            return type.__new__(cls, name, bases, nmspc)
+        return type.__new__(cls, name, bases, nmspc)
 
     def __repr__(cls):
         return "<Implementation class '%s.%s'>" % (cls.__module__, cls.__name__)
@@ -52,6 +51,5 @@ class Implementation(metaclass=MetaImplementation):
 def get_template(template_or_implementation):
     if issubclass(template_or_implementation, Implementation):
         return template_or_implementation.opts.template
-    else:
-        assert issubclass(template_or_implementation, Template)
-        return template_or_implementation
+    assert issubclass(template_or_implementation, Template)
+    return template_or_implementation

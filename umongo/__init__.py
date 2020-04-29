@@ -18,18 +18,15 @@ from .document import (
 from .exceptions import (
     UMongoError,
     ValidationError,
-    NoDBDefinedError,
-    NotRegisteredDocumentError,
-    AlreadyRegisteredDocumentError,
-    BuilderNotDefinedError,
     UpdateError,
-    MissingSchemaError,
+    DeleteError,
+    AlreadyCreatedError,
     NotCreatedError,
-    NoCollectionDefinedError,
-    FieldNotLoadedError
+    NoneReferenceError,
+    UnknownFieldInDBError,
 )
 from . import fields, validate
-from .schema import BaseSchema, Schema, EmbeddedSchema
+from .abstract import BaseSchema
 from .data_objects import Reference
 from .embedded_document import EmbeddedDocument
 from .i18n import set_gettext
@@ -37,7 +34,7 @@ from .i18n import set_gettext
 
 __author__ = 'Emmanuel Leblond'
 __email__ = 'emmanuel.leblond@gmail.com'
-__version__ = '2.2.0'
+__version__ = '3.0.0b4'
 __all__ = (
     'missing',
 
@@ -58,21 +55,16 @@ __all__ = (
 
     'UMongoError',
     'ValidationError',
-    'NoDBDefinedError',
-    'NotRegisteredDocumentError',
-    'AlreadyRegisteredDocumentError',
-    'BuilderNotDefinedError',
     'UpdateError',
-    'MissingSchemaError',
+    'DeleteError',
+    'AlreadyCreatedError',
     'NotCreatedError',
-    'NoCollectionDefinedError',
-    'FieldNotLoadedError',
+    'NoneReferenceError',
+    'UnknownFieldInDBError',
 
     'fields',
 
     'BaseSchema',
-    'Schema',
-    'EmbeddedSchema',
 
     'Reference',
 

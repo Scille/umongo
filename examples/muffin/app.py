@@ -109,7 +109,7 @@ class UserNoPassSchema(User.schema.as_marshmallow_schema()):
 no_pass_schema = UserNoPassSchema()
 
 def dump_user_no_pass(u):
-    return no_pass_schema.dump(u).data
+    return no_pass_schema.dump(u)
 
 
 @app.register('/', methods=['GET'])

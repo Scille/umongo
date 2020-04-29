@@ -1,8 +1,14 @@
+"""Builder module
+
+A builder connect a :class:`umongo.document.Template` with a
+:class:`umongo.instance.BaseInstance` by generating an
+:class:`umongo.document.Implementation`.
+"""
 import re
 import inspect
 from copy import copy
 
-from marshmallow.fields import Field
+from marshmallow import fields as ma_fields
 
 from .template import Template, Implementation
 from .data_proxy import data_proxy_factory
@@ -10,14 +16,14 @@ from .document import DocumentTemplate, DocumentOpts, DocumentImplementation
 from .embedded_document import (
     EmbeddedDocumentTemplate, EmbeddedDocumentOpts, EmbeddedDocumentImplementation)
 from .exceptions import DocumentDefinitionError, NotRegisteredDocumentError
-from .schema import Schema, on_need_add_id_field, add_child_field
+from .abstract import BaseSchema
 from .indexes import parse_index
-from .fields import ListField, EmbeddedField
+from . import fields
 
 
 def camel_to_snake(name):
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+    tmp_str = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', tmp_str).lower()
 
 
 def _is_child(bases):
@@ -35,6 +41,42 @@ def _is_child_embedded_document(bases):
                b is not EmbeddedDocumentImplementation)
 
 
+def _on_need_add_id_field(bases, fields_dict):
+    """
+    If the given fields make no reference to `_id`, add an `id` field
+    (type ObjectId, dump_only=True, attribute=`_id`) to handle it
+    """
+
+    def find_id_field(fields_dict):
+        for name, field in fields_dict.items():
+            # Skip fake fields present in schema (e.g. `post_load` decorated function)
+            if not isinstance(field, ma_fields.Field):
+                continue
+            if (name == '_id' and not field.attribute) or field.attribute == '_id':
+                return name
+        return None
+
+    # Search among parents for the id field
+    for base in bases:
+        schema = base()
+        name = find_id_field(schema.fields)
+        if name is not None:
+            return name
+
+    # Search among our own fields
+    name = find_id_field(fields_dict)
+    if name is not None:
+        return name
+
+    # No id field found, add a default one
+    fields_dict['id'] = fields.ObjectIdField(attribute='_id', dump_only=True)
+    return 'id'
+
+
+def _add_child_field(name, fields_dict):
+    fields_dict['cls'] = fields.StringField(attribute='_cls', default=name, dump_only=True)
+
+
 def _collect_schema_attrs(nmspc):
     """
     Split dict between schema fields and non-fields elements and retrieve
@@ -44,10 +86,10 @@ def _collect_schema_attrs(nmspc):
     schema_non_fields = {}
     doc_nmspc = {}
     for key, item in nmspc.items():
-        if hasattr(item, '__marshmallow_tags__'):
+        if hasattr(item, '__marshmallow_hook__'):
             # Decorated special functions (e.g. `post_load`)
             schema_non_fields[key] = item
-        elif isinstance(item, Field):
+        elif isinstance(item, ma_fields.Field):
             # Given the fields provided by the template are going to be
             # customized in the implementation, we copy them to avoid
             # overwriting if two implementations are created
@@ -72,8 +114,10 @@ def _collect_indexes(meta, schema_nmspc, bases):
 
     # Then get our own custom indexes
     if is_child:
-        custom_indexes = [parse_index(x, base_compound_field='_cls')
-                   for x in getattr(meta, 'indexes', ())]
+        custom_indexes = [
+            parse_index(x, base_compound_field='_cls')
+            for x in getattr(meta, 'indexes', ())
+        ]
     else:
         custom_indexes = [parse_index(x) for x in getattr(meta, 'indexes', ())]
     indexes += custom_indexes
@@ -198,9 +242,14 @@ class BaseBuilder:
     def _patch_field(self, field):
         # Recursively set the `instance` attribute to all fields
         field.instance = self.instance
-        if isinstance(field, ListField):
-            self._patch_field(field.container)
-        if isinstance(field, EmbeddedField):
+        if isinstance(field, fields.ListField):
+            self._patch_field(field.inner)
+        elif isinstance(field, fields.DictField):
+            if field.key_field:
+                self._patch_field(field.key_field)
+            if field.value_field:
+                self._patch_field(field.value_field)
+        elif isinstance(field, fields.EmbeddedField):
             for embedded_field in field.schema.fields.values():
                 self._patch_field(embedded_field)
 
@@ -231,11 +280,11 @@ class BaseBuilder:
         schema_bases = tuple([base.Schema for base in bases
                               if hasattr(base, 'Schema')])
         if not schema_bases:
-            schema_bases = (Schema, )
-        on_need_add_id_field(schema_bases, schema_fields)
+            schema_bases = (BaseSchema, )
+        nmspc['pk_field'] = _on_need_add_id_field(schema_bases, schema_fields)
         # If Document is a child, _cls field must be added to the schema
         if opts.is_child:
-            add_child_field(name, schema_fields)
+            _add_child_field(name, schema_fields)
         schema_cls = self._build_schema(template, schema_bases, schema_fields, schema_non_fields)
         nmspc['Schema'] = schema_cls
         schema = schema_cls()
@@ -273,13 +322,13 @@ class BaseBuilder:
 
         # If EmbeddedDocument is a child, _cls field must be added to the schema
         if opts.is_child:
-            add_child_field(name, schema_fields)
+            _add_child_field(name, schema_fields)
 
         # Create schema by retrieving inherited schema classes
         schema_bases = tuple([base.Schema for base in bases
                               if hasattr(base, 'Schema')])
         if not schema_bases:
-            schema_bases = (Schema, )
+            schema_bases = (BaseSchema, )
         schema_cls = self._build_schema(template, schema_bases, schema_fields, schema_non_fields)
         nmspc['Schema'] = schema_cls
         schema = schema_cls()

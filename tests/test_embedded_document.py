@@ -227,7 +227,7 @@ class TestEmbeddedDocument(BaseTest):
 
         with pytest.raises(ValidationError) as exc:
             MyDoc(child={'a': 1, '_cls': 'GrandChild'})
-        assert exc.value.messages == {'child': {'_schema': ['Unknown field name _cls.']}}
+        assert exc.value.messages == {'child': {'_cls': ['Unknown field.']}}
 
         # Try to build a non-child document
         with pytest.raises(ValidationError) as exc:
@@ -402,7 +402,7 @@ class TestEmbeddedDocument(BaseTest):
 
         with pytest.raises(exceptions.ValidationError) as exc:
             NonStrictEmbeddedDoc(a=42, b='foo')
-        assert exc.value.messages == {'_schema': ['Unknown field name b.']}
+        assert exc.value.messages == {'b': ['Unknown field.']}
 
     def test_deepcopy(self):
 

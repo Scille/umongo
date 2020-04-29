@@ -21,7 +21,6 @@ class EmbeddedDocumentTemplate(Template):
         :class:`umongo.instance.BaseInstance` to obtain it corresponding
         :class:`umongo.embedded_document.EmbeddedDocumentImplementation`.
     """
-    pass
 
 
 EmbeddedDocument = EmbeddedDocumentTemplate
@@ -58,7 +57,6 @@ class EmbeddedDocumentOpts:
     offspring            no                     List of EmbeddedDocuments inheriting this one
     ==================== ====================== ===========
     """
-
     def __repr__(self):
         return ('<{ClassName}('
                 'instance={self.instance}, '
@@ -106,7 +104,7 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
     def __eq__(self, other):
         if isinstance(other, dict):
             return self._data == other
-        elif hasattr(other, '_data'):
+        if hasattr(other, '_data'):
             return self._data == other._data
         return NotImplemented
 
