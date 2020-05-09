@@ -13,10 +13,8 @@ addons:
 
 before_install:
 - mongo --version
-- pip install -U six
 install:
-- travis_retry pip install -U tox
-- travis_retry pip install -U coveralls
+- travis_retry pip install -U tox coveralls
 
 script: tox -v
 after_success:
