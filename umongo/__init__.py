@@ -5,7 +5,8 @@ from .frameworks import (
     PyMongoInstance,
     TxMongoInstance,
     MotorAsyncIOInstance,
-    MongoMockInstance
+    MongoMockInstance,
+    MotorTornadoInstance
 )
 from .document import (
     Document,

@@ -21,6 +21,7 @@ __all__ = (
     'PyMongoInstance',
     'TxMongoInstance',
     'MotorAsyncIOInstance',
+    'MotorTornadoInstance',
     'MongoMockInstance'
 )
 
@@ -79,6 +80,15 @@ class MotorAsyncIOInstance(LazyLoaderInstance):
     """
     def __init__(self, *args, **kwargs):
         self.BUILDER_CLS = import_module('umongo.frameworks.motor_asyncio').MotorAsyncIOBuilder
+        super().__init__(*args, **kwargs)
+
+
+class MotorTornadoInstance(LazyLoaderInstance):
+    """
+    :class:`umongo.instance.LazyLoaderInstance` implementation for motor-asyncio
+    """
+    def __init__(self, *args, **kwargs):
+        self.BUILDER_CLS = import_module('umongo.frameworks.motor_tornado').MotorTornadoBuilder
         super().__init__(*args, **kwargs)
 
 
