@@ -105,7 +105,6 @@ Object orientation means inheritance, of course you can do that
         birthday = fields.DateTimeField()
 
         class Meta:
-            allow_inheritance = True
             abstract = True
 
     @instance.register
@@ -125,9 +124,9 @@ Here we use this to allow ``Animal`` to be inheritable and to make it abstract.
 .. code-block:: python
 
     >>> Animal.opts
-    <DocumentOpts(instance=<umongo.frameworks.PyMongoInstance object at 0x7efe7daa9320>, template=<Document template class '__main__.Animal'>, abstract=True, allow_inheritance=True, collection_name=None, is_child=False, base_schema_cls=<class 'umongo.schema.Schema'>, indexes=[], offspring={<Implementation class '__main__.Duck'>, <Implementation class '__main__.Dog'>})>
+    <DocumentOpts(instance=<umongo.frameworks.PyMongoInstance object at 0x7efe7daa9320>, template=<Document template class '__main__.Animal'>, abstract=True, collection_name=None, is_child=False, base_schema_cls=<class 'umongo.schema.Schema'>, indexes=[], offspring={<Implementation class '__main__.Duck'>, <Implementation class '__main__.Dog'>})>
     >>> Dog.opts
-    <DocumentOpts(instance=<umongo.frameworks.PyMongoInstance object at 0x7efe7daa9320>, template=<Document template class '__main__.Dog'>, abstract=False, allow_inheritance=False, collection_name=dog, is_child=False, base_schema_cls=<class 'umongo.schema.Schema'>, indexes=[], offspring=set())>
+    <DocumentOpts(instance=<umongo.frameworks.PyMongoInstance object at 0x7efe7daa9320>, template=<Document template class '__main__.Dog'>, abstract=False, collection_name=dog, is_child=False, base_schema_cls=<class 'umongo.schema.Schema'>, indexes=[], offspring=set())>
     >>> class NotAllowedSubDog(Dog): pass
     [...]
     DocumentDefinitionError: Document <class '__main__.Dog'> doesn't allow inheritance
@@ -349,8 +348,6 @@ Inheritance inside the same collection is achieve by adding a ``_cls`` field
     >>> @instance.register
     ... class Parent(Document):
     ...     unique_in_parent = fields.IntField(unique=True)
-    ...     class Meta:
-    ...         allow_inheritance = True
     >>> @instance.register
     ... class Child(Parent):
     ...     unique_in_child = fields.StrField(unique=True)
@@ -435,8 +432,6 @@ compounded with the ``_cls``
       >>> @instance.register
       ... class Parent(Document):
       ...     unique_in_parent = fields.IntField(unique=True)
-      ...     class Meta:
-      ...         allow_inheritance = True
       >>> @instance.register
       ... class Child(Parent):
       ...     unique_in_child = fields.StrField(unique=True)
@@ -520,26 +515,13 @@ by subclassing it:
     >>> ret
     {'name': 'Scruffy'}
 
-Finally we can integrated the validated data into OO world:
+Finally we can integrate the validated data into OO world:
 
 .. code-block:: python
 
     >>> my_dog.update(ret)
     >>> my_dog.name
     'Scruffy'
-
-.. note:: When instantiating a custom marshmallow schema, you can use`strict=True`
-    to make the schema raise a `ValidationError` instead of returning an error dict.
-    This allow a better integration in umongo own error handling:
-
-    .. code-block:: python
-
-        try:
-            data, _ = patch_dog_schema.load(payload)
-            my_dog.update(data)
-            my_dog.commit()
-        except (ValidationError, UMongoError) as e:
-            # error handling
 
 This works great when you want to add special behavior depending of the situation.
 For more simple usecases we could use the
@@ -588,9 +570,8 @@ from scratch... almost:
     ...     breeds = marshmallow.fields.List(marshmallow.fields.Nested(MassiveBreedSchema))
 
 .. note:: A custom marshmallow schema :class:`umongo.marshmallow_bonus.SchemaFromUmongo`
-    can be used instead of regular :class:`marshmallow.Schema` to benefit a tighter
-    integration with umongo (unknown field checking and field with missing value
-    actually return the ``missing`` singleton instead of serializing it as `None`)
+    can be used instead of regular :class:`marshmallow.Schema` to skip missing fields
+    when dumping a :class:`umongo.Document` object.
 
 This time we directly convert umongo schema's fields into there marshmallow
 equivalent with ``as_marshmallow_field``. Now we can build our ducks easily:

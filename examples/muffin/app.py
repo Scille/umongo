@@ -7,7 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from functools import partial
 
 from umongo import Instance, Document, fields, ValidationError, set_gettext
-from umongo.marshmallow_bonus import SchemaFromUmongo
+from umongo.schema import SchemaFromUmongo
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -202,8 +202,8 @@ async def change_password_user(request):
         return build_error(404, 'Not found')
 
     # Use a field from our document to create a marshmallow schema
-    # Note that we use `SchemaFromUmongo` to get unknown fields check on
-    # deserialization and skip missing fields instead of returning None
+    # Note that we use `SchemaFromUmongo` to skip missing fields
+    # instead of returning None
     class ChangePasswordSchema(SchemaFromUmongo):
         password = User.schema.fields['password'].as_marshmallow_field(params={'required': True})
     # with `strict`, marshmallow raises a ValidationError if something is wrong

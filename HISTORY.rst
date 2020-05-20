@@ -2,6 +2,62 @@
 History
 =======
 
+3.0.0b7 (2020-05-08)
+--------------------
+
+Features:
+
+* *Backwards-incompatible*: Revert broken feature introduced in 3.0.0b6
+  allowing to get fields from mixin classes (see #273).
+
+* *Backwards-incompatible*: Remove ``allow_inheritance`` option. Any
+  ``Document`` or ``EmbeddedDocument`` may be subclassed (see #270).
+
+* *Backwards-incompatible*: ``Field`` raises ``DocumentDefinitionError`` rather
+  than ``RuntimeError`` when passed ``missing`` kwarg and ``Document.commit``
+  raises ``NotCreatedError`` when passed ``conditions`` for a document that is
+  not in database (see #275).
+
+3.0.0b6 (2020-05-04)
+--------------------
+
+Features:
+
+* *Backwards-incompatible*: ``abstract`` in ``EmbeddedDocument`` behaves
+  consistently with ``Document``. The ``_cls`` / ``cls`` field is only added
+  on concrete embedded documents subclassing concrete embedded documents. And
+  ``EmbeddedField`` only accepts concrete embedded documents. (see #86)
+
+* ``Document`` and ``EmbeddedDocument`` may inherits from mixin classes. The
+  mixin class should appear first (leftmost) in the bases:
+  ``class MyDocument(MyMixin, Document)``. (see #188)
+
+Other changes:
+
+* *Backwards-incompatible*: marshmallow imports throughout the code are done as
+  ``import marshmallow as ma``. For convenience, ``missing`` and
+  ``ValidationError`` can still be imported as ``umongo.missing`` and
+  ``umongo.ValidationError``.
+
+3.0.0b5 (2020-04-30)
+--------------------
+
+Features:
+
+* *Backwards-incompatible*: Add ``MA_BASE_SCHEMA_CLS`` class attribute to
+  ``Document`` and ``EmbeddedDocument`` to specify a base class to use in
+  ``as_marshmallow_schema``. Drop the ``check_unknown_fields``, ``params`` and
+  ``meta`` attributes of ``as_marshmallow_schema``. Make ``mongo_world``
+  kwarg-only. The same effect can be achieved using base schema classes.
+  This incidentally fixes broken ``as_marshmallow_schema`` cache feature.
+  (see #263)
+* *Backwards-incompatible*: Add ``TxMongoDocument.find_with_cursor`` and
+  drop support for upstream deprecated ``find(cursor=True)``. (see #259).
+
+Other changes:
+
+* *Backwards-incompatible*: Require txmongo>=19.2.0 (see #259).
+
 3.0.0b4 (2020-04-27)
 --------------------
 

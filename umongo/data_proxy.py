@@ -1,11 +1,12 @@
-from marshmallow import ValidationError, missing
+"""umongo BaseDataProxy"""
+import marshmallow as ma
 
 from .abstract import BaseDataObject
 from .exceptions import UnknownFieldInDBError
 from .i18n import gettext as _
 
 
-__all__ = ('data_proxy_factory', 'missing')
+__all__ = ('data_proxy_factory')
 
 
 class BaseDataProxy:
@@ -31,7 +32,7 @@ class BaseDataProxy:
         for key, val in self._data.items():
             field = self._fields_from_mongo_key[key]
             val = field.serialize_to_mongo(val)
-            if val is not missing:
+            if val is not ma.missing:
                 mongo_data[key] = val
         return mongo_data
 
@@ -43,7 +44,7 @@ class BaseDataProxy:
             field = self._fields[name]
             name = field.attribute or name
             val = field.serialize_to_mongo(self._data[name])
-            if val is missing:
+            if val is ma.missing:
                 unset_data.append(name)
             else:
                 set_data[name] = val
@@ -105,7 +106,7 @@ class BaseDataProxy:
     def set(self, name, value, to_raise=KeyError):
         name, field = self._get_field(name, to_raise)
         if value is None and not getattr(field, 'allow_none', False):
-            raise ValidationError(field.error_messages['null'])
+            raise ma.ValidationError(field.error_messages['null'])
         if value is not None:
             value = field._deserialize(value, name, None)
             field._validate(value)
@@ -166,15 +167,15 @@ class BaseDataProxy:
         errors = {}
         for name, field in self.schema.fields.items():
             value = self._data[field.attribute or name]
-            if field.required and value is missing:
+            if field.required and value is ma.missing:
                 errors[name] = [_("Missing data for required field.")]
             elif hasattr(field, '_required_validate'):
                 try:
                     field._required_validate(value)
-                except ValidationError as exc:
+                except ma.ValidationError as exc:
                     errors[name] = exc.messages
         if errors:
-            raise ValidationError(errors)
+            raise ma.ValidationError(errors)
 
     # Standards iterators providing oo and mongo worlds views
 

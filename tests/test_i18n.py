@@ -1,6 +1,8 @@
 import pytest
 
-from umongo import Document, fields, set_gettext, ValidationError, validate
+import marshmallow as ma
+
+from umongo import Document, fields, set_gettext, validate
 from umongo.i18n import gettext
 from umongo.abstract import BaseField
 
@@ -35,6 +37,6 @@ class TestI18N(BaseTest):
             return message.upper()
 
         set_gettext(my_gettext)
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             Client(phone_number='not a phone !')
         assert exc.value.args[0] == {'phone_number': ['STRING DOES NOT MATCH EXPECTED PATTERN.']}

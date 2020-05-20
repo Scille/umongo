@@ -5,6 +5,7 @@ import pytest
 from bson import ObjectId
 from pymongo import MongoClient
 from pymongo.results import InsertOneResult, UpdateResult, DeleteResult
+import marshmallow as ma
 
 from umongo import Document, EmbeddedDocument, fields, exceptions, Reference
 from umongo.frameworks import pymongo as framework_pymongo  # noqa
@@ -76,7 +77,7 @@ class TestPymongo(BaseDBTest):
         john.reload()
         assert john.name == 'Zorro Doe'
         # Cannot use conditions when creating document
-        with pytest.raises(RuntimeError):
+        with pytest.raises(exceptions.NotCreatedError):
             Student(name='Joe').commit(conditions={'name': 'dummy'})
 
     def test_delete(self, classroom_model):
@@ -177,24 +178,24 @@ class TestPymongo(BaseDBTest):
     def test_validation_on_commit(self, instance):
 
         def io_validate(field, value):
-            raise exceptions.ValidationError('Ho boys !')
+            raise ma.ValidationError('Ho boys !')
 
         @instance.register
         class Dummy(Document):
             required_name = fields.StrField(required=True)
             always_io_fail = fields.IntField(io_validate=io_validate)
 
-        with pytest.raises(exceptions.ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             Dummy().commit()
         assert exc.value.messages == {'required_name': ['Missing data for required field.']}
-        with pytest.raises(exceptions.ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             Dummy(required_name='required', always_io_fail=42).commit()
         assert exc.value.messages == {'always_io_fail': ['Ho boys !']}
 
         dummy = Dummy(required_name='required')
         dummy.commit()
         del dummy.required_name
-        with pytest.raises(exceptions.ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             dummy.commit()
         assert exc.value.messages == {'required_name': ['Missing data for required field.']}
 
@@ -224,7 +225,7 @@ class TestPymongo(BaseDBTest):
         assert course.teacher.fetch(force_reload=True).name == 'M. Strickland'
         # Test bad ref as well
         course.teacher = Reference(classroom_model.Teacher, ObjectId())
-        with pytest.raises(exceptions.ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             course.io_validate()
         assert exc.value.messages == {'teacher': ['Reference not found for document Teacher.']}
 
@@ -254,7 +255,7 @@ class TestPymongo(BaseDBTest):
         Student = classroom_model.Student
 
         def io_validate(field, value):
-            raise exceptions.ValidationError('Ho boys !')
+            raise ma.ValidationError('Ho boys !')
 
         @instance.register
         class EmbeddedDoc(EmbeddedDocument):
@@ -276,7 +277,7 @@ class TestPymongo(BaseDBTest):
             reference_io_field=bad_reference,
             embedded_io_field={'io_field': 42}
         )
-        with pytest.raises(exceptions.ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             student.io_validate()
         assert exc.value.messages == {
             'io_field': ['Ho boys !'],
@@ -431,10 +432,10 @@ class TestPymongo(BaseDBTest):
 
         UniqueIndexDoc(not_unique='a', required_unique=1).commit()
         UniqueIndexDoc(not_unique='a', sparse_unique=1, required_unique=2).commit()
-        with pytest.raises(exceptions.ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             UniqueIndexDoc(not_unique='a', required_unique=1).commit()
         assert exc.value.messages == {'required_unique': 'Field value must be unique.'}
-        with pytest.raises(exceptions.ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             UniqueIndexDoc(not_unique='a', sparse_unique=1, required_unique=3).commit()
         assert exc.value.messages == {'sparse_unique': 'Field value must be unique.'}
 
@@ -481,13 +482,13 @@ class TestPymongo(BaseDBTest):
         UniqueIndexCompoundDoc(not_unique='a', compound1=1, compound2=2).commit()
         UniqueIndexCompoundDoc(not_unique='a', compound1=2, compound2=1).commit()
         UniqueIndexCompoundDoc(not_unique='a', compound1=2, compound2=2).commit()
-        with pytest.raises(exceptions.ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             UniqueIndexCompoundDoc(not_unique='a', compound1=1, compound2=1).commit()
         assert exc.value.messages == {
             'compound2': "Values of fields ['compound1', 'compound2'] must be unique together.",
             'compound1': "Values of fields ['compound1', 'compound2'] must be unique together."
         }
-        with pytest.raises(exceptions.ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             UniqueIndexCompoundDoc(not_unique='a', compound1=2, compound2=1).commit()
         assert exc.value.messages == {
             'compound2': "Values of fields ['compound1', 'compound2'] must be unique together.",
@@ -501,9 +502,6 @@ class TestPymongo(BaseDBTest):
         class UniqueIndexParentDoc(Document):
             not_unique = fields.StrField(unique=False)
             unique = fields.IntField(unique=True)
-
-            class Meta:
-                allow_inheritance = True
 
         @instance.register
         class UniqueIndexChildDoc(UniqueIndexParentDoc):
@@ -562,15 +560,9 @@ class TestPymongo(BaseDBTest):
         class InheritanceSearchParent(Document):
             pf = fields.IntField()
 
-            class Meta:
-                allow_inheritance = True
-
         @instance.register
         class InheritanceSearchChild1(InheritanceSearchParent):
             c1f = fields.IntField()
-
-            class Meta:
-                allow_inheritance = True
 
         @instance.register
         class InheritanceSearchChild1Child(InheritanceSearchChild1):

@@ -4,8 +4,9 @@ from datetime import datetime
 import pytest
 
 from bson import ObjectId, DBRef
+import marshmallow as ma
 
-from umongo import (Document, EmbeddedDocument, BaseSchema, fields, exceptions,
+from umongo import (Document, EmbeddedDocument, Schema, fields, exceptions,
                     post_dump, pre_load, validates_schema)
 
 from .common import BaseTest
@@ -201,11 +202,11 @@ class TestDocument(BaseTest):
     def test_required_fields(self):
         # Should be able to instanciate document without their required fields
         student = self.Student()
-        with pytest.raises(exceptions.ValidationError):
+        with pytest.raises(ma.ValidationError):
             student.required_validate()
 
         student = self.Student(gpa=2.8)
-        with pytest.raises(exceptions.ValidationError):
+        with pytest.raises(ma.ValidationError):
             student.required_validate()
 
         student = self.Student(gpa=2.8, name='Marty')
@@ -216,14 +217,12 @@ class TestDocument(BaseTest):
 
         @self.instance.register
         class AutoId(Document):
-
-            class Meta:
-                allow_inheritance = True
+            pass
 
         assert 'id' in AutoId.schema.fields
 
         # default id field is only dumpable
-        with pytest.raises(exceptions.ValidationError):
+        with pytest.raises(ma.ValidationError):
             AutoId(id=my_id)
 
         autoid = AutoId.build_from_mongo({'_id': my_id})
@@ -244,14 +243,11 @@ class TestDocument(BaseTest):
         class CustomId(Document):
             int_id = fields.IntField(attribute='_id')
 
-            class Meta:
-                allow_inheritance = True
-
         assert 'id' not in CustomId.schema.fields
-        with pytest.raises(exceptions.ValidationError):
+        with pytest.raises(ma.ValidationError):
             CustomId(id=my_id)
         customid = CustomId(int_id=42)
-        with pytest.raises(exceptions.ValidationError):
+        with pytest.raises(ma.ValidationError):
             customid.int_id = my_id
         assert customid.int_id == 42
         assert customid.pk == customid.int_id
@@ -309,8 +305,7 @@ class TestDocument(BaseTest):
         # a template instead of from an implementation
 
         class ParentAsTemplate(Document):
-            class Meta:
-                allow_inheritance = True
+            pass
 
         Parent = self.instance.register(ParentAsTemplate)
 
@@ -323,18 +318,15 @@ class TestDocument(BaseTest):
     def test_grand_child_inheritance(self):
         @self.instance.register
         class GrandParent(Document):
-            class Meta:
-                allow_inheritance = True
+            pass
 
         @self.instance.register
         class Parent(GrandParent):
-            class Meta:
-                allow_inheritance = True
+            pass
 
         @self.instance.register
         class Uncle(GrandParent):
-            class Meta:
-                allow_inheritance = True
+            pass
 
         @self.instance.register
         class Child(Parent):
@@ -350,7 +342,7 @@ class TestDocument(BaseTest):
         assert Child.opts.offspring == set()
         assert Cousin.opts.offspring == set()
 
-    def test_instanciate_template(self):
+    def test_instantiate_template(self):
 
         class Doc(Document):
             pass
@@ -451,7 +443,7 @@ class TestConfig(BaseTest):
             pass
 
         d = Doc()
-        assert isinstance(d.schema, BaseSchema)
+        assert isinstance(d.schema, Schema)
 
     def test_base_config(self):
 
@@ -461,7 +453,6 @@ class TestConfig(BaseTest):
 
         assert Doc.opts.collection_name == 'doc'
         assert Doc.opts.abstract is False
-        assert Doc.opts.allow_inheritance is False
         assert Doc.opts.instance is self.instance
         assert Doc.opts.is_child is False
         assert Doc.opts.indexes == []
@@ -479,7 +470,6 @@ class TestConfig(BaseTest):
         class DocChild1(AbsDoc):
 
             class Meta:
-                allow_inheritance = True
                 collection_name = 'col1'
 
         @self.instance.register
@@ -494,7 +484,6 @@ class TestConfig(BaseTest):
 
         assert DocChild1.opts.collection_name is 'col1'
         assert DocChild1Child.opts.collection_name is 'col1'
-        assert DocChild1Child.opts.allow_inheritance is False
         assert DocChild2.opts.collection_name == 'col2'
 
     def test_marshmallow_tags_build(self):
@@ -515,9 +504,6 @@ class TestConfig(BaseTest):
         class Animal(Document):
             name = fields.StrField(attribute='_id')  # Overwrite automatic pk
 
-            class Meta:
-                allow_inheritance = True
-
         @self.instance.register
         class Dog(Animal):
             pass
@@ -537,7 +523,7 @@ class TestConfig(BaseTest):
             @validates_schema(pass_original=True)
             def custom_validate(self, data, original_data, **kwargs):
                 if original_data['name'] != 'Donald':
-                    raise exceptions.ValidationError('Not suitable name for duck !', 'name')
+                    raise ma.ValidationError('Not suitable name for duck !', 'name')
 
         duck = Duck(name='Donald')
         dog = Dog(name='Pluto')
@@ -547,37 +533,14 @@ class TestConfig(BaseTest):
         assert dog.dump() == {'name': 'Pluto', 'cls': 'Dog'}
         assert Duck(name='Donald', race='Duck')._data == duck._data
 
-        with pytest.raises(exceptions.ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             Duck(name='Roger')
         exc.value.args[0] == {'name': 'Not suitable name for duck !'}
 
     def test_bad_inheritance(self):
-        with pytest.raises(exceptions.DocumentDefinitionError) as exc:
-            @self.instance.register
-            class BadAbstractDoc(Document):
-                class Meta:
-                    allow_inheritance = False
-                    abstract = True
-        assert exc.value.args[0] == "Abstract document cannot disable inheritance"
-
-        @self.instance.register
-        class NotParent(Document):
-            pass
-
-        assert not NotParent.opts.allow_inheritance
-
-        with pytest.raises(exceptions.DocumentDefinitionError) as exc:
-            @self.instance.register
-            class ImpossibleChildDoc1(NotParent):
-                pass
-        assert exc.value.args[0] == ("Document"
-            " <Implementation class 'tests.test_document.NotParent'>"
-            " doesn't allow inheritance")
-
         @self.instance.register
         class NotAbstractParent(Document):
-            class Meta:
-                allow_inheritance = True
+            pass
 
         with pytest.raises(exceptions.DocumentDefinitionError) as exc:
             @self.instance.register
@@ -589,13 +552,11 @@ class TestConfig(BaseTest):
         @self.instance.register
         class ParentWithCol1(Document):
             class Meta:
-                allow_inheritance = True
                 collection_name = 'col1'
 
         @self.instance.register
         class ParentWithCol2(Document):
             class Meta:
-                allow_inheritance = True
                 collection_name = 'col2'
 
         with pytest.raises(exceptions.DocumentDefinitionError) as exc:
@@ -633,6 +594,6 @@ class TestConfig(BaseTest):
         assert non_strict_doc.to_mongo() == data_with_bonus
         non_strict_doc.dump() == {'a': 42}
 
-        with pytest.raises(exceptions.ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             NonStrictDoc(a=42, b='foo')
         assert exc.value.messages == {'b': ['Unknown field.']}

@@ -4,6 +4,7 @@ from datetime import datetime
 import pytest
 
 from bson import ObjectId
+import marshmallow as ma
 
 # Check if the required dependancies are met to run this driver's tests
 try:
@@ -101,7 +102,7 @@ class TestMotorAsyncio(BaseDBTest):
             await john.reload()
             assert john.name == 'Zorro Doe'
             # Cannot use conditions when creating document
-            with pytest.raises(RuntimeError):
+            with pytest.raises(exceptions.NotCreatedError):
                 await Student(name='Joe').commit(conditions={'name': 'dummy'})
 
         loop.run_until_complete(do_test())
@@ -266,24 +267,24 @@ class TestMotorAsyncio(BaseDBTest):
         async def do_test():
 
             async def io_validate(field, value):
-                raise exceptions.ValidationError('Ho boys !')
+                raise ma.ValidationError('Ho boys !')
 
             @instance.register
             class Dummy(Document):
                 required_name = fields.StrField(required=True)
                 always_io_fail = fields.IntField(io_validate=io_validate)
 
-            with pytest.raises(exceptions.ValidationError) as exc:
+            with pytest.raises(ma.ValidationError) as exc:
                 await Dummy().commit()
             assert exc.value.messages == {'required_name': ['Missing data for required field.']}
-            with pytest.raises(exceptions.ValidationError) as exc:
+            with pytest.raises(ma.ValidationError) as exc:
                 await Dummy(required_name='required', always_io_fail=42).commit()
             assert exc.value.messages == {'always_io_fail': ['Ho boys !']}
 
             dummy = Dummy(required_name='required')
             await dummy.commit()
             del dummy.required_name
-            with pytest.raises(exceptions.ValidationError) as exc:
+            with pytest.raises(ma.ValidationError) as exc:
                 await dummy.commit()
             assert exc.value.messages == {'required_name': ['Missing data for required field.']}
 
@@ -325,7 +326,7 @@ class TestMotorAsyncio(BaseDBTest):
             assert teacher_fetched.name == 'M. Strickland'
             # Test bad ref as well
             course.teacher = Reference(classroom_model.Teacher, ObjectId())
-            with pytest.raises(exceptions.ValidationError) as exc:
+            with pytest.raises(ma.ValidationError) as exc:
                 await course.io_validate()
             assert exc.value.messages == {'teacher': ['Reference not found for document Teacher.']}
 
@@ -365,7 +366,7 @@ class TestMotorAsyncio(BaseDBTest):
             Student = classroom_model.Student
 
             async def io_validate(field, value):
-                raise exceptions.ValidationError('Ho boys !')
+                raise ma.ValidationError('Ho boys !')
 
             @instance.register
             class EmbeddedDoc(EmbeddedDocument):
@@ -386,7 +387,7 @@ class TestMotorAsyncio(BaseDBTest):
                 reference_io_field=bad_reference,
                 embedded_io_field={'io_field': 42}
             )
-            with pytest.raises(exceptions.ValidationError) as exc:
+            with pytest.raises(ma.ValidationError) as exc:
                 await student.io_validate()
             assert exc.value.messages == {
                 'io_field': ['Ho boys !'],
@@ -574,10 +575,10 @@ class TestMotorAsyncio(BaseDBTest):
 
             await UniqueIndexDoc(not_unique='a', required_unique=1).commit()
             await UniqueIndexDoc(not_unique='a', sparse_unique=1, required_unique=2).commit()
-            with pytest.raises(exceptions.ValidationError) as exc:
+            with pytest.raises(ma.ValidationError) as exc:
                 await UniqueIndexDoc(not_unique='a', required_unique=1).commit()
             assert exc.value.messages == {'required_unique': 'Field value must be unique.'}
-            with pytest.raises(exceptions.ValidationError) as exc:
+            with pytest.raises(ma.ValidationError) as exc:
                 await UniqueIndexDoc(not_unique='a', sparse_unique=1, required_unique=3).commit()
             assert exc.value.messages == {'sparse_unique': 'Field value must be unique.'}
 
@@ -628,13 +629,13 @@ class TestMotorAsyncio(BaseDBTest):
             await UniqueIndexCompoundDoc(not_unique='a', compound1=1, compound2=2).commit()
             await UniqueIndexCompoundDoc(not_unique='a', compound1=2, compound2=1).commit()
             await UniqueIndexCompoundDoc(not_unique='a', compound1=2, compound2=2).commit()
-            with pytest.raises(exceptions.ValidationError) as exc:
+            with pytest.raises(ma.ValidationError) as exc:
                 await UniqueIndexCompoundDoc(not_unique='a', compound1=1, compound2=1).commit()
             assert exc.value.messages == {
                 'compound2': "Values of fields ['compound1', 'compound2'] must be unique together.",
                 'compound1': "Values of fields ['compound1', 'compound2'] must be unique together."
             }
-            with pytest.raises(exceptions.ValidationError) as exc:
+            with pytest.raises(ma.ValidationError) as exc:
                 await UniqueIndexCompoundDoc(not_unique='a', compound1=2, compound2=1).commit()
             assert exc.value.messages == {
                 'compound2': "Values of fields ['compound1', 'compound2'] must be unique together.",
@@ -652,9 +653,6 @@ class TestMotorAsyncio(BaseDBTest):
             class UniqueIndexParentDoc(Document):
                 not_unique = fields.StrField(unique=False)
                 unique = fields.IntField(unique=True)
-
-                class Meta:
-                    allow_inheritance = True
 
             @instance.register
             class UniqueIndexChildDoc(UniqueIndexParentDoc):
@@ -717,15 +715,9 @@ class TestMotorAsyncio(BaseDBTest):
             class InheritanceSearchParent(Document):
                 pf = fields.IntField()
 
-                class Meta:
-                    allow_inheritance = True
-
             @instance.register
             class InheritanceSearchChild1(InheritanceSearchParent):
                 c1f = fields.IntField()
-
-                class Meta:
-                    allow_inheritance = True
 
             @instance.register
             class InheritanceSearchChild1Child(InheritanceSearchChild1):

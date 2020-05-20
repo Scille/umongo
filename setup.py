@@ -21,7 +21,7 @@ requirements = [
 
 setup(
     name='umongo',
-    version='3.0.0b4',
+    version='3.0.0b7',
     description="sync/async MongoDB ODM, yes.",
     long_description=readme + '\n\n' + history,
     author="Emmanuel Leblond",
@@ -33,7 +33,7 @@ setup(
     install_requires=requirements,
     extras_require={
         'motor': ['motor>=1.1,<3.0'],
-        'txmongo': ['txmongo>=16.0.1'],
+        'txmongo': ['txmongo>=19.2.0'],
         'mongomock': ['mongomock'],
     },
     license="MIT",

@@ -4,14 +4,12 @@ import asyncio
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorCursor
 from motor import version_tuple as MOTOR_VERSION
 from pymongo.errors import DuplicateKeyError
+import marshmallow as ma
 
 from ..builder import BaseBuilder
 from ..document import DocumentImplementation
-from ..data_proxy import missing
 from ..data_objects import Reference
-from ..exceptions import (
-    NotCreatedError, UpdateError, DeleteError, ValidationError, NoneReferenceError
-)
+from ..exceptions import NotCreatedError, UpdateError, DeleteError, NoneReferenceError
 from ..fields import ReferenceField, ListField, EmbeddedField
 from ..query_mapper import map_query
 
@@ -156,7 +154,9 @@ class MotorAsyncIODocument(DocumentImplementation):
                 else:
                     ret = None
             elif conditions:
-                raise RuntimeError('Document must already exist in database to use `conditions`.')
+                raise NotCreatedError(
+                    'Document must already exist in database to use `conditions`.'
+                )
             else:
                 await self.__coroutined_pre_insert()
                 self.required_validate()
@@ -177,11 +177,11 @@ class MotorAsyncIODocument(DocumentImplementation):
                     if len(keys) == 1:
                         key = tuple(keys)[0]
                         msg = self.schema.fields[key].error_messages['unique']
-                        raise ValidationError({key: msg})
+                        raise ma.ValidationError({key: msg})
                     fields = self.schema.fields
                     # Compound index (sort value to make testing easier)
                     keys = sorted(keys)
-                    raise ValidationError({
+                    raise ma.ValidationError({
                         k: fields[k].error_messages['unique_compound'].format(fields=keys)
                         for k in keys
                     })
@@ -288,12 +288,12 @@ async def _run_validators(validators, field, value):
     tasks = [validator(field, value) for validator in validators]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     for i, res in enumerate(results):
-        if isinstance(res, ValidationError):
+        if isinstance(res, ma.ValidationError):
             errors.extend(res.messages)
         elif res:
             raise res
     if errors:
-        raise ValidationError(errors)
+        raise ma.ValidationError(errors)
 
 
 async def _io_validate_data_proxy(schema, data_proxy, partial=None):
@@ -303,9 +303,8 @@ async def _io_validate_data_proxy(schema, data_proxy, partial=None):
     for name, field in schema.fields.items():
         if partial and name not in partial:
             continue
-        data_name = field.attribute or name
-        value = data_proxy._data[data_name]
-        if value is missing:
+        value = data_proxy.get(name)
+        if value is ma.missing:
             continue
         try:
             if field.io_validate_recursive:
@@ -313,16 +312,16 @@ async def _io_validate_data_proxy(schema, data_proxy, partial=None):
             if field.io_validate:
                 tasks.append(_run_validators(field.io_validate, field, value))
                 tasks_field_name.append(name)
-        except ValidationError as exc:
+        except ma.ValidationError as exc:
             errors[name] = exc.messages
     results = await asyncio.gather(*tasks, return_exceptions=True)
     for i, res in enumerate(results):
-        if isinstance(res, ValidationError):
+        if isinstance(res, ma.ValidationError):
             errors[tasks_field_name[i]] = res.messages
         elif res:
             raise res
     if errors:
-        raise ValidationError(errors)
+        raise ma.ValidationError(errors)
 
 
 async def _reference_io_validate(field, value):
@@ -337,12 +336,12 @@ async def _list_io_validate(field, value):
     results = await asyncio.gather(*tasks, return_exceptions=True)
     errors = {}
     for i, res in enumerate(results):
-        if isinstance(res, ValidationError):
+        if isinstance(res, ma.ValidationError):
             errors[i] = res.messages
         elif res:
             raise res
     if errors:
-        raise ValidationError(errors)
+        raise ma.ValidationError(errors)
 
 
 async def _embedded_document_io_validate(field, value):
@@ -361,7 +360,7 @@ class MotorAsyncIOReference(Reference):
                 raise NoneReferenceError('Cannot retrieve a None Reference')
             self._document = await self.document_cls.find_one(self.pk)
             if not self._document:
-                raise ValidationError(self.error_messages['not_found'].format(
+                raise ma.ValidationError(self.error_messages['not_found'].format(
                     document=self.document_cls.__name__))
         return self._document
 
