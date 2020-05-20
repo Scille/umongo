@@ -5,10 +5,10 @@ from uuid import UUID
 import pytest
 
 from bson import ObjectId, DBRef, Decimal128
-from marshmallow import ValidationError, missing
+import marshmallow as ma
 
 from umongo.data_proxy import data_proxy_factory
-from umongo import Document, EmbeddedDocument, BaseSchema, fields, Reference, validate
+from umongo import Document, EmbeddedDocument, Schema, fields, Reference, validate
 from umongo.data_objects import List, Dict
 
 from .common import BaseTest
@@ -27,7 +27,7 @@ class TestRequired(BaseTest):
         person = Person(birthday=dt.datetime(1968, 6, 9))
 
         # required should be called during commit
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             person.required_validate()
         assert exc.value.messages == {'name': ['Missing data for required field.']}
 
@@ -52,19 +52,19 @@ class TestRequired(BaseTest):
         # Don't check required fields in not required missing embedded
         MyDoc(embedded_required={'required_field': 42}).required_validate()
         # Now trigger required fails
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             MyDoc().required_validate()
         assert exc.value.messages == {'embedded_required': ['Missing data for required field.']}
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             MyDoc(embedded_required={'optional_field': 1}).required_validate()
         assert exc.value.messages == {'embedded_required': {'required_field': ['Missing data for required field.']}}
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             MyDoc(
                 embedded={'optional_field': 1},
                 embedded_required={'required_field': 42}
             ).required_validate()
         assert exc.value.messages == {'embedded': {'required_field': ['Missing data for required field.']}}
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             MyDoc(
                 embedded={'required_field': 1},
                 embedded_list=[{'optional_field': 1}],
@@ -92,7 +92,7 @@ class TestFields(BaseTest):
 
     def test_basefields(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             string = fields.StringField()
             uuid = fields.UUIDField()
             number = fields.NumberField()
@@ -154,12 +154,12 @@ class TestFields(BaseTest):
             'email': "jdoe@example.com",
             'constant': 'const'
         }
-        with pytest.raises(ValidationError):
+        with pytest.raises(ma.ValidationError):
             s.load({'to_format': 'not allowed'})
 
     def test_datetime(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             a = fields.DateTimeField()
 
         s = MySchema()
@@ -169,7 +169,7 @@ class TestFields(BaseTest):
         assert data['a'] == dt.datetime(2016, 8, 6, tzinfo=dt.timezone.utc)
         data = s.load({'a': "2016-08-06T00:00:00"})
         assert data['a'] == dt.datetime(2016, 8, 6)
-        with pytest.raises(ValidationError):
+        with pytest.raises(ma.ValidationError):
             s.load({'a': "dummy"})
 
         # Test DateTimeField rounds to milliseconds
@@ -191,7 +191,7 @@ class TestFields(BaseTest):
 
         timezone_2h = dt.timezone(dt.timedelta(hours=2), "test")
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             a = fields.AwareDateTimeField()
             b = fields.AwareDateTimeField(default_timezone=timezone_2h)
 
@@ -200,9 +200,9 @@ class TestFields(BaseTest):
         assert data['a'] == dt.datetime(2016, 8, 6, tzinfo=dt.timezone.utc)
         data = s.load({'a': "2016-08-06T00:00:00Z"})
         assert data['a'] == dt.datetime(2016, 8, 6, tzinfo=dt.timezone.utc)
-        with pytest.raises(ValidationError):
+        with pytest.raises(ma.ValidationError):
             data = s.load({'a': "2016-08-06T00:00:00"})
-        with pytest.raises(ValidationError):
+        with pytest.raises(ma.ValidationError):
             s.load({'a': "dummy"})
 
         # Test AwareDateTimeField deserializes as aware
@@ -221,7 +221,7 @@ class TestFields(BaseTest):
 
     def test_date(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             a = fields.DateField()
 
         s = MySchema()
@@ -229,7 +229,7 @@ class TestFields(BaseTest):
         assert data['a'] == dt.date(2016, 8, 6)
         data = s.load({'a': "2016-08-06"})
         assert data['a'] == dt.date(2016, 8, 6)
-        with pytest.raises(ValidationError):
+        with pytest.raises(ma.ValidationError):
             s.load({'a': "dummy"})
 
         # Test _serialize_to_mongo / _deserialize_from_mongo
@@ -242,7 +242,7 @@ class TestFields(BaseTest):
 
     def test_dict(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             dict = fields.DictField(attribute='in_mongo_dict', allow_none=True)
             kdict = fields.DictField(keys=fields.StringField(validate=validate.Length(0, 1)))
             vdict = fields.DictField(values=fields.IntField(validate=validate.Range(max=5)))
@@ -286,7 +286,7 @@ class TestFields(BaseTest):
 
         d3 = MyDataProxy()
         d3.from_mongo({})
-        assert d3.get('dict') is missing
+        assert d3.get('dict') is ma.missing
         assert d3.to_mongo() == {}
         assert d3.to_mongo(update=True) is None
 
@@ -301,14 +301,14 @@ class TestFields(BaseTest):
         d4.from_mongo({'in_mongo_dict': None})
         assert d4.get('dict') is None
 
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             MyDataProxy({'kdict': {'ab': 1}})
         assert exc.value.messages == {'kdict': {'ab': {'key': ['Length must be between 0 and 1.']}}}
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             MyDataProxy({'vdict': {'a': 9}})
         assert exc.value.messages == {
             'vdict': {'a': {'value': ['Must be less than or equal to 5.']}}}
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             MyDataProxy({'kvdict': {'ab': 9}})
         assert exc.value.messages == {'kvdict': {'ab': {
             'key': ['Length must be between 0 and 1.'],
@@ -320,7 +320,7 @@ class TestFields(BaseTest):
 
     def test_dict_default(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             # Passing a mutable as default is a bad idea in real life
             d_dict = fields.DictField(values=fields.IntField, default={'1': 1, '2': 2})
             c_dict = fields.DictField(values=fields.IntField, default=lambda: {'1': 1, '2': 2})
@@ -408,7 +408,7 @@ class TestFields(BaseTest):
 
     def test_list(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             list = fields.ListField(fields.IntField(), attribute='in_mongo_list', allow_none=True)
 
         MyDataProxy = data_proxy_factory('My', MySchema())
@@ -469,7 +469,7 @@ class TestFields(BaseTest):
 
         d2 = MyDataProxy()
         d2.from_mongo({})
-        assert d2.get('list') is missing
+        assert d2.get('list') is ma.missing
         assert d2.to_mongo() == {}
 
         d2.from_mongo({'in_mongo_list': []})
@@ -493,7 +493,7 @@ class TestFields(BaseTest):
 
     def test_list_default(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             d_list = fields.ListField(fields.IntField(), default=(1, 2, 3))
             c_list = fields.ListField(fields.IntField(), default=lambda: (1, 2, 3))
 
@@ -582,7 +582,7 @@ class TestFields(BaseTest):
 
     def test_objectid(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             objid = fields.ObjectIdField(attribute='in_mongo_objid')
 
         MyDataProxy = data_proxy_factory('My', MySchema())
@@ -606,7 +606,7 @@ class TestFields(BaseTest):
         d.set('objid', "5672d5e71d41c88f914b77c4")
         assert d.get('objid') == ObjectId("5672d5e71d41c88f914b77c4")
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ma.ValidationError):
             d.set('objid', 'notanid')
 
     def test_reference(self):
@@ -656,13 +656,13 @@ class TestFields(BaseTest):
         d.set('ref', dbref)
         assert d.get('ref') == ref
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ma.ValidationError):
             d.set('ref', other_doc)
         not_created_doc = MyReferencedDoc()
-        with pytest.raises(ValidationError):
+        with pytest.raises(ma.ValidationError):
             d.set('ref', not_created_doc)
         bad_ref = Reference(OtherDoc, other_doc.pk)
-        with pytest.raises(ValidationError):
+        with pytest.raises(ma.ValidationError):
             d.set('ref', bad_ref)
 
         d2 = MyDataProxy({'ref': None})
@@ -728,7 +728,7 @@ class TestFields(BaseTest):
         assert d.dump() == {'gref': {'id': str(doc1.pk), 'cls': 'ToRef1'}}
 
         not_created_doc = ToRef1()
-        with pytest.raises(ValidationError):
+        with pytest.raises(ma.ValidationError):
             d.set('gref', not_created_doc)
 
         # Test invalid references
@@ -743,7 +743,7 @@ class TestFields(BaseTest):
             '',  # Please stop...
             True  # I'm outa of that !
         ]:
-            with pytest.raises(ValidationError):
+            with pytest.raises(ma.ValidationError):
                 d.set('gref', v)
 
         d2 = MyDataProxy({'gref': None})
@@ -753,7 +753,7 @@ class TestFields(BaseTest):
 
     def test_decimal(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             price = fields.DecimalField(attribute='in_mongo_price')
 
         MyDataProxy = data_proxy_factory('My', MySchema())
@@ -799,5 +799,5 @@ class TestFields(BaseTest):
             'in_mongo_price': Decimal('7.1234')
         }
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ma.ValidationError):
             d.set('price', 'str')

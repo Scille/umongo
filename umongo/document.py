@@ -1,12 +1,15 @@
+"""umongo Document"""
 from copy import deepcopy
 
 from bson import DBRef
-from marshmallow import pre_load, post_load, pre_dump, post_dump, validates_schema  # republishing
+import marshmallow as ma
+from marshmallow import (
+    pre_load, post_load, pre_dump, post_dump, validates_schema,  # republishing
+)
 
 from .abstract import BaseDataObject
-from .data_proxy import missing
-from .exceptions import (AlreadyCreatedError, NotCreatedError, NoDBDefinedError,
-                         AbstractDocumentError, DocumentDefinitionError)
+from .exceptions import (
+    AlreadyCreatedError, NotCreatedError, NoDBDefinedError, AbstractDocumentError)
 from .template import Implementation, Template, MetaImplementation
 from .data_objects import Reference
 
@@ -38,6 +41,7 @@ class DocumentTemplate(Template):
         or `marshmallow.post_dump`) to this class that will be passed
         to the marshmallow schema internally used for this document.
     """
+    MA_BASE_SCHEMA_CLS = ma.Schema
 
 
 Document = DocumentTemplate
@@ -67,7 +71,6 @@ class DocumentOpts:
     instance             no                     Implementation's instance
     abstract             yes                    Document has no collection
                                                 and can only be inherited
-    allow_inheritance    yes                    Allow the document to be subclassed
     collection_name      yes                    Name of the collection to store
                                                 the document into
     is_child             no                     Document inherit of a non-abstract document
@@ -82,7 +85,6 @@ class DocumentOpts:
                 'instance={self.instance}, '
                 'template={self.template}, '
                 'abstract={self.abstract}, '
-                'allow_inheritance={self.allow_inheritance}, '
                 'collection_name={self.collection_name}, '
                 'is_child={self.is_child}, '
                 'strict={self.strict}, '
@@ -91,19 +93,15 @@ class DocumentOpts:
                 .format(ClassName=self.__class__.__name__, self=self))
 
     def __init__(self, instance, template, collection_name=None, abstract=False,
-                 allow_inheritance=None, indexes=None, is_child=True, strict=True,
-                 offspring=None):
+                 indexes=None, is_child=True, strict=True, offspring=None):
         self.instance = instance
         self.template = template
         self.collection_name = collection_name if not abstract else None
         self.abstract = abstract
-        self.allow_inheritance = abstract if allow_inheritance is None else allow_inheritance
         self.indexes = indexes or []
         self.is_child = is_child
         self.strict = strict
         self.offspring = set(offspring) if offspring else set()
-        if self.abstract and not self.allow_inheritance:
-            raise DocumentDefinitionError("Abstract document cannot disable inheritance")
 
 
 class MetaDocumentImplementation(MetaImplementation):
@@ -188,7 +186,7 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
                      field could be generated before insertion
         """
         value = self._data.get(self.pk_field)
-        return value if value is not missing else None
+        return value if value is not ma.missing else None
 
     @property
     def dbref(self):
@@ -270,7 +268,7 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
 
     def __getitem__(self, name):
         value = self._data.get(name)
-        return value if value is not missing else None
+        return value if value is not ma.missing else None
 
     def __setitem__(self, name, value):
         if self.is_created and name == self.pk_field:
@@ -286,7 +284,7 @@ class DocumentImplementation(BaseDataObject, Implementation, metaclass=MetaDocum
         if name[:2] == name[-2:] == '__':
             raise AttributeError(name)
         value = self._data.get(name, to_raise=AttributeError)
-        return value if value is not missing else None
+        return value if value is not ma.missing else None
 
     def __setattr__(self, name, value):
         # Try to retrieve name among class's attributes and __slots__

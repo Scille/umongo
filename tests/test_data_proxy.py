@@ -1,10 +1,10 @@
 import pytest
 
 from bson import ObjectId
-from marshmallow import ValidationError, missing
+import marshmallow as ma
 
 from umongo.data_proxy import data_proxy_factory, BaseDataProxy, BaseNonStrictDataProxy
-from umongo import BaseSchema, fields, EmbeddedDocument, validate, exceptions
+from umongo import Schema, fields, EmbeddedDocument, validate, exceptions
 
 from .common import BaseTest
 
@@ -13,7 +13,7 @@ class TestDataProxy(BaseTest):
 
     def test_repr(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             field_a = fields.IntField(attribute='mongo_field_a')
             field_b = fields.StrField()
 
@@ -27,7 +27,7 @@ class TestDataProxy(BaseTest):
 
     def test_simple(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             a = fields.IntField()
             b = fields.IntField()
 
@@ -40,12 +40,12 @@ class TestDataProxy(BaseTest):
         assert d._data == {'a': 1, 'b': 3}
         assert d.dump() == {'a': 1, 'b': 3}
         d.delete('b')
-        assert d._data == {'a': 1, 'b': missing}
+        assert d._data == {'a': 1, 'b': ma.missing}
         assert d.dump() == {'a': 1}
 
     def test_load(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             a = fields.IntField()
             b = fields.IntField(attribute='in_mongo_b')
 
@@ -66,7 +66,7 @@ class TestDataProxy(BaseTest):
 
     def test_modify(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             a = fields.IntField()
             b = fields.IntField(attribute='in_mongo_b')
 
@@ -89,7 +89,7 @@ class TestDataProxy(BaseTest):
 
     def test_list_field_modify(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             a = fields.ListField(fields.IntField())
             b = fields.ListField(fields.IntField(), attribute='in_mongo_b')
 
@@ -135,7 +135,7 @@ class TestDataProxy(BaseTest):
         class MyEmbedded(EmbeddedDocument):
             aa = fields.IntField()
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             # EmbeddedField need instance to retrieve implementation
             a = fields.EmbeddedField(MyEmbedded, instance=self.instance)
             b = fields.ListField(fields.IntField)
@@ -154,7 +154,7 @@ class TestDataProxy(BaseTest):
 
     def test_set(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             a = fields.IntField()
             b = fields.IntField(attribute='in_mongo_b')
             c = fields.StrField(
@@ -181,14 +181,14 @@ class TestDataProxy(BaseTest):
         d.from_mongo({})
         d.set('c', None)
         assert d.to_mongo() == {'c': None}
-        with pytest.raises(ValidationError):
+        with pytest.raises(ma.ValidationError):
             d.set('c', '123456')
-        with pytest.raises(ValidationError):
+        with pytest.raises(ma.ValidationError):
             d.set('d', None)
 
     def test_del(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             a = fields.IntField()
             b = fields.IntField(attribute='in_mongo_b')
 
@@ -206,12 +206,12 @@ class TestDataProxy(BaseTest):
 
     def test_route_naming(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             in_front = fields.IntField(attribute='in_mongo')
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy()
-        with pytest.raises(ValidationError):
+        with pytest.raises(ma.ValidationError):
             d.load({'in_mongo': 42})
         d.load({'in_front': 42})
         with pytest.raises(KeyError):
@@ -225,7 +225,7 @@ class TestDataProxy(BaseTest):
 
     def test_from_mongo(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             in_front = fields.IntField(attribute='in_mongo')
 
         MyDataProxy = data_proxy_factory('My', MySchema())
@@ -237,7 +237,7 @@ class TestDataProxy(BaseTest):
 
     def test_equality(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             a = fields.IntField()
             b = fields.IntField(attribute='in_mongo_b')
 
@@ -251,13 +251,13 @@ class TestDataProxy(BaseTest):
         assert d1 == d2
 
         assert d1 != None  # noqa: E711 (None comparison)
-        assert d1 != missing
+        assert d1 != ma.missing
         assert None != d1  # noqa: E711 (None comparison)
-        assert missing != d1
+        assert ma.missing != d1
 
     def test_share_ressources(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             a = fields.IntField()
             b = fields.IntField(attribute='in_mongo_b')
 
@@ -272,36 +272,36 @@ class TestDataProxy(BaseTest):
 
     def test_set_to_missing_fields(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             a = fields.IntField()
             b = fields.IntField(attribute='in_mongo_b')
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy(data={'a': 1})
-        assert d.get('b') is missing
-        assert d._data['in_mongo_b'] is missing
+        assert d.get('b') is ma.missing
+        assert d._data['in_mongo_b'] is ma.missing
         d.set('b', 2)
         assert d.get('b') == 2
         d.delete('b')
         # Can do it two time in a row without error
         d.delete('b')
-        assert d._data['in_mongo_b'] is missing
+        assert d._data['in_mongo_b'] is ma.missing
 
     def test_default(self):
         default_value = ObjectId('507f1f77bcf86cd799439011')
         default_callable = lambda: ObjectId('507f1f77bcf86cd799439012')
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             no_default = fields.ObjectIdField()
             with_default = fields.ObjectIdField(default=default_value)
             with_callable_default = fields.ObjectIdField(default=default_callable)
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy(data={})
-        assert d._data['no_default'] is missing
+        assert d._data['no_default'] is ma.missing
         assert d._data['with_default'] == default_value
         assert d._data['with_callable_default'] == default_callable()
-        assert d.get('no_default') is missing
+        assert d.get('no_default') is ma.missing
         assert d.get('with_default') == default_value
         assert d.get('with_callable_default') == default_callable()
         assert d.to_mongo() == {
@@ -322,15 +322,15 @@ class TestDataProxy(BaseTest):
 
     def test_validate(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             with_max = fields.IntField(validate=validate.Range(max=99))
 
         MyDataProxy = data_proxy_factory('My', MySchema())
         d = MyDataProxy(data={})
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             MyDataProxy(data={'with_max': 100})
         assert exc.value.args[0] == {'with_max': ['Must be less than or equal to 99.']}
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             d.set('with_max', 100)
         assert exc.value.args[0] == ['Must be less than or equal to 99.']
 
@@ -340,7 +340,7 @@ class TestDataProxy(BaseTest):
         class MyEmbedded(EmbeddedDocument):
             required = fields.IntField(required=True)
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             # EmbeddedField need instance to retrieve implementation
             required = fields.IntField(required=True)
             embedded = fields.EmbeddedField(MyEmbedded, instance=self.instance)
@@ -363,7 +363,7 @@ class TestDataProxy(BaseTest):
         d.required_validate()
 
         d.load({'embedded': {'required': 42}})
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             d.required_validate()
         assert exc.value.messages == {'required': ['Missing data for required field.']}
 
@@ -372,12 +372,12 @@ class TestDataProxy(BaseTest):
         d.required_validate()
         # Required fields in the embedded document are only checked if the document is not missing
         d.load({'embedded': {}, 'required': 42})
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             d.required_validate()
         assert exc.value.messages == {'embedded': {'required': ['Missing data for required field.']}}
 
         d.load({'embedded': {'required': 42}, 'required': 42, 'listed': [{}], 'dicted': {'a': {}}})
-        with pytest.raises(ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             d.required_validate()
         assert exc.value.messages == {
             'listed': {0: {'required': ['Missing data for required field.']}},
@@ -385,7 +385,7 @@ class TestDataProxy(BaseTest):
         }
 
     def test_unkown_field_in_db(self):
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             field = fields.IntField(attribute='mongo_field')
 
         DataProxy = data_proxy_factory('My', MySchema())
@@ -396,7 +396,7 @@ class TestDataProxy(BaseTest):
             d.from_mongo({'mongo_field': 42, 'xxx': 'foo'})
 
     def test_iterators(self):
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             field_a = fields.IntField(attribute='mongo_field_a')
             field_b = fields.IntField(attribute='mongo_field_b')
 
@@ -418,7 +418,7 @@ class TestNonStrictDataProxy(BaseTest):
 
     def test_build(self):
 
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             pass
 
         strict_proxy = data_proxy_factory('My', MySchema(), strict=True)
@@ -427,11 +427,11 @@ class TestNonStrictDataProxy(BaseTest):
         assert issubclass(non_strict_proxy, BaseNonStrictDataProxy)
 
     def test_basic(self):
-        class MySchema(BaseSchema):
+        class MySchema(Schema):
             field_a = fields.IntField(attribute='mongo_field_a')
 
         NonStrictDataProxy = data_proxy_factory('My', MySchema(), strict=False)
-        with pytest.raises(exceptions.ValidationError) as exc:
+        with pytest.raises(ma.ValidationError) as exc:
             NonStrictDataProxy({'field_a': 42, 'xxx': 'foo'})
         assert exc.value.messages == {'xxx': ['Unknown field.']}
         d = NonStrictDataProxy()

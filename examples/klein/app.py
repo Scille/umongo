@@ -8,8 +8,7 @@ from txmongo import MongoConnection
 from klein_babel import gettext, locale_from_request
 
 from umongo import Instance, Document, fields, ValidationError, set_gettext
-from umongo.marshmallow_bonus import SchemaFromUmongo
-
+from umongo.schema import SchemaFromUmongo
 
 app = Klein()
 db = MongoConnection().demo_umongo
@@ -201,8 +200,8 @@ def change_password_user(request, nick_or_id):
         raise Error(404, 'Not found')
 
     # Use a field from our document to create a marshmallow schema
-    # Note that we use `SchemaFromUmongo` to get unknown fields check on
-    # deserialization and skip missing fields instead of returning None
+    # Note that we use `SchemaFromUmongo` to skip missing fields
+    # instead of returning None
     class ChangePasswordSchema(SchemaFromUmongo):
         password = User.schema.fields['password'].as_marshmallow_field(params={'required': True})
     # with `strict`, marshmallow raise ValidationError if something is wrong

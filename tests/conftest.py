@@ -29,7 +29,4 @@ def classroom_model(instance):
         birthday = fields.DateTimeField()
         courses = fields.ListField(fields.ReferenceField(Course))
 
-        class Meta:
-            allow_inheritance = True
-
     return namedtuple('Mapping', ('Teacher', 'Course', 'Student'))(Teacher, Course, Student)

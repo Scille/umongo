@@ -1,10 +1,10 @@
-from marshmallow import missing
+from marshmallow import ValidationError, missing  # noqa, republishing
+
 from .instance import Instance
 from .frameworks import (
     PyMongoInstance,
     TxMongoInstance,
     MotorAsyncIOInstance,
-    MotorTornadoInstance,
     MongoMockInstance
 )
 from .document import (
@@ -17,7 +17,6 @@ from .document import (
 )
 from .exceptions import (
     UMongoError,
-    ValidationError,
     UpdateError,
     DeleteError,
     AlreadyCreatedError,
@@ -26,7 +25,7 @@ from .exceptions import (
     UnknownFieldInDBError,
 )
 from . import fields, validate
-from .abstract import BaseSchema
+from .schema import Schema
 from .data_objects import Reference
 from .embedded_document import EmbeddedDocument
 from .i18n import set_gettext
@@ -34,7 +33,7 @@ from .i18n import set_gettext
 
 __author__ = 'Emmanuel Leblond'
 __email__ = 'emmanuel.leblond@gmail.com'
-__version__ = '3.0.0b4'
+__version__ = '3.0.0b7'
 __all__ = (
     'missing',
 
@@ -42,7 +41,6 @@ __all__ = (
     'PyMongoInstance',
     'TxMongoInstance',
     'MotorAsyncIOInstance',
-    'MotorTornadoInstance',
     'MongoMockInstance',
 
     'Document',
@@ -64,7 +62,7 @@ __all__ = (
 
     'fields',
 
-    'BaseSchema',
+    'Schema',
 
     'Reference',
 

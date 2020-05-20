@@ -13,9 +13,6 @@ class TestInheritance(BaseTest):
         class Parent(Document):
             last_name = fields.StrField()
 
-            class Meta:
-                allow_inheritance = True
-
         @self.instance.register
         class Child(Parent):
             first_name = fields.StrField()
@@ -36,18 +33,15 @@ class TestInheritance(BaseTest):
             last_name = fields.StrField()
 
             class Meta:
-                allow_inheritance = True
                 collection_name = 'parent_col'
 
         assert Parent.opts.abstract is False
-        assert Parent.opts.allow_inheritance is True
 
         @self.instance.register
         class Child(Parent):
             first_name = fields.StrField()
 
         assert Child.opts.abstract is False
-        assert Child.opts.allow_inheritance is False
         assert Child.opts.collection_name == 'parent_col'
         assert Child.collection.name == 'parent_col'
         Child(first_name='John', last_name='Doe')
@@ -70,7 +64,6 @@ class TestInheritance(BaseTest):
                 abstract = True
 
         assert AbstractDoc.opts.abstract is True
-        assert AbstractDoc.opts.allow_inheritance is True
         # Cannot instanciate also an abstract document
         with pytest.raises(exceptions.AbstractDocumentError):
             AbstractDoc()
@@ -81,14 +74,12 @@ class TestInheritance(BaseTest):
                 abstract = True
 
         assert StillAbstractDoc.opts.abstract is True
-        assert StillAbstractDoc.opts.allow_inheritance is True
 
         @self.instance.register
         class ConcreteDoc(AbstractDoc):
             pass
 
         assert ConcreteDoc.opts.abstract is False
-        assert ConcreteDoc.opts.allow_inheritance is False
         assert ConcreteDoc().abs_field == 'from abstract'
 
     def test_non_document_inheritance(self):

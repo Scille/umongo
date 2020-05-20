@@ -14,7 +14,6 @@ class Vehicle(Document):
 
     class Meta:
         collection_name = "vehicle"
-        allow_inheritance = True
 
 
 @instance.register

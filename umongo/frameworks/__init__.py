@@ -21,7 +21,6 @@ __all__ = (
     'PyMongoInstance',
     'TxMongoInstance',
     'MotorAsyncIOInstance',
-    'MotorTornadoInstance',
     'MongoMockInstance'
 )
 
@@ -83,15 +82,6 @@ class MotorAsyncIOInstance(LazyLoaderInstance):
         super().__init__(*args, **kwargs)
 
 
-class MotorTornadoInstance(LazyLoaderInstance):
-    """
-    :class:`umongo.instance.LazyLoaderInstance` implementation for motor-tornado
-    """
-    def __init__(self, *args, **kwargs):
-        self.BUILDER_CLS = import_module('umongo.frameworks.motor_tornado').MotorTornadoBuilder
-        super().__init__(*args, **kwargs)
-
-
 class MongoMockInstance(LazyLoaderInstance):
     """
     :class:`umongo.instance.LazyLoaderInstance` implementation for mongomock
@@ -111,11 +101,6 @@ except ImportError:  # pragma: no cover
 try:
     from .motor_asyncio import MotorAsyncIOBuilder
     register_builder(MotorAsyncIOBuilder)
-except ImportError:  # pragma: no cover
-    pass
-try:
-    from .motor_tornado import MotorTornadoBuilder
-    register_builder(MotorTornadoBuilder)
 except ImportError:  # pragma: no cover
     pass
 try:

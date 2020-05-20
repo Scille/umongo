@@ -8,7 +8,7 @@ import re
 import inspect
 from copy import copy
 
-from marshmallow import fields as ma_fields
+import marshmallow as ma
 
 from .template import Template, Implementation
 from .data_proxy import data_proxy_factory
@@ -16,7 +16,7 @@ from .document import DocumentTemplate, DocumentOpts, DocumentImplementation
 from .embedded_document import (
     EmbeddedDocumentTemplate, EmbeddedDocumentOpts, EmbeddedDocumentImplementation)
 from .exceptions import DocumentDefinitionError, NotRegisteredDocumentError
-from .abstract import BaseSchema
+from .schema import Schema
 from .indexes import parse_index
 from . import fields
 
@@ -36,9 +36,8 @@ def _is_child(bases):
 def _is_child_embedded_document(bases):
     """Same thing than _is_child, but for EmbeddedDocument...
     """
-    return any(b for b in bases
-               if issubclass(b, EmbeddedDocumentImplementation) and
-               b is not EmbeddedDocumentImplementation)
+    return any(b for b in bases if issubclass(b, EmbeddedDocumentImplementation) and
+               not b.opts.abstract)
 
 
 def _on_need_add_id_field(bases, fields_dict):
@@ -50,7 +49,7 @@ def _on_need_add_id_field(bases, fields_dict):
     def find_id_field(fields_dict):
         for name, field in fields_dict.items():
             # Skip fake fields present in schema (e.g. `post_load` decorated function)
-            if not isinstance(field, ma_fields.Field):
+            if not isinstance(field, ma.fields.Field):
                 continue
             if (name == '_id' and not field.attribute) or field.attribute == '_id':
                 return name
@@ -77,26 +76,26 @@ def _add_child_field(name, fields_dict):
     fields_dict['cls'] = fields.StringField(attribute='_cls', default=name, dump_only=True)
 
 
-def _collect_schema_attrs(nmspc):
+def _collect_schema_attrs(template):
     """
     Split dict between schema fields and non-fields elements and retrieve
     marshmallow tags if any.
     """
     schema_fields = {}
     schema_non_fields = {}
-    doc_nmspc = {}
-    for key, item in nmspc.items():
+    nmspc = {}
+    for key, item in template.__dict__.items():
         if hasattr(item, '__marshmallow_hook__'):
             # Decorated special functions (e.g. `post_load`)
             schema_non_fields[key] = item
-        elif isinstance(item, ma_fields.Field):
+        elif isinstance(item, ma.fields.Field):
             # Given the fields provided by the template are going to be
             # customized in the implementation, we copy them to avoid
             # overwriting if two implementations are created
             schema_fields[key] = copy(item)
         else:
-            doc_nmspc[key] = item
-    return doc_nmspc, schema_fields, schema_non_fields
+            nmspc[key] = item
+    return nmspc, schema_fields, schema_non_fields
 
 
 def _collect_indexes(meta, schema_nmspc, bases):
@@ -150,7 +149,6 @@ def _build_document_opts(instance, template, name, nmspc, bases):
     kwargs['instance'] = instance
     kwargs['template'] = template
     kwargs['abstract'] = getattr(meta, 'abstract', False)
-    kwargs['allow_inheritance'] = getattr(meta, 'allow_inheritance', None)
     kwargs['is_child'] = _is_child(bases)
     kwargs['strict'] = getattr(meta, 'strict', True)
 
@@ -159,8 +157,6 @@ def _build_document_opts(instance, template, name, nmspc, bases):
         if not issubclass(base, DocumentImplementation):
             continue
         popts = base.opts
-        if not popts.allow_inheritance:
-            raise DocumentDefinitionError("Document %r doesn't allow inheritance" % base)
         if kwargs['abstract'] and not popts.abstract:
             raise DocumentDefinitionError(
                 "Abstract document should have all it parents abstract")
@@ -187,7 +183,6 @@ def _build_embedded_document_opts(instance, template, name, nmspc, bases):
     kwargs['instance'] = instance
     kwargs['template'] = template
     kwargs['abstract'] = getattr(meta, 'abstract', False)
-    kwargs['allow_inheritance'] = getattr(meta, 'allow_inheritance', True)
     kwargs['is_child'] = _is_child_embedded_document(bases)
     kwargs['strict'] = getattr(meta, 'strict', True)
 
@@ -196,8 +191,6 @@ def _build_embedded_document_opts(instance, template, name, nmspc, bases):
         if not issubclass(base, EmbeddedDocumentImplementation):
             continue
         popts = base.opts
-        if not popts.allow_inheritance:
-            raise DocumentDefinitionError("EmbeddedDocument %r doesn't allow inheritance" % base)
         if kwargs['abstract'] and not popts.abstract:
             raise DocumentDefinitionError(
                 "Abstract embedded document should have all it parents abstract")
@@ -262,6 +255,7 @@ class BaseBuilder:
         schema_nmspc = {}
         schema_nmspc.update(schema_fields)
         schema_nmspc.update(schema_non_fields)
+        schema_nmspc['MA_BASE_SCHEMA_CLS'] = template.MA_BASE_SCHEMA_CLS
         return type('%sSchema' % template.__name__, schema_bases, schema_nmspc)
 
     def build_document_from_template(self, template):
@@ -273,14 +267,14 @@ class BaseBuilder:
         name = template.__name__
         bases = self._convert_bases(template.__bases__)
         opts = _build_document_opts(self.instance, template, name, template.__dict__, bases)
-        nmspc, schema_fields, schema_non_fields = _collect_schema_attrs(template.__dict__)
+        nmspc, schema_fields, schema_non_fields = _collect_schema_attrs(template)
         nmspc['opts'] = opts
 
         # Create schema by retrieving inherited schema classes
         schema_bases = tuple([base.Schema for base in bases
                               if hasattr(base, 'Schema')])
         if not schema_bases:
-            schema_bases = (BaseSchema, )
+            schema_bases = (Schema, )
         nmspc['pk_field'] = _on_need_add_id_field(schema_bases, schema_fields)
         # If Document is a child, _cls field must be added to the schema
         if opts.is_child:
@@ -317,7 +311,7 @@ class BaseBuilder:
         opts = _build_embedded_document_opts(
             self.instance, template, name, template.__dict__, bases)
 
-        nmspc, schema_fields, schema_non_fields = _collect_schema_attrs(template.__dict__)
+        nmspc, schema_fields, schema_non_fields = _collect_schema_attrs(template)
         nmspc['opts'] = opts
 
         # If EmbeddedDocument is a child, _cls field must be added to the schema
@@ -328,7 +322,7 @@ class BaseBuilder:
         schema_bases = tuple([base.Schema for base in bases
                               if hasattr(base, 'Schema')])
         if not schema_bases:
-            schema_bases = (BaseSchema, )
+            schema_bases = (Schema, )
         schema_cls = self._build_schema(template, schema_bases, schema_fields, schema_non_fields)
         nmspc['Schema'] = schema_cls
         schema = schema_cls()

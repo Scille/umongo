@@ -1,4 +1,4 @@
-from marshmallow import validate as ma_validate
+import marshmallow as ma
 
 from .abstract import BaseValidator
 
@@ -17,41 +17,41 @@ __all__ = (
 )
 
 
-class URL(BaseValidator, ma_validate.URL):
+class URL(BaseValidator, ma.validate.URL):
     pass
 
 
-class Email(BaseValidator, ma_validate.Email):
+class Email(BaseValidator, ma.validate.Email):
     pass
 
 
-class Range(BaseValidator, ma_validate.Range):
+class Range(BaseValidator, ma.validate.Range):
     pass
 
 
-class Length(BaseValidator, ma_validate.Length):
+class Length(BaseValidator, ma.validate.Length):
     pass
 
 
-class Equal(BaseValidator, ma_validate.Equal):
+class Equal(BaseValidator, ma.validate.Equal):
     pass
 
 
-class Regexp(BaseValidator, ma_validate.Regexp):
+class Regexp(BaseValidator, ma.validate.Regexp):
     pass
 
 
-class Predicate(BaseValidator, ma_validate.Predicate):
+class Predicate(BaseValidator, ma.validate.Predicate):
     pass
 
 
-class NoneOf(BaseValidator, ma_validate.NoneOf):
+class NoneOf(BaseValidator, ma.validate.NoneOf):
     pass
 
 
-class OneOf(BaseValidator, ma_validate.OneOf):
+class OneOf(BaseValidator, ma.validate.OneOf):
     pass
 
 
-class ContainsOnly(BaseValidator, ma_validate.ContainsOnly):
+class ContainsOnly(BaseValidator, ma.validate.ContainsOnly):
     pass

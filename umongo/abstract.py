@@ -1,8 +1,7 @@
-from marshmallow import (Schema as MaSchema, fields as ma_fields,
-                         validate as ma_validate, missing, EXCLUDE)
+import marshmallow as ma
 
+from .exceptions import DocumentDefinitionError
 from .i18n import gettext as _, N_
-from .marshmallow_bonus import schema_from_umongo_get_attribute
 
 
 __all__ = ('BaseSchema', 'BaseField', 'BaseValidator', 'BaseDataObject')
@@ -14,16 +13,15 @@ class I18nErrorDict(dict):
         return _(raw_msg)
 
 
-class BaseSchema(MaSchema):
+class BaseSchema(ma.Schema):
     """
     All schema used in umongo should inherit from this base schema
     """
+    MA_BASE_SCHEMA_CLS = ma.Schema
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.error_messages = I18nErrorDict(self.error_messages)
-
-    _marshmallow_schemas_cache = {}
 
     def map_to_field(self, func):
         """
@@ -38,57 +36,8 @@ class BaseSchema(MaSchema):
             if hasattr(field, 'map_to_field'):
                 field.map_to_field(mongo_path, name, func)
 
-    def as_marshmallow_schema(self, params=None, base_schema_cls=MaSchema,
-                              check_unknown_fields=True, mongo_world=False, meta=None):
-        """
-        Return a pure-marshmallow version of this schema class.
 
-        :param params: Per-field dict to pass parameters to their field creation.
-        :param base_schema_cls: Class the schema will inherit from (
-            default: :class:`marshmallow.Schema`).
-        :param check_unknown_fields: Unknown fields are considered as errors (default: True).
-        :param mongo_world: If True the schema will work against the mongo world
-            instead of the OO world (default: False).
-        :param meta: Optional dict with attributes for the schema's Meta class.
-        """
-        params = params or {}
-        meta = meta or {}
-        # Use hashable parameters as cache dict key and dict parameters for manual comparison
-        cache_key = (self.__class__, base_schema_cls, check_unknown_fields, mongo_world)
-        cache_modifiers = (params, meta)
-        if cache_key in self._marshmallow_schemas_cache:
-            for modifiers, ma_schema in self._marshmallow_schemas_cache[cache_key]:
-                if modifiers == cache_modifiers:
-                    return ma_schema
-        nmspc = {
-            name: field.as_marshmallow_field(
-                params=params.get(name),
-                base_schema_cls=base_schema_cls,
-                check_unknown_fields=check_unknown_fields,
-                mongo_world=mongo_world)
-            for name, field in self.fields.items()
-        }
-        name = 'Marshmallow%s' % type(self).__name__
-        if not check_unknown_fields:
-            meta.setdefault('unknown', EXCLUDE)
-        # By default OO world returns `missing` fields as `None`,
-        # disable this behavior here to let marshmallow deal with it
-        if not mongo_world:
-            nmspc['get_attribute'] = schema_from_umongo_get_attribute
-        if meta:
-            nmspc['Meta'] = type('Meta', (base_schema_cls.Meta,), meta)
-        m_schema = type(name, (base_schema_cls, ), nmspc)
-        # Add i18n support to the schema
-        # We can't use I18nErrorDict here because __getitem__ is not called
-        # when error_messages is updated with _default_error_messages.
-        m_schema._default_error_messages = {
-            k: _(v) for k, v in m_schema._default_error_messages.items()}
-        self._marshmallow_schemas_cache.setdefault(cache_key, []).append(
-            (cache_modifiers, m_schema))
-        return m_schema
-
-
-class BaseField(ma_fields.Field):
+class BaseField(ma.fields.Field):
     """
     All fields used in umongo should inherit from this base field.
 
@@ -118,7 +67,7 @@ class BaseField(ma_fields.Field):
 
     def __init__(self, *args, io_validate=None, unique=False, instance=None, **kwargs):
         if 'missing' in kwargs:
-            raise RuntimeError(
+            raise DocumentDefinitionError(
                 "uMongo doesn't use `missing` argument, use `default` "
                 "instead and `marshmallow_missing`/`marshmallow_default` "
                 "to tell `as_marshmallow_field` to use a custom value when "
@@ -179,8 +128,8 @@ class BaseField(ma_fields.Field):
     def serialize_to_mongo(self, obj):
         if obj is None and getattr(self, 'allow_none', False) is True:
             return None
-        if obj is missing:
-            return missing
+        if obj is ma.missing:
+            return ma.missing
         return self._serialize_to_mongo(obj)
 
     # def serialize_to_mongo_update(self, path, obj):
@@ -214,22 +163,18 @@ class BaseField(ma_fields.Field):
         params.update(self.metadata)
         return params
 
-    def as_marshmallow_field(self, params=None, mongo_world=False, **kwargs):
+    def as_marshmallow_field(self, *, mongo_world=False, **kwargs):
         """
         Return a pure-marshmallow version of this field.
 
-        :param params: Additional parameters passed to the marshmallow field
-            class constructor.
         :param mongo_world: If True the field will work against the mongo world
             instead of the OO world (default: False)
         """
         field_kwargs = self._extract_marshmallow_field_params(mongo_world)
-        if params:
-            field_kwargs.update(params)
         # Retrieve the marshmallow class we inherit from
         for m_class in type(self).mro():
             if (not issubclass(m_class, BaseField) and
-                    issubclass(m_class, ma_fields.Field)):
+                    issubclass(m_class, ma.fields.Field)):
                 m_field = m_class(**field_kwargs)
                 # Add i18n support to the field
                 m_field.error_messages = I18nErrorDict(m_field.error_messages)
@@ -237,7 +182,7 @@ class BaseField(ma_fields.Field):
         # Cannot escape the loop given BaseField itself inherits marshmallow's Field
 
 
-class BaseValidator(ma_validate.Validator):
+class BaseValidator(ma.validate.Validator):
     """
     All validators in umongo should inherit from this base validator.
     """

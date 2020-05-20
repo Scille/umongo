@@ -3,14 +3,12 @@ from twisted.internet.defer import (
 from txmongo import filter as qf
 from txmongo.database import Database
 from pymongo.errors import DuplicateKeyError
+import marshmallow as ma
 
 from ..builder import BaseBuilder
 from ..document import DocumentImplementation
-from ..data_proxy import missing
 from ..data_objects import Reference
-from ..exceptions import (
-    NotCreatedError, UpdateError, DeleteError, ValidationError, NoneReferenceError
-)
+from ..exceptions import NotCreatedError, UpdateError, DeleteError, NoneReferenceError
 from ..fields import ReferenceField, ListField, EmbeddedField
 from ..query_mapper import map_query
 
@@ -74,7 +72,9 @@ class TxMongoDocument(DocumentImplementation):
                 else:
                     ret = None
             elif conditions:
-                raise RuntimeError('Document must already exist in database to use `conditions`.')
+                raise NotCreatedError(
+                    'Document must already exist in database to use `conditions`.'
+                )
             else:
                 yield maybeDeferred(self.pre_insert)
                 self.required_validate()
@@ -94,11 +94,11 @@ class TxMongoDocument(DocumentImplementation):
                     keys = index.document['key'].keys()
                     if len(keys) == 1:
                         msg = self.schema.fields[keys[0]].error_messages['unique']
-                        raise ValidationError({keys[0]: msg})
+                        raise ma.ValidationError({keys[0]: msg})
                     fields = self.schema.fields
                     # Compound index (sort value to make testing easier)
                     keys = sorted(keys)
-                    raise ValidationError(
+                    raise ma.ValidationError(
                         {
                             k: fields[k].error_messages['unique_compound'].format(fields=keys)
                             for k in keys
@@ -152,47 +152,54 @@ class TxMongoDocument(DocumentImplementation):
 
     @classmethod
     @inlineCallbacks
-    def find_one(cls, spec=None, *args, **kwargs):
+    def find_one(cls, filter=None, *args, **kwargs):
         """
         Find a single document in database.
         """
-        # In txmongo, `spec` is for filtering and `filter` is for sorting
-        spec = cook_find_filter(cls, spec)
-        ret = yield cls.collection.find_one(spec, *args, **kwargs)
+        filter = cook_find_filter(cls, filter)
+        ret = yield cls.collection.find_one(filter, *args, **kwargs)
         if ret is not None:
             ret = cls.build_from_mongo(ret, use_cls=True)
         return ret
 
     @classmethod
     @inlineCallbacks
-    def find(cls, spec=None, *args, **kwargs):
+    def find(cls, filter=None, *args, **kwargs):
         """
         Find a list document in database.
 
-        Returns a cursor that provide Documents.
+        Returns a list of Documents.
         """
-        # In txmongo, `spec` is for filtering and `filter` is for sorting
-        spec = cook_find_filter(cls, spec)
-        raw_cursor_or_list = yield cls.collection.find(spec, *args, **kwargs)
-        if isinstance(raw_cursor_or_list, tuple):
-
-            def wrap_raw_results(result):
-                cursor = result[1]
-                if cursor is not None:
-                    cursor.addCallback(wrap_raw_results)
-                return ([cls.build_from_mongo(e, use_cls=True) for e in result[0]], cursor)
-
-            return wrap_raw_results(raw_cursor_or_list)
+        filter = cook_find_filter(cls, filter)
+        raw_cursor_or_list = yield cls.collection.find(filter, *args, **kwargs)
         return [cls.build_from_mongo(e, use_cls=True) for e in raw_cursor_or_list]
 
     @classmethod
-    def count(cls, spec=None, **kwargs):
+    @inlineCallbacks
+    def find_with_cursor(cls, filter=None, *args, **kwargs):
+        """
+        Find a list document in database.
+
+        Returns a cursor that provides Documents.
+        """
+        filter = cook_find_filter(cls, filter)
+        raw_cursor_or_list = yield cls.collection.find_with_cursor(filter, *args, **kwargs)
+
+        def wrap_raw_results(result):
+            cursor = result[1]
+            if cursor is not None:
+                cursor.addCallback(wrap_raw_results)
+            return ([cls.build_from_mongo(e, use_cls=True) for e in result[0]], cursor)
+
+        return wrap_raw_results(raw_cursor_or_list)
+
+    @classmethod
+    def count(cls, filter=None, **kwargs):
         """
         Get the number of documents in this collection.
         """
-        # In txmongo, `spec` is for filtering and `filter` is for sorting
-        spec = cook_find_filter(cls, spec)
-        return cls.collection.count(spec=spec, **kwargs)
+        filter = cook_find_filter(cls, filter)
+        return cls.collection.count(filter=filter, **kwargs)
 
     @classmethod
     @inlineCallbacks
@@ -210,7 +217,7 @@ class TxMongoDocument(DocumentImplementation):
 def _errback_factory(errors, field=None):
 
     def errback(err):
-        if isinstance(err.value, ValidationError):
+        if isinstance(err.value, ma.ValidationError):
             if field is not None:
                 errors[field] = err.value.messages
             else:
@@ -229,7 +236,7 @@ def _run_validators(validators, field, value):
     for validator in validators:
         try:
             defer = validator(field, value)
-        except ValidationError as exc:
+        except ma.ValidationError as exc:
             errors.extend(exc.messages)
         else:
             assert isinstance(defer, Deferred), 'io_validate functions must return a Deferred'
@@ -237,7 +244,7 @@ def _run_validators(validators, field, value):
             defers.append(defer)
     yield DeferredList(defers)
     if errors:
-        raise ValidationError(errors)
+        raise ma.ValidationError(errors)
 
 
 @inlineCallbacks
@@ -247,9 +254,8 @@ def _io_validate_data_proxy(schema, data_proxy, partial=None):
     for name, field in schema.fields.items():
         if partial and name not in partial:
             continue
-        data_name = field.attribute or name
-        value = data_proxy._data[data_name]
-        if value is missing:
+        value = data_proxy.get(name)
+        if value is ma.missing:
             continue
         try:
             if field.io_validate_recursive:
@@ -258,11 +264,11 @@ def _io_validate_data_proxy(schema, data_proxy, partial=None):
                 defer = _run_validators(field.io_validate, field, value)
                 defer.addErrback(_errback_factory(errors, name))
                 defers.append(defer)
-        except ValidationError as exc:
+        except ma.ValidationError as exc:
             errors[name] = exc.messages
     yield DeferredList(defers)
     if errors:
-        raise ValidationError(errors)
+        raise ma.ValidationError(errors)
 
 
 def _reference_io_validate(field, value):
@@ -282,7 +288,7 @@ def _list_io_validate(field, value):
         defers.append(defer)
     yield DeferredList(defers)
     if errors:
-        raise ValidationError(errors)
+        raise ma.ValidationError(errors)
 
 
 def _embedded_document_io_validate(field, value):
@@ -302,7 +308,7 @@ class TxMongoReference(Reference):
                 raise NoneReferenceError('Cannot retrieve a None Reference')
             self._document = yield self.document_cls.find_one(self.pk)
             if not self._document:
-                raise ValidationError(self.error_messages['not_found'].format(
+                raise ma.ValidationError(self.error_messages['not_found'].format(
                     document=self.document_cls.__name__))
         returnValue(self._document)
 

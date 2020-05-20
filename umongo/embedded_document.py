@@ -1,7 +1,9 @@
+"""umongo EmbeddedDocument"""
+import marshmallow as ma
+
 from .document import Implementation, Template
 from .data_objects import BaseDataObject
-from .data_proxy import missing
-from .exceptions import DocumentDefinitionError, AbstractDocumentError
+from .exceptions import AbstractDocumentError
 
 
 __all__ = (
@@ -21,6 +23,7 @@ class EmbeddedDocumentTemplate(Template):
         :class:`umongo.instance.BaseInstance` to obtain it corresponding
         :class:`umongo.embedded_document.EmbeddedDocumentImplementation`.
     """
+    MA_BASE_SCHEMA_CLS = ma.Schema
 
 
 EmbeddedDocument = EmbeddedDocumentTemplate
@@ -46,15 +49,14 @@ class EmbeddedDocumentOpts:
     ==================== ====================== ===========
     attribute            configurable in Meta   description
     ==================== ====================== ===========
-    template             no                     Origine template of the Document
+    template             no                     Origin template of the embedded document
     instance             no                     Implementation's instance
-    abstract             yes                    Document has no collection
-                                                and can only be inherited
-    allow_inheritance    yes                    Allow the document to be subclassed
-    is_child             no                     Document inherit of a non-abstract document
+    abstract             yes                    Embedded document can only be inherited
+    is_child             no                     Embedded document inherit of a non-abstract
+                                                embedded document
     strict               yes                    Don't accept unknown fields from mongo
                                                 (default: True)
-    offspring            no                     List of EmbeddedDocuments inheriting this one
+    offspring            no                     List of embedded documents inheriting this one
     ==================== ====================== ===========
     """
     def __repr__(self):
@@ -62,23 +64,19 @@ class EmbeddedDocumentOpts:
                 'instance={self.instance}, '
                 'template={self.template}, '
                 'abstract={self.abstract}, '
-                'allow_inheritance={self.allow_inheritance}, '
                 'is_child={self.is_child}, '
                 'strict={self.strict}, '
                 'offspring={self.offspring})>'
                 .format(ClassName=self.__class__.__name__, self=self))
 
-    def __init__(self, instance, template, abstract=False, allow_inheritance=True,
+    def __init__(self, instance, template, abstract=False,
                  is_child=False, strict=True, offspring=None):
         self.instance = instance
         self.template = template
         self.abstract = abstract
-        self.allow_inheritance = allow_inheritance
         self.is_child = is_child
         self.strict = strict
         self.offspring = set(offspring) if offspring else set()
-        if self.abstract and not self.allow_inheritance:
-            raise DocumentDefinitionError("Abstract embedded document cannot disable inheritance")
 
 
 class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
@@ -87,7 +85,7 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
     :class:`umongo.instance.BaseInstance`.
     """
 
-    __slots__ = ('_callback', '_data', '_modified')
+    __slots__ = ('_data', )
     __real_attributes = None
     opts = EmbeddedDocumentOpts(None, EmbeddedDocumentTemplate, abstract=True)
 
@@ -158,7 +156,7 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
 
     def __getitem__(self, name):
         value = self._data.get(name)
-        return value if value is not missing else None
+        return value if value is not ma.missing else None
 
     def __delitem__(self, name):
         self._data.delete(name)
@@ -181,7 +179,7 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
         if name[:2] == name[-2:] == '__':
             raise AttributeError(name)
         value = self._data.get(name, to_raise=AttributeError)
-        return value if value is not missing else None
+        return value if value is not ma.missing else None
 
     def __delattr__(self, name):
         if not self.__real_attributes:
