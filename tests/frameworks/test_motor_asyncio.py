@@ -6,14 +6,16 @@ import pytest
 from bson import ObjectId
 import marshmallow as ma
 
+DEP_ERROR = 'Missing motor'
+
 # Check if the required dependancies are met to run this driver's tests
 try:
     from motor.motor_asyncio import AsyncIOMotorClient
     from motor import version_tuple as MOTOR_VERSION
-except ImportError as e:
-    dep_error = str(e)
+except ImportError:
+    dep_error = True
 else:
-    dep_error = None
+    dep_error = False
 
 from ..common import BaseDBTest, TEST_DB
 
@@ -56,7 +58,7 @@ def loop():
     return asyncio.get_event_loop()
 
 
-@pytest.mark.skipif(dep_error is not None, reason=dep_error)
+@pytest.mark.skipif(dep_error, reason=DEP_ERROR)
 class TestMotorAsyncio(BaseDBTest):
 
     def test_create(self, loop, classroom_model):
