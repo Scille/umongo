@@ -58,7 +58,7 @@ Quick example
     from umongo import Instance, Document, fields, validate
 
     db = MongoClient().test
-    instance = Instance(db)
+    instance = Instance.from_db(db)
 
     @instance.register
     class User(Document):
