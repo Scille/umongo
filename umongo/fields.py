@@ -329,6 +329,8 @@ class ReferenceField(BaseField, ma_bonus_fields.Reference):
         self._document_cls = None
         self._document_implementation_cls = DocumentImplementation
 
+        self._pk_template = None  # This will be lazily defined at serialization.
+
     @property
     def document_cls(self):
         """

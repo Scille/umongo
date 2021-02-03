@@ -1,6 +1,9 @@
 """Pure marshmallow fields used in umongo"""
 import bson
 import marshmallow as ma
+from .template import get_template
+
+from bson import ObjectId as BsonObjectId
 
 from .i18n import gettext as _
 
@@ -27,7 +30,7 @@ class ObjectId(ma.fields.Field):
             raise ma.ValidationError(_('Invalid ObjectId.'))
 
 
-class Reference(ObjectId):
+class Reference(ma.fields.Field):
     """Marshmallow field for :class:`umongo.fields.ReferenceField`"""
 
     def _serialize(self, value, attr, obj):
@@ -38,6 +41,24 @@ class Reference(ObjectId):
         if isinstance(value, bson.ObjectId):
             return str(value)
         return str(value.pk)
+
+    def _get_pk_template(self):
+        if not self._pk_template:
+            if isinstance(self.document, str):
+                document_template = get_template(self.document_cls)
+            else:
+                document_template = self.document
+            if hasattr(document_template, self.document_cls.pk_field):
+                self._pk_template = getattr(document_template, self.document_cls.pk_field)
+            else:
+                self._pk_template = ObjectId
+        return self._pk_template
+
+    def _deserialize(self, value, attr, data, **kwargs):
+        try:
+            return self._get_pk_template()._deserialize(self, value, attr, data, **kwargs)
+        except (TypeError, bson.errors.InvalidId):
+            raise ma.ValidationError(_('Invalid Reference.'))
 
 
 class GenericReference(ma.fields.Field):
