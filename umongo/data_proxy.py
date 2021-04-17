@@ -162,9 +162,11 @@ class BaseDataProxy:
                 else:
                     self._data[mongo_name] = field.missing
 
-    def required_validate(self):
+    def required_validate(self, partial_fields=None):
         errors = {}
         for name, field in self.schema.fields.items():
+            if partial_fields is not None and name not in partial_fields:
+                continue
             value = self._data[field.attribute or name]
             if field.required and value is ma.missing:
                 errors[name] = [_("Missing data for required field.")]

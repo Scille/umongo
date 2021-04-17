@@ -385,6 +385,14 @@ class TestDataProxy(BaseTest):
             'listed': {0: {'required': ['Missing data for required field.']}},
             'dicted': {'a': {'value': {'required': ['Missing data for required field.']}}},
         }
+        # Required validate should filter on modified fields if passed in
+        d.load({})
+        d.required_validate(partial_fields=[])
+        with pytest.raises(ma.ValidationError) as exc:
+            d.required_validate(partial_fields=['required'])
+        assert exc.value.messages == {
+            'required': ['Missing data for required field.']
+        }
 
     def test_unkown_field_in_db(self):
         class MySchema(BaseSchema):

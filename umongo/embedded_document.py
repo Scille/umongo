@@ -114,8 +114,8 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
         """
         self._data.clear_modified()
 
-    def required_validate(self):
-        self._data.required_validate()
+    def required_validate(self, partial_fields=None):
+        self._data.required_validate(partial_fields=partial_fields)
 
     @classmethod
     def build_from_mongo(cls, data, use_cls=True):
