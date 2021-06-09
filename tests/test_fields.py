@@ -772,7 +772,7 @@ class TestFields(BaseTest):
 
         @self.instance.register
         class MyDoc(Document):
-            gref = fields.GenericReferenceField(attribute='in_mongo_gref', allow_none=True)
+            gref = fields.GenericReferenceField(attribute='in_mongo_gref', reference_cls=Reference, allow_none=True)
 
         MySchema = MyDoc.Schema
 

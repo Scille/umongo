@@ -1,5 +1,6 @@
 """Test marshmallow-related features"""
 import datetime as dt
+from umongo.data_objects import Reference
 
 import pytest
 
@@ -317,7 +318,7 @@ class TestMarshmallow(BaseTest):
         class Doc(Document):
             id = fields.ObjectIdField(attribute='_id')
             ref = fields.ReferenceField('Doc')
-            gen_ref = fields.GenericReferenceField()
+            gen_ref = fields.GenericReferenceField(reference_cls=Reference)
 
         for name, field_cls in (
                 ('id', ma_bonus_fields.ObjectId),

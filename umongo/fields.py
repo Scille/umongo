@@ -374,7 +374,7 @@ class ReferenceField(BaseField, ma_bonus_fields.Reference):
 
 class GenericReferenceField(BaseField, ma_bonus_fields.GenericReference):
 
-    def __init__(self, *args, reference_cls=Reference, **kwargs):
+    def __init__(self, *args, reference_cls=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.reference_cls = reference_cls
         self._document_implementation_cls = DocumentImplementation
