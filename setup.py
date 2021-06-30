@@ -29,7 +29,7 @@ setup(
     url='https://github.com/touilleMan/umongo',
     packages=['umongo', 'umongo.frameworks'],
     include_package_data=True,
-    package_data={'umongo': ["py.typed"]},
+    package_data={'umongo': ["py.typed", "__init__.pyi", "document.pyi", "fields.pyi"]},
     python_requires='>=3.7',
     install_requires=requirements,
     extras_require={
