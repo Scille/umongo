@@ -6,3 +6,4 @@ coverage
 Sphinx
 pytest
 pytest-cov
+mypy
