@@ -1,6 +1,33 @@
 from .embedded_document import EmbeddedDocumentImplementation
 from .template import MetaImplementation, Template
-from typing import Any, Optional
+from typing import Any, Optional, Callable
+
+def pre_dump(
+    fn: Optional[Callable[..., Any]] = ..., pass_many: bool = ...
+) -> Callable[..., Any]: ...
+
+def post_dump(
+    fn: Optional[Callable[..., Any]] = ...,
+    pass_many: bool = ...,
+    pass_original: bool = ...,
+) -> Callable[..., Any]: ...
+
+def pre_load(
+    fn: Optional[Callable[..., Any]] = ..., pass_many: bool = ...
+) -> Callable[..., Any]: ...
+
+def post_load(
+    fn: Optional[Callable[..., Any]] = ...,
+    pass_many: bool = ...,
+    pass_original: bool = ...,
+) -> Callable[..., Any]: ...
+
+def validates_schema(
+    fn: Optional[Callable[..., Any]] = ...,
+    pass_many: bool = ...,
+    pass_original: bool = ...,
+    skip_on_field_errors: bool = ...,
+) -> Callable[..., Any]: ...
 
 class DocumentTemplate(Template): ...
 
