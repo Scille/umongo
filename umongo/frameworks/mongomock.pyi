@@ -5,10 +5,10 @@ from .pymongo import (
     PyMongoBuilder as PyMongoBuilder,
     PyMongoDocument as PyMongoDocument,
 )
-from mongomock.collection import Cursor
 from typing import Any
 
-class WrappedCursor(BaseWrappedCursor, Cursor): ...
+# FIXME: Should inherit from mongomock.Cursor, but mongomock might not be installed
+class WrappedCursor(BaseWrappedCursor): ...
 
 class MongoMockDocument(PyMongoDocument):
     cursor_cls: Any

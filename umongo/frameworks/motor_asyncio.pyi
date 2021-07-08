@@ -19,11 +19,11 @@ from .tools import (
     cook_find_filter as cook_find_filter,
     remove_cls_field_from_embedded_docs as remove_cls_field_from_embedded_docs,
 )
-from typing import Any, Optional
+from typing import Any, Optional, Type
 
 SESSION: Any
 
-# FIXME: Should inherit from AsyncIOMotorCursor but motor is missing type hints
+# FIXME: Should inherit from motor_asyncio.AsyncIOMotorCursor, but motor might not be installed
 class WrappedCursor:
     def __init__(self, document_cls, cursor) -> None: ...
     def __getattr__(self, name): ...
