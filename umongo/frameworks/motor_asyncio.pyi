@@ -23,6 +23,7 @@ from typing import Any, Optional
 
 SESSION: Any
 
+# FIXME: Should inherit from AsyncIOMotorCursor but motor is missing type hints
 class WrappedCursor:
     def __init__(self, document_cls, cursor) -> None: ...
     def __getattr__(self, name): ...

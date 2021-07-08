@@ -1,33 +1,13 @@
 from .embedded_document import EmbeddedDocumentImplementation
 from .template import MetaImplementation, Template
-from typing import Any, Optional, Callable
-
-def pre_dump(
-    fn: Optional[Callable[..., Any]] = ..., pass_many: bool = ...
-) -> Callable[..., Any]: ...
-
-def post_dump(
-    fn: Optional[Callable[..., Any]] = ...,
-    pass_many: bool = ...,
-    pass_original: bool = ...,
-) -> Callable[..., Any]: ...
-
-def pre_load(
-    fn: Optional[Callable[..., Any]] = ..., pass_many: bool = ...
-) -> Callable[..., Any]: ...
-
-def post_load(
-    fn: Optional[Callable[..., Any]] = ...,
-    pass_many: bool = ...,
-    pass_original: bool = ...,
-) -> Callable[..., Any]: ...
-
-def validates_schema(
-    fn: Optional[Callable[..., Any]] = ...,
-    pass_many: bool = ...,
-    pass_original: bool = ...,
-    skip_on_field_errors: bool = ...,
-) -> Callable[..., Any]: ...
+from marshmallow import (
+    post_dump as post_dump,
+    post_load as post_load,
+    pre_dump as pre_dump,
+    pre_load as pre_load,
+    validates_schema as validates_schema,
+)
+from typing import Any, Optional
 
 class DocumentTemplate(Template): ...
 

@@ -5,9 +5,10 @@ from .pymongo import (
     PyMongoBuilder as PyMongoBuilder,
     PyMongoDocument as PyMongoDocument,
 )
+from mongomock.collection import Cursor
 from typing import Any
 
-class WrappedCursor(BaseWrappedCursor): ...
+class WrappedCursor(BaseWrappedCursor, Cursor): ...
 
 class MongoMockDocument(PyMongoDocument):
     cursor_cls: Any

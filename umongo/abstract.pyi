@@ -1,5 +1,7 @@
+import marshmallow as ma
 from .expose_missing import RemoveMissingSchema
 from typing import Any, Optional
+import abc
 
 class I18nErrorDict(dict):
     def __getitem__(self, name): ...
@@ -8,7 +10,7 @@ class BaseMarshmallowSchema(RemoveMissingSchema):
     class Meta:
         ordered: bool
 
-class BaseSchema:
+class BaseSchema(ma.Schema):
     MA_BASE_SCHEMA_CLS: Any
     class Meta:
         ordered: bool
@@ -17,7 +19,7 @@ class BaseSchema:
     def map_to_field(self, func) -> None: ...
     def as_marshmallow_schema(self): ...
 
-class BaseField:
+class BaseField(ma.fields.Field):
     default_error_messages: Any
     MARSHMALLOW_ARGS_PREFIX: str
     error_messages: Any
@@ -37,12 +39,8 @@ class BaseField:
     def deserialize_from_mongo(self, value): ...
     def as_marshmallow_field(self): ...
 
-class BaseValidator:
+class BaseValidator(ma.validate.Validator, metaclass=abc.ABCMeta):
     def __init__(self, *args, **kwargs) -> None: ...
-    @property
-    def error(self): ...
-    @error.setter
-    def error(self, value) -> None: ...
 
 class BaseDataObject:
     def is_modified(self) -> None: ...

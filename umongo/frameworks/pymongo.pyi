@@ -19,6 +19,7 @@ from .tools import (
     cook_find_filter as cook_find_filter,
     remove_cls_field_from_embedded_docs as remove_cls_field_from_embedded_docs,
 )
+from pymongo.cursor import Cursor
 from typing import Any, Optional
 
 SESSION: Any
@@ -31,7 +32,7 @@ class BaseWrappedCursor:
     def __next__(self): ...
     def __iter__(self): ...
 
-class WrappedCursor(BaseWrappedCursor): ...
+class WrappedCursor(BaseWrappedCursor, Cursor): ...
 
 class PyMongoDocument(DocumentImplementation):
     cursor_cls: Any
