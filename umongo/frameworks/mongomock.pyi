@@ -7,8 +7,11 @@ from .pymongo import (
 )
 from typing import Any
 
-# FIXME: Should inherit from mongomock.Cursor, but mongomock might not be installed
-class WrappedCursor(BaseWrappedCursor): ...
+# FIXME Should inherit from mongomock.Cursor, but mongomock might not be installed
+# There might be some missing attributes
+class WrappedCursor(BaseWrappedCursor):
+    def __len__(self) -> int: ...
+    def __contains__(self, x: object) -> bool: ...
 
 class MongoMockDocument(PyMongoDocument):
     cursor_cls: Any
