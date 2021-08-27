@@ -310,7 +310,7 @@ class ObjectIdField(BaseField, ma_bonus_fields.ObjectId):
 
 class ReferenceField(BaseField, ma_bonus_fields.Reference):
 
-    def __init__(self, document, *args, reference_cls=Reference, **kwargs):
+    def __init__(self, document, reference_cls=None, *args, **kwargs):
         """
         :param document: Can be a :class:`umongo.embedded_document.DocumentTemplate`,
             another instance's :class:`umongo.embedded_document.DocumentImplementation` or

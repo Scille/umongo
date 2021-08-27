@@ -7,7 +7,8 @@ from bson import ObjectId
 import marshmallow as ma
 
 from umongo import (
-    Document, EmbeddedDocument, fields, set_gettext, validate, missing, RemoveMissingSchema
+    Document, EmbeddedDocument, fields, Reference,
+    set_gettext, validate, missing, RemoveMissingSchema,
 )
 from umongo import marshmallow_bonus as ma_bonus_fields
 from umongo.abstract import BaseField, BaseSchema, BaseMarshmallowSchema
@@ -316,7 +317,7 @@ class TestMarshmallow(BaseTest):
         @self.instance.register
         class Doc(Document):
             id = fields.ObjectIdField(attribute='_id')
-            ref = fields.ReferenceField('Doc')
+            ref = fields.ReferenceField('Doc', reference_cls=Reference)
             gen_ref = fields.GenericReferenceField()
 
         for name, field_cls in (

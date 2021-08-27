@@ -381,7 +381,7 @@ class TestFields(BaseTest):
         @self.instance.register
         class MyDoc(Document):
             embeds = fields.DictField(values=fields.EmbeddedField(MyEmbeddedDocument))
-            refs = fields.DictField(values=fields.ReferenceField(ToRefDoc))
+            refs = fields.DictField(values=fields.ReferenceField(ToRefDoc, reference_cls=Reference))
 
         MySchema = MyDoc.Schema
 
@@ -558,7 +558,7 @@ class TestFields(BaseTest):
         class MyDoc(Document):
             embeds = fields.ListField(
                 fields.EmbeddedField(MyEmbeddedDocument))
-            refs = fields.ListField(fields.ReferenceField(ToRefDoc))
+            refs = fields.ListField(fields.ReferenceField(ToRefDoc, reference_cls=Reference))
 
         MySchema = MyDoc.Schema
 
@@ -700,7 +700,7 @@ class TestFields(BaseTest):
 
         @self.instance.register
         class MyDoc(Document):
-            ref = fields.ReferenceField(MyReferencedDoc, attribute='in_mongo_ref', allow_none=True)
+            ref = fields.ReferenceField(MyReferencedDoc, reference_cls=Reference, attribute='in_mongo_ref', allow_none=True)
 
         MySchema = MyDoc.Schema
 
@@ -743,7 +743,7 @@ class TestFields(BaseTest):
 
         @self.instance.register
         class MyDoc(Document):
-            ref = fields.ReferenceField("MyReferencedDocLazy", attribute='in_mongo_ref')
+            ref = fields.ReferenceField("MyReferencedDocLazy", reference_cls=Reference, attribute='in_mongo_ref')
 
         MySchema = MyDoc.Schema
 
