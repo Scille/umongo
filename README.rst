@@ -59,7 +59,8 @@ Quick example
     from umongo.frameworks import PyMongoInstance
 
     db = MongoClient().test
-    instance = PyMongoInstance(db)
+    instance = PyMongoInstance()
+    instance.init(db)
 
     @instance.register
     class User(Document):
