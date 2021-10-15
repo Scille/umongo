@@ -445,6 +445,12 @@ class TestFields(BaseTest):
         d.get('list').append(4)
         assert d.to_mongo(update=True) == {'$set': {'in_mongo_list': [1, 2, 3, 4]}}
 
+        d.set('list', [1, 2, 3])
+        d.clear_modified()
+        d.get('list').insert(0, 42)
+        assert d.dump() == {'list': [42, 1, 2, 3]}
+        assert d.to_mongo(update=True) == {'$set': {'in_mongo_list': [42, 1, 2, 3]}}
+
         d.clear_modified()
         d.set('list', [5, 6, 7])
         assert d.dump() == {'list': [5, 6, 7]}

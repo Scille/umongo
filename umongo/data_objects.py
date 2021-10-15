@@ -31,6 +31,12 @@ class List(BaseDataObject, list):
         self.set_modified()
         return ret
 
+    def insert(self, i, obj):
+        obj = self.inner_field.deserialize(obj)
+        ret = super().insert(i, obj)
+        self.set_modified()
+        return ret
+
     def pop(self, *args, **kwargs):
         ret = super().pop(*args, **kwargs)
         self.set_modified()
