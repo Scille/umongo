@@ -445,6 +445,12 @@ class TestFields(BaseTest):
         d.get('list').append(4)
         assert d.to_mongo(update=True) == {'$set': {'in_mongo_list': [1, 2, 3, 4]}}
 
+        d.set('list', [1, 2, 3])
+        d.clear_modified()
+        d.get('list').insert(0, 42)
+        assert d.dump() == {'list': [42, 1, 2, 3]}
+        assert d.to_mongo(update=True) == {'$set': {'in_mongo_list': [42, 1, 2, 3]}}
+
         d.clear_modified()
         d.set('list', [5, 6, 7])
         assert d.dump() == {'list': [5, 6, 7]}
@@ -585,23 +591,25 @@ class TestFields(BaseTest):
         # Test list modification as well
         refs_list = d.get('refs')
         refs_list.append(to_ref_doc1)
+        refs_list.insert(0, to_ref_doc1)
         refs_list.extend([to_ref_doc1, Reference(ToRefDoc, obj_id2)])
         for e in refs_list:
             assert isinstance(e, Reference)
         embeds_list = d.get('embeds')
         embeds_list.append(MyEmbeddedDocument(field=3))
+        embeds_list.insert(0, MyEmbeddedDocument(field=6))
         embeds_list.extend([{'field': 4}, {'field': 5}])
         for e in embeds_list:
             assert isinstance(e, MyEmbeddedDocument)
         # Modifying an EmbeddedDocument inside a list should count a list modification
         d.clear_modified()
-        d.get('refs')[0] = obj_id2
+        d.get('refs')[1] = obj_id2
         assert d.to_mongo(update=True) == {'$set': {'refs': [
-            obj_id2, obj_id2, obj_id1, obj_id1, obj_id2]}}
+            obj_id1, obj_id2, obj_id2, obj_id1, obj_id1, obj_id2]}}
         d.clear_modified()
-        d.get('embeds')[1].field = 42
+        d.get('embeds')[2].field = 42
         assert d.to_mongo(update=True) == {'$set': {'embeds': [
-            {'field': 1}, {'field': 42}, {'field': 3}, {'field': 4}, {'field': 5}]}}
+            {'field': 6}, {'field': 1}, {'field': 42}, {'field': 3}, {'field': 4}, {'field': 5}]}}
 
     def test_objectid(self):
 
