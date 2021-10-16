@@ -2,7 +2,15 @@
 History
 =======
 
-3.0.0 (2020-01-11)
+3.0.1 (2021-10-16)
+------------------
+
+Bug fixes:
+
+* Fix ListField.insert: trigger ``set_modified``, deserialize using inner field
+  (see #364).
+
+3.0.0 (2021-01-11)
 ------------------
 
 Features:
