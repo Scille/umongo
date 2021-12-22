@@ -126,6 +126,13 @@ class TestDocument(BaseTest):
         with pytest.raises(KeyError):
             del john['missing']
 
+    def test_dir(self):
+        john = self.Student.build_from_mongo(data={
+            'name': 'John Doe', 'birthday': dt.datetime(1995, 12, 12), 'gpa': 3.0})
+        assert 'name' in dir(john)
+        assert 'birthday' in dir(john)
+        assert 'gpa' in dir(john)
+
     def test_property(self):
         @self.instance.register
         class HeavyStudent(BaseStudent):

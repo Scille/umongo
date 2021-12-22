@@ -172,6 +172,9 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
         else:
             super().__setattr__(name, value)
 
+    def __dir__(self):
+        return dir(type(self)) + list(self._fields)
+
     def __getattr__(self, name):
         if name in self._fields:
             value = self._data.get(name)
