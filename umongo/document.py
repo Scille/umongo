@@ -117,7 +117,7 @@ class MetaDocumentImplementation(MetaImplementation):
         """
         if cls.opts.abstract:
             raise NoDBDefinedError('Abstract document has no collection')
-        if not cls.opts.instance.db:
+        if cls.opts.instance.db is None:
             raise NoDBDefinedError('Instance must be initialized first')
         return cls.opts.instance.db[cls.opts.collection_name]
 
