@@ -29,7 +29,7 @@ from .i18n import set_gettext
 
 __author__ = 'Emmanuel Leblond, Jérôme Lafréchoux'
 __email__ = 'jerome@jolimont.fr'
-__version__ = '3.0.1'
+__version__ = '3.1.0'
 __all__ = (
     'missing',
 
