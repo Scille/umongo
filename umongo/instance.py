@@ -133,7 +133,7 @@ class Instance(abc.ABC):
 
     @property
     def db(self):
-        if not self._db:
+        if self._db is None:
             raise NoDBDefinedError('db not set, please call set_db')
         return self._db
 
