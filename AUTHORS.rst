@@ -25,3 +25,4 @@ Contributors
 * Felix Sonntag `@fsonntag <https://github.com/fsonntag>`_
 * Attila Kóbor `@atti92 <https://github.com/atti92>`_
 * Denis Moskalets `@denya <https://github.com/denya>`_
+* Phil Chiu `@whophil <https://github.com/whophil>`_
