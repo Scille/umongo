@@ -183,3 +183,6 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
             self._data.delete(name)
         else:
             super().__delattr__(name)
+
+    def __dir__(self):
+        return dir(type(self)) + list(self._fields)
