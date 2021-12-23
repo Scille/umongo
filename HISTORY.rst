@@ -2,6 +2,19 @@
 History
 =======
 
+3.1.0 (2021-12-23)
+------------------
+
+Features:
+
+* Add fields list to ``Document`` and ``EmbeddedDocument.__dir__()``
+  (see #367).
+
+Bug fixes:
+
+* Test database by comparing to ``None``, not casting to ``bool`` to prevent
+  an exception raised by pymongo >= 4 (see #366).
+
 3.0.1 (2021-10-16)
 ------------------
 
