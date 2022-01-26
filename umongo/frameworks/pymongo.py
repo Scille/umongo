@@ -354,7 +354,8 @@ class PyMongoBuilder(BaseBuilder):
             field.io_validate_recursive = _dict_io_validate
         if isinstance(field, ReferenceField):
             field.io_validate.append(_reference_io_validate)
-            field.reference_cls = PyMongoReference
+            if field.reference_cls is None:
+                field.reference_cls = PyMongoReference
         if isinstance(field, EmbeddedField):
             field.io_validate_recursive = _embedded_document_io_validate
 
