@@ -241,7 +241,8 @@ class TestPymongo(BaseDBTest):
         assert course.teacher.fetch().name == 'Dr. Brown'
         assert course.teacher.fetch(force_reload=True).name == 'M. Strickland'
         # Test fetch with projection
-        assert course.teacher.fetch(projection={'has_apple': 0}, force_reload=True).has_apple is None
+        assert course.teacher.fetch(projection={'has_apple': 0},
+                                    force_reload=True).has_apple is None
         # Test bad ref as well
         course.teacher = Reference(classroom_model.Teacher, ObjectId())
         with pytest.raises(ma.ValidationError) as exc:
