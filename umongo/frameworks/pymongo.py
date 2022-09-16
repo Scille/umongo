@@ -322,11 +322,14 @@ class PyMongoReference(Reference):
         super().__init__(*args, **kwargs)
         self._document = None
 
-    def fetch(self, no_data=False, force_reload=False):
+    def fetch(self, no_data=False, force_reload=False, projection=None):
         if not self._document or force_reload:
             if self.pk is None:
                 raise NoneReferenceError('Cannot retrieve a None Reference')
-            self._document = self.document_cls.find_one(self.pk)
+            if projection is None:
+                self._document = self.document_cls.find_one(self.pk)
+            else:
+                self._document = self.document_cls.find_one(self.pk, projection)
             if not self._document:
                 raise ma.ValidationError(self.error_messages['not_found'].format(
                     document=self.document_cls.__name__))

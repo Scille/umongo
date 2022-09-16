@@ -165,7 +165,7 @@ class Reference:
         self.pk = pk
         self._document = None
 
-    def fetch(self, no_data=False, force_reload=False):
+    def fetch(self, no_data=False, force_reload=False, projection=None):
         """
         Retrieve from the database the referenced document
 
@@ -174,6 +174,8 @@ class Reference:
             implementation may not retrieve document's data to save bandwidth.
         :param force_reload: if True, ignore any cached data and reload referenced
             document from database.
+        :param projection: if supplied, this is a dictionary describing a projection
+            which limits the data returned from database.
         """
         raise NotImplementedError
     # TODO replace no_data by `exists` function

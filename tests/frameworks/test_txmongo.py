@@ -291,6 +291,8 @@ class TestTxMongo(BaseDBTest):
         assert teacher_fetched.name == 'M. Strickland'
         # Test bad ref as well
         course.teacher = Reference(classroom_model.Teacher, ObjectId())
+        # Test fetch with projection
+        assert course.teacher.fetch(projection={'has_apple': 0}, force_reload=True).has_apple is None
         with pytest.raises(ma.ValidationError) as exc:
             yield course.io_validate()
         assert exc.value.messages == {'teacher': ['Reference not found for document Teacher.']}

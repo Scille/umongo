@@ -337,6 +337,9 @@ class TestMotorAsyncIO(BaseDBTest):
             assert teacher_fetched.name == 'Dr. Brown'
             teacher_fetched = await course.teacher.fetch(force_reload=True)
             assert teacher_fetched.name == 'M. Strickland'
+            # Test fetch with projection
+            teacher_fetched = await course.teacher.fetch(projection={'has_apple': 0}, force_reload=True)
+            assert teacher_fetched.has_apple is None
             # Test bad ref as well
             course.teacher = Reference(classroom_model.Teacher, ObjectId())
             with pytest.raises(ma.ValidationError) as exc:
