@@ -26,8 +26,7 @@ def cook_find_filter(doc_cls, filter):
 
 def cook_find_projection(doc_cls, projection):
     """
-    Add the `_cls` field if needed and replace the fields' name by the one
-    they have in database.
+    Replace field names in a projection by their database names.
     """
     # a projection may be either:
     # - a list of field names to return, or
