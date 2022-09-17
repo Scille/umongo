@@ -17,7 +17,7 @@ from ..exceptions import NotCreatedError, UpdateError, DeleteError, NoneReferenc
 from ..fields import ReferenceField, ListField, DictField, EmbeddedField
 from ..query_mapper import map_query
 
-from .tools import cook_find_filter, remove_cls_field_from_embedded_docs
+from .tools import cook_find_filter, cook_find_projection, remove_cls_field_from_embedded_docs
 
 
 SESSION = ContextVar("session", default=None)
@@ -254,12 +254,14 @@ class MotorAsyncIODocument(DocumentImplementation):
             self.schema, self._data, partial=self._data.get_modified_fields())
 
     @classmethod
-    async def find_one(cls, filter=None, *args, **kwargs):
+    async def find_one(cls, filter=None, projection=None, *args, **kwargs):
         """
         Find a single document in database.
         """
         filter = cook_find_filter(cls, filter)
-        ret = await cls.collection.find_one(filter, session=SESSION.get(), *args, **kwargs)
+        if projection:
+            projection = cook_find_projection(cls, projection)
+        ret = await cls.collection.find_one(filter, projection=projection, session=SESSION.get(), *args, **kwargs)
         if ret is not None:
             ret = cls.build_from_mongo(ret, use_cls=True)
         return ret

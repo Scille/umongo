@@ -13,7 +13,7 @@ from ..exceptions import NotCreatedError, UpdateError, DeleteError, NoneReferenc
 from ..fields import ReferenceField, ListField, DictField, EmbeddedField
 from ..query_mapper import map_query
 
-from .tools import cook_find_filter, remove_cls_field_from_embedded_docs
+from .tools import cook_find_filter, cook_find_projection, remove_cls_field_from_embedded_docs
 
 
 class TxMongoDocument(DocumentImplementation):

@@ -35,8 +35,8 @@ def map_entry_with_dots(entry, fields):
 
 def map_query(query, fields):
     """
-    Retrieve given fields whithin the query and replace there name with
-    the one they should have within the database.
+    Retrieve given fields within the query and replace their names with
+    the names they should have within the database.
     """
     if isinstance(query, dict):
         mapped_query = {}
