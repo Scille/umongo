@@ -17,7 +17,7 @@ def classroom_model(instance):
     @instance.register
     class Teacher(Document):
         name = fields.StrField(required=True)
-        has_apple = fields.BooleanField(required=False)
+        has_apple = fields.BooleanField(required=False, attribute='has_apple_bool')
 
     @instance.register
     class Course(Document):

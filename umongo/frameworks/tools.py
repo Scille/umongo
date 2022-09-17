@@ -1,4 +1,5 @@
 from ..query_mapper import map_query
+from ..query_mapper import map_query, map_entry
 
 
 def cook_find_filter(doc_cls, filter):
@@ -22,6 +23,22 @@ def cook_find_filter(doc_cls, filter):
         else:
             filter['_cls'] = doc_cls.__name__
     return filter
+
+
+def cook_find_projection(doc_cls, projection):
+    """
+    Add the `_cls` field if needed and replace the fields' name by the one
+    they have in database.
+    """
+    # a projection may be either:
+    # - a list of field names to return, or
+    # - a dict of field names and values to either return (value of 1) or not return (value of 0)
+    # in order to reuse as much of the `cook_find_filter` logic as possible,
+    # convert a list projection to a dict which produces the same result
+    if isinstance(projection, list):
+        projection = {field: 1 for field in projection}
+    projection = map_query(projection, doc_cls.schema.fields)
+    return projection
 
 
 def remove_cls_field_from_embedded_docs(dict_in, embedded_docs):
