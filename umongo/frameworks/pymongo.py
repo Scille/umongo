@@ -278,7 +278,9 @@ def _io_validate_data_proxy(schema, data_proxy, partial=None):
 def _reference_io_validate(field, value):
     if value is None:
         return
-    value.fetch(no_data=True)
+    if not value.exists:
+        raise ma.ValidationError(value.error_messages['not_found'].format(
+            document=value.document_cls.__name__))
 
 
 def _list_io_validate(field, value):
@@ -334,6 +336,10 @@ class PyMongoReference(Reference):
                 raise ma.ValidationError(self.error_messages['not_found'].format(
                     document=self.document_cls.__name__))
         return self._document
+
+    @property
+    def exists(self):
+        return self.document_cls.collection.find_one(self.pk, projection={'_id': True}) is not None
 
 
 class PyMongoBuilder(BaseBuilder):

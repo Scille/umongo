@@ -180,6 +180,13 @@ class Reference:
         raise NotImplementedError
     # TODO replace no_data by `exists` function
 
+    @property
+    def exists(self):
+        """
+        Check if the reference document exists in its collection.
+        """
+        raise NotImplementedError
+
     def __repr__(self):
         return '<object %s.%s(document=%s, pk=%r)>' % (
             self.__module__, self.__class__.__name__, self.document_cls.__name__, self.pk)

@@ -344,7 +344,10 @@ async def _io_validate_data_proxy(schema, data_proxy, partial=None):
 async def _reference_io_validate(field, value):
     if value is None:
         return
-    await value.fetch(no_data=True)
+    exists = await value.exists
+    if not exists:
+        raise ma.ValidationError(value.error_messages['not_found'].format(
+            document=value.document_cls.__name__))
 
 
 async def _list_io_validate(field, value):
@@ -406,6 +409,10 @@ class MotorAsyncIOReference(Reference):
                 raise ma.ValidationError(self.error_messages['not_found'].format(
                     document=self.document_cls.__name__))
         return self._document
+
+    @property
+    async def exists(self):
+        return await self.document_cls.collection.find_one(self.pk, projection={'_id': True}) is not None
 
 
 class MotorAsyncIOBuilder(BaseBuilder):
