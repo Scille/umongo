@@ -154,12 +154,14 @@ class TxMongoDocument(DocumentImplementation):
 
     @classmethod
     @inlineCallbacks
-    def find_one(cls, filter=None, *args, **kwargs):
+    def find_one(cls, filter=None, projection=None, *args, **kwargs):
         """
         Find a single document in database.
         """
         filter = cook_find_filter(cls, filter)
-        ret = yield cls.collection.find_one(filter, *args, **kwargs)
+        if projection:
+            projection = cook_find_projection(cls, projection)
+        ret = yield cls.collection.find_one(filter, projection=projection, *args, **kwargs)
         if ret is not None:
             ret = cls.build_from_mongo(ret, use_cls=True)
         return ret
@@ -338,10 +340,7 @@ class TxMongoReference(Reference):
         if not self._document or force_reload:
             if self.pk is None:
                 raise NoneReferenceError('Cannot retrieve a None Reference')
-            if projection is None:
-                self._document = yield self.document_cls.find_one(self.pk)
-            else:
-                self._document = yield self.document_cls.find_one(self.pk, projection)
+            self._document = yield self.document_cls.find_one(self.pk, projection)
             if not self._document:
                 raise ma.ValidationError(self.error_messages['not_found'].format(
                     document=self.document_cls.__name__))
