@@ -169,13 +169,13 @@ class Reference:
         """
         Retrieve from the database the referenced document
 
-        :param no_data: if True, the caller is only interested in whether or
-            not the document is present in database. This means the
+        :param no_data: if True, the caller is only interested in whether
+            the document is present in database. This means the
             implementation may not retrieve document's data to save bandwidth.
         :param force_reload: if True, ignore any cached data and reload referenced
             document from database.
-        :param projection: if supplied, this is a dictionary describing a projection
-            which limits the data returned from database.
+        :param projection: if supplied, this is a dictionary or list describing
+            a projection which limits the data returned from database.
         """
         raise NotImplementedError
     # TODO replace no_data by `exists` function
