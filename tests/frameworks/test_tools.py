@@ -24,12 +24,21 @@ def db():
 def test_cook_find_projection(classroom_model):
     projection = {'has_apple': 0}
     cooked = cook_find_projection(classroom_model.Teacher, projection=projection)
-    assert cooked == {'has_apple_bool': 0}
+    assert cooked == {'_has_apple': 0}
 
     projection = ['has_apple']
     cooked = cook_find_projection(classroom_model.Teacher, projection=projection)
-    assert cooked == {'has_apple_bool': 1}
+    assert cooked == {'_has_apple': 1}
 
     projection = ['name', 'has_apple']
     cooked = cook_find_projection(classroom_model.Teacher, projection=projection)
-    assert cooked == {'name': 1, 'has_apple_bool': 1}
+    assert cooked == {'name': 1, '_has_apple': 1}
+
+    # projection into a nested document's field which has a specified `attribute`
+    projection = ['room.seats']
+    cooked = cook_find_projection(classroom_model.Course, projection=projection)
+    assert cooked == {'room._seats': 1}
+
+    projection = {'room.seats': 0}
+    cooked = cook_find_projection(classroom_model.Course, projection=projection)
+    assert cooked == {'room._seats': 0}

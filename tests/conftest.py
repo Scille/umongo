@@ -1,7 +1,7 @@
 import pytest
 from functools import namedtuple
 
-from umongo import Document, fields
+from umongo import Document, EmbeddedDocument, fields
 from umongo.instance import Instance
 
 
@@ -17,12 +17,17 @@ def classroom_model(instance):
     @instance.register
     class Teacher(Document):
         name = fields.StrField(required=True)
-        has_apple = fields.BooleanField(required=False, attribute='has_apple_bool')
+        has_apple = fields.BooleanField(required=False, attribute='_has_apple')
+
+    @instance.register
+    class Room(EmbeddedDocument):
+        seats = fields.IntField(required=True, attribute='_seats')
 
     @instance.register
     class Course(Document):
         name = fields.StrField(required=True)
         teacher = fields.ReferenceField(Teacher, required=True, allow_none=True)
+        room = fields.EmbeddedField(Room, required=False, allow_none=True)
 
     @instance.register
     class Student(Document):
@@ -30,4 +35,4 @@ def classroom_model(instance):
         birthday = fields.DateTimeField()
         courses = fields.ListField(fields.ReferenceField(Course))
 
-    return namedtuple('Mapping', ('Teacher', 'Course', 'Student'))(Teacher, Course, Student)
+    return namedtuple('Mapping', ('Teacher', 'Course', 'Student', 'Room'))(Teacher, Course, Student, Room)
