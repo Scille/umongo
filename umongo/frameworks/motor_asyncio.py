@@ -261,7 +261,8 @@ class MotorAsyncIODocument(DocumentImplementation):
         filter = cook_find_filter(cls, filter)
         if projection:
             projection = cook_find_projection(cls, projection)
-        ret = await cls.collection.find_one(filter, projection=projection, session=SESSION.get(), *args, **kwargs)
+        ret = await cls.collection.find_one(filter, projection=projection,
+                                            session=SESSION.get(), *args, **kwargs)
         if ret is not None:
             ret = cls.build_from_mongo(ret, use_cls=True)
         return ret

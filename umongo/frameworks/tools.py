@@ -1,5 +1,4 @@
 from ..query_mapper import map_query
-from ..query_mapper import map_query, map_entry
 
 
 def cook_find_filter(doc_cls, filter):
