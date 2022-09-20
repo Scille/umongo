@@ -178,12 +178,11 @@ class Reference:
             a projection which limits the data returned from database.
         """
         raise NotImplementedError
-    # TODO replace no_data by `exists` function
 
     @property
     def exists(self):
         """
-        Check if the reference document exists in its collection.
+        Check if the reference document exists in the database.
         """
         raise NotImplementedError
 
