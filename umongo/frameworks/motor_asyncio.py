@@ -17,7 +17,7 @@ from ..exceptions import NotCreatedError, UpdateError, DeleteError, NoneReferenc
 from ..fields import ReferenceField, ListField, DictField, EmbeddedField
 from ..query_mapper import map_query
 
-from .tools import cook_find_filter, remove_cls_field_from_embedded_docs
+from .tools import cook_find_filter, cook_find_projection, remove_cls_field_from_embedded_docs
 
 
 SESSION = ContextVar("session", default=None)
@@ -254,12 +254,15 @@ class MotorAsyncIODocument(DocumentImplementation):
             self.schema, self._data, partial=self._data.get_modified_fields())
 
     @classmethod
-    async def find_one(cls, filter=None, *args, **kwargs):
+    async def find_one(cls, filter=None, projection=None, *args, **kwargs):
         """
         Find a single document in database.
         """
         filter = cook_find_filter(cls, filter)
-        ret = await cls.collection.find_one(filter, session=SESSION.get(), *args, **kwargs)
+        if projection:
+            projection = cook_find_projection(cls, projection)
+        ret = await cls.collection.find_one(filter, projection=projection,
+                                            session=SESSION.get(), *args, **kwargs)
         if ret is not None:
             ret = cls.build_from_mongo(ret, use_cls=True)
         return ret
@@ -341,7 +344,10 @@ async def _io_validate_data_proxy(schema, data_proxy, partial=None):
 async def _reference_io_validate(field, value):
     if value is None:
         return
-    await value.fetch(no_data=True)
+    exists = await value.exists
+    if not exists:
+        raise ma.ValidationError(value.error_messages['not_found'].format(
+            document=value.document_cls.__name__))
 
 
 async def _list_io_validate(field, value):
@@ -394,15 +400,20 @@ class MotorAsyncIOReference(Reference):
         super().__init__(*args, **kwargs)
         self._document = None
 
-    async def fetch(self, no_data=False, force_reload=False):
+    async def fetch(self, no_data=False, force_reload=False, projection=None):
         if not self._document or force_reload:
             if self.pk is None:
                 raise NoneReferenceError('Cannot retrieve a None Reference')
-            self._document = await self.document_cls.find_one(self.pk)
+            self._document = await self.document_cls.find_one(self.pk, projection=projection)
             if not self._document:
                 raise ma.ValidationError(self.error_messages['not_found'].format(
                     document=self.document_cls.__name__))
         return self._document
+
+    @property
+    async def exists(self):
+        return await self.document_cls.collection.find_one(self.pk,
+                                                           projection={'_id': True}) is not None
 
 
 class MotorAsyncIOBuilder(BaseBuilder):

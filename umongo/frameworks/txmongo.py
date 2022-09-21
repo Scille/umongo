@@ -13,7 +13,7 @@ from ..exceptions import NotCreatedError, UpdateError, DeleteError, NoneReferenc
 from ..fields import ReferenceField, ListField, DictField, EmbeddedField
 from ..query_mapper import map_query
 
-from .tools import cook_find_filter, remove_cls_field_from_embedded_docs
+from .tools import cook_find_filter, cook_find_projection, remove_cls_field_from_embedded_docs
 
 
 class TxMongoDocument(DocumentImplementation):
@@ -154,12 +154,14 @@ class TxMongoDocument(DocumentImplementation):
 
     @classmethod
     @inlineCallbacks
-    def find_one(cls, filter=None, *args, **kwargs):
+    def find_one(cls, filter=None, projection=None, *args, **kwargs):
         """
         Find a single document in database.
         """
         filter = cook_find_filter(cls, filter)
-        ret = yield cls.collection.find_one(filter, *args, **kwargs)
+        if projection:
+            projection = cook_find_projection(cls, projection)
+        ret = yield cls.collection.find_one(filter, projection=projection, *args, **kwargs)
         if ret is not None:
             ret = cls.build_from_mongo(ret, use_cls=True)
         return ret
@@ -334,11 +336,11 @@ class TxMongoReference(Reference):
         self._document = None
 
     @inlineCallbacks
-    def fetch(self, no_data=False, force_reload=False):
+    def fetch(self, no_data=False, force_reload=False, projection=None):
         if not self._document or force_reload:
             if self.pk is None:
                 raise NoneReferenceError('Cannot retrieve a None Reference')
-            self._document = yield self.document_cls.find_one(self.pk)
+            self._document = yield self.document_cls.find_one(self.pk, projection)
             if not self._document:
                 raise ma.ValidationError(self.error_messages['not_found'].format(
                     document=self.document_cls.__name__))
