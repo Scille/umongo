@@ -412,7 +412,8 @@ class MotorAsyncIOReference(Reference):
 
     @property
     async def exists(self):
-        return await self.document_cls.collection.find_one(self.pk, projection={'_id': True}) is not None
+        return await self.document_cls.collection.find_one(self.pk,
+                                                           projection={'_id': True}) is not None
 
 
 class MotorAsyncIOBuilder(BaseBuilder):

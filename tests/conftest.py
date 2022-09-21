@@ -35,4 +35,5 @@ def classroom_model(instance):
         birthday = fields.DateTimeField()
         courses = fields.ListField(fields.ReferenceField(Course))
 
-    return namedtuple('Mapping', ('Teacher', 'Course', 'Student', 'Room'))(Teacher, Course, Student, Room)
+    Mapping = namedtuple('Mapping', ('Teacher', 'Course', 'Student', 'Room'))
+    return Mapping(Teacher, Course, Student, Room)
