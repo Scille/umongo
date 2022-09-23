@@ -14,7 +14,7 @@ from ..instance import Instance
 from ..document import DocumentImplementation
 from ..data_objects import Reference
 from ..exceptions import NotCreatedError, UpdateError, DeleteError, NoneReferenceError
-from ..fields import ReferenceField, ListField, DictField, EmbeddedField
+from ..fields import ReferenceField, GenericReferenceField, ListField, DictField, EmbeddedField
 from ..query_mapper import map_query
 
 from .tools import cook_find_filter, cook_find_projection, remove_cls_field_from_embedded_docs
@@ -442,6 +442,10 @@ class MotorAsyncIOBuilder(BaseBuilder):
         if isinstance(field, ReferenceField):
             field.io_validate.append(_reference_io_validate)
             field.reference_cls = MotorAsyncIOReference
+        if isinstance(field, GenericReferenceField):
+            field.io_validate.append(_reference_io_validate)
+            if field.reference_cls is None:
+                field.reference_cls = MotorAsyncIOReference
         if isinstance(field, EmbeddedField):
             field.io_validate_recursive = _embedded_document_io_validate
 
