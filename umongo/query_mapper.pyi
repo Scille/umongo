@@ -1,0 +1,9 @@
+from umongo.document import DocumentImplementation as DocumentImplementation
+from umongo.embedded_document import (
+    EmbeddedDocumentImplementation as EmbeddedDocumentImplementation,
+)
+from umongo.fields import EmbeddedField as EmbeddedField, ListField as ListField
+
+def map_entry(entry, fields): ...
+def map_entry_with_dots(entry, fields): ...
+def map_query(query, fields): ...
