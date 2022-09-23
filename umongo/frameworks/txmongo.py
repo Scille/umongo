@@ -64,7 +64,7 @@ class TxMongoDocument(DocumentImplementation):
                     additional_filter = yield maybeDeferred(self.pre_update)
                     if additional_filter:
                         query.update(map_query(additional_filter, self.schema.fields))
-                    self.required_validate()
+                    self.required_validate(self._data.get_modified_fields())
                     yield self.io_validate(validate_all=io_validate_all)
                     if replace:
                         payload = self._data.to_mongo(update=False)

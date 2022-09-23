@@ -242,6 +242,7 @@ class TestTxMongo(BaseDBTest):
         class Dummy(Document):
             required_name = fields.StrField(required=True)
             always_io_fail = fields.IntField(io_validate=io_validate)
+            optional_field = fields.StrField()
 
         with pytest.raises(ma.ValidationError) as exc:
             yield Dummy().commit()
@@ -256,6 +257,12 @@ class TestTxMongo(BaseDBTest):
         with pytest.raises(ma.ValidationError) as exc:
             yield dummy.commit()
         assert exc.value.messages == {'required_name': ['Missing data for required field.']}
+        # Test update of projected document does not require excluded fields
+        dummy = Dummy(required_name='do_not_fail_on_partial_update')
+        yield dummy.commit()
+        dummy = yield Dummy.find_one({'required_name': 'do_not_fail_on_partial_update'}, {'optional_field': 1})
+        dummy.optional_field = 'update me!'
+        yield dummy.commit()
 
     @pytest_inlineCallbacks
     def test_reference(self, classroom_model):

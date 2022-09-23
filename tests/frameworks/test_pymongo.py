@@ -201,6 +201,7 @@ class TestPymongo(BaseDBTest):
         class Dummy(Document):
             required_name = fields.StrField(required=True)
             always_io_fail = fields.IntField(io_validate=io_validate)
+            optional_field = fields.StrField()
 
         with pytest.raises(ma.ValidationError) as exc:
             Dummy().commit()
@@ -215,6 +216,12 @@ class TestPymongo(BaseDBTest):
         with pytest.raises(ma.ValidationError) as exc:
             dummy.commit()
         assert exc.value.messages == {'required_name': ['Missing data for required field.']}
+        # Test update of projected document does not require excluded fields
+        dummy = Dummy(required_name='do_not_fail_on_partial_update')
+        dummy.commit()
+        dummy = Dummy.find_one({'required_name': 'do_not_fail_on_partial_update'}, {'optional_field': 1})
+        dummy.optional_field = 'update me!'
+        dummy.commit()
 
     def test_reference(self, classroom_model):
         teacher = classroom_model.Teacher(name='M. Strickland', has_apple=True)

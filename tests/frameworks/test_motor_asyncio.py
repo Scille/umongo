@@ -286,6 +286,7 @@ class TestMotorAsyncIO(BaseDBTest):
             class Dummy(Document):
                 required_name = fields.StrField(required=True)
                 always_io_fail = fields.IntField(io_validate=io_validate)
+                optional_field = fields.StrField()
 
             with pytest.raises(ma.ValidationError) as exc:
                 await Dummy().commit()
@@ -300,6 +301,13 @@ class TestMotorAsyncIO(BaseDBTest):
             with pytest.raises(ma.ValidationError) as exc:
                 await dummy.commit()
             assert exc.value.messages == {'required_name': ['Missing data for required field.']}
+            # Test update of projected document does not require excluded fields
+            dummy = Dummy(required_name='do_not_fail_on_partial_update')
+            await dummy.commit()
+            dummy = await Dummy.find_one({'required_name': 'do_not_fail_on_partial_update'}, {'optional_field': 1})
+            dummy.optional_field = 'update me!'
+            await dummy.commit()
+
 
         loop.run_until_complete(do_test())
 
