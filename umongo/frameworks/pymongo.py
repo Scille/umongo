@@ -153,6 +153,30 @@ class PyMongoDocument(DocumentImplementation):
         self._data.clear_modified()
         return ret
 
+    def commit_many(self, conditions=None, replace_arrays=False):
+        """
+        Commit changes to multiple documents per conditions.
+        :param conditions: Only perform commit if matching record in db
+            satisfies condition(s) (e.g. version number).
+            Raises :class:`umongo.exceptions.UpdateError` if the
+            conditions are not satisfied.
+        :param replace_arrays: False (default) to add array elements to document or True to replace fields
+            containing arrays with the supplied value(s)
+        :return: A :class:`pymongo.results.UpdateResult`
+        """
+        query = conditions or {}
+        # pre_update can provide additional query filter and/or
+        # modify the fields' values
+        additional_filter = self.pre_update()
+        if additional_filter:
+            query.update(map_query(additional_filter, self.schema.fields))
+        self.io_validate(validate_all=False)
+        payload = self._data.to_mongo_update_many(replace_arrays=replace_arrays)
+        ret = self.collection.update_many(query, payload, session=SESSION.get())
+        self.post_update(ret)
+        self._data.clear_modified()
+        return ret
+
     def delete(self, conditions=None):
         """
         Remove the document from database.
