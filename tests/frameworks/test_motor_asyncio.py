@@ -99,6 +99,24 @@ class TestMotorAsyncIO(BaseDBTest):
 
         loop.run_until_complete(do_test())
 
+    def test_update_many(self, loop, classroom_model):
+        Teacher = classroom_model.Teacher
+
+        async def do_test():
+            john = Teacher(name='John Buck', has_apple=False)
+            await john.commit()
+            jane = Teacher(name='Jane Buck', has_apple=False)
+            await jane.commit()
+            query = {"name": {"$regex": ".*Buck"}}
+            result = await Teacher(has_apple=True).commit_many(query)
+            assert result.modified_count == 2
+            await john.reload()
+            assert john.has_apple
+            await jane.reload()
+            assert jane.has_apple
+
+        loop.run_until_complete(do_test())
+
     def test_replace(self, loop, classroom_model):
         Student = classroom_model.Student
 

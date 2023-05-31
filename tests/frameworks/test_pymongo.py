@@ -74,6 +74,20 @@ class TestPymongo(BaseDBTest):
         with pytest.raises(exceptions.NotCreatedError):
             Student(name='Joe').commit(conditions={'name': 'dummy'})
 
+    def test_update_many(self, classroom_model):
+        Teacher = classroom_model.Teacher
+        john = Teacher(name='John Buck', has_apple=False)
+        john.commit()
+        jane = Teacher(name='Jane Buck', has_apple=False)
+        jane.commit()
+        query = {"name": {"$regex": ".*Buck$"}}
+        result = Teacher(has_apple=True).commit_many(query)
+        assert result.modified_count == 2
+        john.reload()
+        assert john.has_apple
+        jane.reload()
+        assert jane.has_apple
+
     def test_replace(self, classroom_model):
         Student = classroom_model.Student
         john = Student(name='John Doe', birthday=dt.datetime(1995, 12, 12))

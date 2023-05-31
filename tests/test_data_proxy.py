@@ -435,6 +435,69 @@ class TestDataProxy(BaseTest):
         d.get('e')['b'] = 4
         assert_equal_order(d.to_mongo()['e'], {'a': 1, 'b': 4, 'c': 3})
 
+    def test_update_many_string(self):
+        class MySchema(BaseSchema):
+            field_a = fields.StringField()
+
+        DataProxy = data_proxy_factory('My', MySchema())
+        d = DataProxy({'field_a': "new_value"})
+        payload = d.to_mongo_update_many()
+        assert payload == {'$set': {'field_a': 'new_value'}}
+
+    def test_update_many_dict(self):
+        class MySchema(BaseSchema):
+            field_a = fields.DictField()
+
+        DataProxy = data_proxy_factory('My', MySchema())
+        d = DataProxy({'field_a': {'sub_field_a': 'new_value'}})
+        payload = d.to_mongo_update_many()
+        assert payload == {'$set': {'field_a.sub_field_a': 'new_value'}}
+
+    def test_update_many_deep_dict(self):
+        class MySchema(BaseSchema):
+            field_a = fields.DictField()
+
+        DataProxy = data_proxy_factory('My', MySchema())
+        d = DataProxy({'field_a': {'sub_field_a': {'sub_sub_field_a': 'new_value'}}})
+        payload = d.to_mongo_update_many()
+        assert payload == {'$set': {'field_a.sub_field_a.sub_sub_field_a': 'new_value'}}
+
+    def test_update_many_list(self):
+        class MySchema(BaseSchema):
+            field_a = fields.ListField(fields.StringField())
+
+        DataProxy = data_proxy_factory('My', MySchema())
+        d = DataProxy({'field_a': ['new_value']})
+        payload = d.to_mongo_update_many()
+        assert payload == {'$push': {'field_a': 'new_value'}}
+
+    def test_update_many_list_replace(self):
+        class MySchema(BaseSchema):
+            field_a = fields.ListField(fields.StringField())
+
+        DataProxy = data_proxy_factory('My', MySchema())
+        d = DataProxy({'field_a': ['new_value']})
+        payload = d.to_mongo_update_many(replace_arrays=True)
+        assert payload == {'$set': {'field_a': ['new_value']}}
+
+    def test_update_many_dict_list(self):
+        class MySchema(BaseSchema):
+            field_a = fields.DictField()
+
+        DataProxy = data_proxy_factory('My', MySchema())
+        d = DataProxy({'field_a': {'sub_field_a': ['new_value']}})
+        payload = d.to_mongo_update_many()
+        assert payload == {'$push': {'field_a.sub_field_a': 'new_value'}}
+
+    def test_update_many_dict_list_replace(self):
+        class MySchema(BaseSchema):
+            field_a = fields.DictField()
+
+        DataProxy = data_proxy_factory('My', MySchema())
+        d = DataProxy({'field_a': {'sub_field_a': ['new_value']}})
+        payload = d.to_mongo_update_many(replace_arrays=True)
+        assert payload == {'$set': {'field_a.sub_field_a': ['new_value']}}
+
 
 class TestNonStrictDataProxy(BaseTest):
 
