@@ -32,7 +32,7 @@ setup(
     python_requires='>=3.7',
     install_requires=requirements,
     extras_require={
-        'motor': ['motor>=2.0,<3.0'],
+        'motor': ['motor>=2.0,<4.0'],
         'txmongo': ['txmongo>=19.2.0'],
         'mongomock': ['mongomock'],
     },
