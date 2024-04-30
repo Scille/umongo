@@ -71,13 +71,13 @@ register_instance(MockedInstance)
 
 class BaseTest:
 
-    def setup(self):
+    def setup_method(self):
         self.instance = MockedInstance(MockedDB('my_moked_db'))
 
 
 class BaseDBTest:
 
-    def setup(self):
+    def setup_method(self):
         con.drop_database(TEST_DB)
 
 

@@ -21,8 +21,8 @@ class TestMarshmallow(BaseTest):
         # Reset i18n config before each test
         set_gettext(None)
 
-    def setup(self):
-        super().setup()
+    def setup_method(self):
+        super().setup_method()
 
         class User(Document):
             name = fields.StrField()
