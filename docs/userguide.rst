@@ -625,9 +625,9 @@ using pure marshmallow fields generated with the
     @instance.register
     class Employee(Document):
         name = fields.StrField(default='John Doe')
-        birthday = fields.DateTimeField(marshmallow_missing=dt.datetime(2000, 1, 1))
+        birthday = fields.DateTimeField(marshmallow_load_default=dt.datetime(2000, 1, 1))
         # You can use `missing` singleton to overwrite `default` field inference
-        skill = fields.StrField(default='Dummy', marshmallow_default=missing)
+        skill = fields.StrField(default='Dummy', marshmallow_dump_default=missing)
 
     ret = Employee.schema.as_marshmallow_schema()().load({})
     assert ret == {'name': 'John Doe', 'birthday': datetime(2000, 1, 1, 0, 0, tzinfo=tzutc()), 'skill': 'Dummy'}
