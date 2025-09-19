@@ -2,6 +2,15 @@
 History
 =======
 
+3.2.0 (2024-04-30)
+------------------
+
+Features:
+
+* Add compatibility with `pymongo` 4.0.
+* Allow `motor` 4.0 dependency so that `pymongo` 4.x dependency can be used.
+
+
 3.1.0 (2021-12-23)
 ------------------
 

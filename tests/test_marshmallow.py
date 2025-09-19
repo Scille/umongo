@@ -21,8 +21,8 @@ class TestMarshmallow(BaseTest):
         # Reset i18n config before each test
         set_gettext(None)
 
-    def setup(self):
-        super().setup()
+    def setup_method(self):
+        super().setup_method()
 
         class User(Document):
             name = fields.StrField()
@@ -125,10 +125,10 @@ class TestMarshmallow(BaseTest):
         @self.instance.register
         class MyDoc(Document):
             de = fields.IntField(default=42)
-            mm = fields.IntField(marshmallow_missing=12)
-            md = fields.IntField(marshmallow_default=12)
-            mmd = fields.IntField(default=42, marshmallow_missing=12)
-            mdd = fields.IntField(default=42, marshmallow_default=12)
+            mm = fields.IntField(marshmallow_load_default=12)
+            md = fields.IntField(marshmallow_dump_default=12)
+            mmd = fields.IntField(default=42, marshmallow_load_default=12)
+            mdd = fields.IntField(default=42, marshmallow_dump_default=12)
 
         MyMaDoc = MyDoc.schema.as_marshmallow_schema()
 
@@ -259,18 +259,18 @@ class TestMarshmallow(BaseTest):
         class WithDefault(Document):
             with_umongo_default = fields.DateTimeField(default=dt.datetime(1999, 1, 1))
             with_marshmallow_missing = fields.DateTimeField(
-                marshmallow_missing=dt.datetime(2000, 1, 1))
+                marshmallow_load_default=dt.datetime(2000, 1, 1))
             with_marshmallow_default = fields.DateTimeField(
-                marshmallow_default=dt.datetime(2001, 1, 1))
+                marshmallow_dump_default=dt.datetime(2001, 1, 1))
             with_marshmallow_and_umongo = fields.DateTimeField(
                 default=dt.datetime(1999, 1, 1),
-                marshmallow_missing=dt.datetime(2000, 1, 1),
-                marshmallow_default=dt.datetime(2001, 1, 1)
+                marshmallow_load_default=dt.datetime(2000, 1, 1),
+                marshmallow_dump_default=dt.datetime(2001, 1, 1)
             )
             with_force_missing = fields.DateTimeField(
                 default=dt.datetime(2001, 1, 1),
-                marshmallow_missing=missing,
-                marshmallow_default=missing
+                marshmallow_load_default=missing,
+                marshmallow_dump_default=missing
             )
             with_nothing = fields.StrField()
 

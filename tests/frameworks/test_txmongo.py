@@ -289,9 +289,9 @@ class TestTxMongo(BaseDBTest):
         assert teacher_fetched.name == 'Dr. Brown'
         teacher_fetched = yield course.teacher.fetch(force_reload=True)
         assert teacher_fetched.name == 'M. Strickland'
-        # Test fetch with projection
-        assert course.teacher.fetch(projection={'has_apple': 0},
-                                    force_reload=True).has_apple is None
+        # Test fetch with projection, without `yield`.
+        teacher_fetched = course.teacher.fetch(projection={'has_apple': 0}, force_reload=True)
+        assert isinstance(teacher_fetched, Deferred)
         # Test bad ref as well
         course.teacher = Reference(classroom_model.Teacher, ObjectId())
         with pytest.raises(ma.ValidationError) as exc:

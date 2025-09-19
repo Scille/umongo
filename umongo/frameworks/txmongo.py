@@ -214,7 +214,7 @@ class TxMongoDocument(DocumentImplementation):
         for index in cls.indexes:
             kwargs = index.document.copy()
             keys = kwargs.pop('key')
-            index = qf.sort(keys.items())
+            index = qf.sort(keys)
             yield cls.collection.create_index(index, **kwargs)
 
 

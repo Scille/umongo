@@ -117,6 +117,11 @@ class BaseField(ma.fields.Field):
         if 'default' in kwargs:
             kwargs['missing'] = kwargs['default']
 
+        if "default" in kwargs:
+            kwargs["dump_default"] = kwargs.pop("default")
+        if "missing" in kwargs:
+            kwargs["load_default"] = kwargs.pop("missing")
+
         # Store attributes prefixed with marshmallow_ to use them when
         # creating pure marshmallow Schema
         self._ma_kwargs = {
@@ -132,8 +137,8 @@ class BaseField(ma.fields.Field):
 
         super().__init__(*args, **kwargs)
 
-        self._ma_kwargs.setdefault('missing', self.default)
-        self._ma_kwargs.setdefault('default', self.default)
+        self._ma_kwargs.setdefault('dump_default', self.dump_default)
+        self._ma_kwargs.setdefault('load_default', self.dump_default)
 
         # Overwrite error_messages to handle i18n translation
         self.error_messages = I18nErrorDict(self.error_messages)

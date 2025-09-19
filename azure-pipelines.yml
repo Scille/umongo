@@ -25,8 +25,13 @@ stages:
         parameters:
           toxenvs:
             - py39-pymongo
-            - py39-motor
+            - py39-motor2
+            - py39-motor3
             - py39-txmongo
+            - py312-pymongo
+            - py312-motor2
+            - py312-motor3
+            - py312-txmongo
           coverage: true
           pre_test:
               - script: |
@@ -44,11 +49,17 @@ stages:
         parameters:
           toxenvs:
             - py37-pymongo
-            - py37-motor
+            - py37-motor2
+            - py37-motor3
             - py37-txmongo
             - py39-pymongo
-            - py39-motor
+            - py39-motor2
+            - py39-motor3
             - py39-txmongo
+            - py312-pymongo
+            - py312-motor2
+            - py312-motor3
+            - py312-txmongo
           coverage: true
           pre_test:
               - script: mongod --version
