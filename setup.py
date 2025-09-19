@@ -15,7 +15,7 @@ with open('HISTORY.rst', 'rb') as history_file:
     history = history_file.read().decode('utf8')
 
 requirements = [
-    "marshmallow>=3.10.0",
+    "marshmallow>=3.10.0,<4.0",
     "pymongo>=3.7.0",
 ]
 
@@ -24,6 +24,7 @@ setup(
     version='3.2.0',
     description="sync/async MongoDB ODM, yes.",
     long_description=readme + '\n\n' + history,
+    long_description_content_type="text/x-rst",
     author="Emmanuel Leblond, Jérôme Lafréchoux",
     author_email='jerome@jolimont.fr',
     url='https://github.com/touilleMan/umongo',
