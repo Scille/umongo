@@ -17,7 +17,6 @@ with open('HISTORY.rst', 'rb') as history_file:
 requirements = [
     "marshmallow>=3.10.0",
     "pymongo>=3.7.0",
-    "motor>=3.1.1",
 ]
 
 setup(
@@ -35,8 +34,7 @@ setup(
     extras_require={
         'motor': ['motor>=3.1.1'],
         'txmongo': ['txmongo>=19.2.0'],
-        'mongomock': ['mongomock'],
-        'marshmallow': ['marshmallow>=3.14.0']
+        'mongomock': ['mongomock']
     },
     license="MIT",
     zip_safe=False,
