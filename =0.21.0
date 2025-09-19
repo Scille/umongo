@@ -1,6 +1,0 @@
-Requirement already satisfied: pytest-asyncio in /home/global/miniconda3/envs/umongo/lib/python3.12/site-packages (1.2.0)
-Requirement already satisfied: pytest<9,>=8.2 in /home/global/miniconda3/envs/umongo/lib/python3.12/site-packages (from pytest-asyncio) (8.3.5)
-Requirement already satisfied: typing-extensions>=4.12 in /home/global/miniconda3/envs/umongo/lib/python3.12/site-packages (from pytest-asyncio) (4.15.0)
-Requirement already satisfied: iniconfig in /home/global/miniconda3/envs/umongo/lib/python3.12/site-packages (from pytest<9,>=8.2->pytest-asyncio) (2.1.0)
-Requirement already satisfied: packaging in /home/global/miniconda3/envs/umongo/lib/python3.12/site-packages (from pytest<9,>=8.2->pytest-asyncio) (25.0)
-Requirement already satisfied: pluggy<2,>=1.5 in /home/global/miniconda3/envs/umongo/lib/python3.12/site-packages (from pytest<9,>=8.2->pytest-asyncio) (1.6.0)
