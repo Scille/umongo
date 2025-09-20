@@ -447,7 +447,7 @@ class MotorAsyncIOBuilder(BaseBuilder):
             else:
                 validators = [validators]
             field.io_validate = [
-                v if asyncio.iscoroutinefunction(v) else asyncio.coroutine(v)
+                v if asyncio.iscoroutinefunction(v) else types.coroutine(v)
                 for v in validators
             ]
         if isinstance(field, ListField):

@@ -121,6 +121,11 @@ class BaseField(ma.fields.Field):
         if "missing" in kwargs:
             kwargs["load_default"] = kwargs.pop("missing")
 
+        if "default" in kwargs:
+            kwargs["dump_default"] = kwargs.pop("default")
+        if "missing" in kwargs:
+            kwargs["load_default"] = kwargs.pop("missing")
+
         # Store attributes prefixed with marshmallow_ to use them when
         # creating pure marshmallow Schema
         self._ma_kwargs = {
