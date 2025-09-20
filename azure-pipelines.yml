@@ -27,6 +27,9 @@ stages:
             - py39-pymongo
             - py39-motor
             - py39-txmongo
+            - py312-pymongo
+            - py312-motor
+            - py312-txmongo
           coverage: true
           pre_test:
               - script: |
@@ -49,6 +52,9 @@ stages:
             - py39-pymongo
             - py39-motor
             - py39-txmongo
+            - py312-pymongo
+            - py312-motor
+            - py312-txmongo
           coverage: true
           pre_test:
               - script: mongod --version

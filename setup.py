@@ -21,7 +21,7 @@ requirements = [
 
 setup(
     name='umongo',
-    version='3.1.0',
+    version='3.2.0',
     description="sync/async MongoDB ODM, yes.",
     long_description=readme + '\n\n' + history,
     author="Emmanuel Leblond, Jérôme Lafréchoux",
@@ -32,7 +32,7 @@ setup(
     python_requires='>=3.7',
     install_requires=requirements,
     extras_require={
-        'motor': ['motor>=2.0,<3.0'],
+        'motor': ['motor>=3.1.1'],
         'txmongo': ['txmongo>=19.2.0'],
         'mongomock': ['mongomock'],
     },
@@ -48,6 +48,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.12',
         'Programming Language :: Python :: 3 :: Only',
     ],
 )

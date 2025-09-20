@@ -60,7 +60,7 @@ class TestEmbeddedDocument(BaseTest):
         d.from_mongo(data={'in_mongo_embedded': {'in_mongo_a': 1, 'b': 2}})
         assert d.dump() == {'embedded': {'a': 1, 'b': 2}}
         embedded = d.get('embedded')
-        assert type(embedded) == MyEmbeddedDocument
+        assert type(embedded) is MyEmbeddedDocument
         assert embedded.a == 1
         assert embedded.b == 2
         assert embedded.dump() == {'a': 1, 'b': 2}
