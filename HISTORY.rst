@@ -2,6 +2,24 @@
 History
 =======
 
+3.1.0 (2025-09-21)
+------------------
+**Features**
+- Ensured full compatibility with Python 3.12.
+- Added support for PyMongo 4.0 (see #375).
+- Updated tests and examples for Python 3.12 compatibility.
+
+* *Backwards-incompatible*: ``missing`` and ``default`` attribute is no longer used in umongo
+  fields, only ``dump_default`` and ``load_default`` is used. ``marshmallow_load_default`` and
+  ``marshmallow_dump_default`` attribute can be used to overwrite the value to use
+  in the pure marshmallow field returned by ``as_marshmallow_field`` method
+
+**Bug Fixes**
+- Fixed missing instance initialization in `TestDataProxy` tests.
+- Fixed cursor iteration issues in Motor and TxMongo tests.
+- Replaced deprecated Motor cursor APIs (`next_object()` and `fetch_next`) with `async for` / `await next()`.
+- Updated async test fixtures to remove usage of deprecated `asyncio.get_event_loop()`.
+
 3.1.0 (2021-12-23)
 ------------------
 
@@ -361,8 +379,8 @@ Bug fixes:
 Features:
 
 * *Backwards-incompatible*: ``missing`` attribute is no longer used in umongo
-  fields, only ``default`` is used. ``marshmallow_load_default`` and
-  ``marshmallow_dump_default`` attribute can be used to overwrite the value to use
+  fields, only ``default`` is used. ``marshmallow_missing`` and
+  ``marshmallow_default`` attribute can be used to overwrite the value to use
   in the pure marshmallow field returned by ``as_marshmallow_field`` method
   (see #36 and #107).
 * *Backwards-incompatible*: ``as_marshmallow_field`` does not pass
