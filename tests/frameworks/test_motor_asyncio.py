@@ -3,6 +3,7 @@ import datetime as dt
 
 from unittest import mock
 import pytest
+import sys
 
 from bson import ObjectId
 import marshmallow as ma
@@ -43,7 +44,15 @@ def db():
 
 @pytest.fixture
 def loop():
-    return asyncio.get_event_loop()
+    if sys.version_info >= (3, 10):
+        # Python 3.10+ requires explicit event loop management
+        loop = asyncio.new_event_loop()
+        yield loop
+        loop.close()
+    else:
+        # On Python < 3.10, pytest-asyncio can reuse the default loop
+        loop = asyncio.get_event_loop()
+        yield loop
 
 
 @pytest.mark.skipif(dep_error, reason=DEP_ERROR)
@@ -201,8 +210,7 @@ class TestMotorAsyncIO(BaseDBTest):
             # Try with fetch_next as well
             names = []
             cursor.rewind()
-            while (await cursor.fetch_next):
-                elem = cursor.next_object()
+            async for elem in cursor:
                 assert isinstance(elem, Student)
                 names.append(elem.name)
             assert sorted(names) == ['student-%s' % i for i in range(6, 10)]
@@ -234,10 +242,8 @@ class TestMotorAsyncIO(BaseDBTest):
             # Test clone&rewind as well
             cursor = Student.find()
             cursor2 = cursor.clone()
-            await cursor.fetch_next
-            await cursor2.fetch_next
-            cursor_student = cursor.next_object()
-            cursor2_student = cursor2.next_object()
+            cursor_student = await cursor.next()
+            cursor2_student = await cursor2.next()
             assert cursor_student == cursor2_student
 
             # Filter + projection

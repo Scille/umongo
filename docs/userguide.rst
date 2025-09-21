@@ -618,16 +618,16 @@ using pure marshmallow fields generated with the
   So when you use ``as_marshmallow_field``, the resulting marshmallow field's
   ``missing``&``default`` will be by default both infered from the umongo's
   ``default`` field. You can overwrite this behavior by using
-  ``marshmallow_missing``/``marshmallow_default`` attributes:
+  ``marshmallow_load_default``/``marshmallow_dump_default`` attributes:
 
 .. code-block:: python
 
     @instance.register
     class Employee(Document):
         name = fields.StrField(default='John Doe')
-        birthday = fields.DateTimeField(marshmallow_missing=dt.datetime(2000, 1, 1))
+        birthday = fields.DateTimeField(marshmallow_load_default=dt.datetime(2000, 1, 1))
         # You can use `missing` singleton to overwrite `default` field inference
-        skill = fields.StrField(default='Dummy', marshmallow_default=missing)
+        skill = fields.StrField(default='Dummy', marshmallow_dump_default=missing)
 
     ret = Employee.schema.as_marshmallow_schema()().load({})
     assert ret == {'name': 'John Doe', 'birthday': datetime(2000, 1, 1, 0, 0, tzinfo=tzutc()), 'skill': 'Dummy'}

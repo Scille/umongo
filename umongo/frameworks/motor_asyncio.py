@@ -1,8 +1,9 @@
 import collections
+import types
 from contextvars import ContextVar
 from contextlib import asynccontextmanager
 
-from inspect import iscoroutine
+from inspect import isawaitable
 import asyncio
 
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorCursor
@@ -21,6 +22,8 @@ from .tools import cook_find_filter, cook_find_projection, remove_cls_field_from
 
 
 SESSION = ContextVar("session", default=None)
+if not hasattr(asyncio, "coroutine"):
+    asyncio.coroutine = types.coroutine
 
 
 class WrappedCursor(AsyncIOMotorCursor):
@@ -84,37 +87,37 @@ class MotorAsyncIODocument(DocumentImplementation):
 
     async def __coroutined_pre_insert(self):
         ret = self.pre_insert()
-        if iscoroutine(ret):
+        if isawaitable(ret):
             ret = await ret
         return ret
 
     async def __coroutined_pre_update(self):
         ret = self.pre_update()
-        if iscoroutine(ret):
+        if isawaitable(ret):
             ret = await ret
         return ret
 
     async def __coroutined_pre_delete(self):
         ret = self.pre_delete()
-        if iscoroutine(ret):
+        if isawaitable(ret):
             ret = await ret
         return ret
 
     async def __coroutined_post_insert(self, ret):
         ret = self.post_insert(ret)
-        if iscoroutine(ret):
+        if isawaitable(ret):
             ret = await ret
         return ret
 
     async def __coroutined_post_update(self, ret):
         ret = self.post_update(ret)
-        if iscoroutine(ret):
+        if isawaitable(ret):
             ret = await ret
         return ret
 
     async def __coroutined_post_delete(self, ret):
         ret = self.post_delete(ret)
-        if iscoroutine(ret):
+        if isawaitable(ret):
             ret = await ret
         return ret
 
@@ -302,13 +305,25 @@ class MotorAsyncIODocument(DocumentImplementation):
 # Run multiple validators and collect all errors in one
 async def _run_validators(validators, field, value):
     errors = []
-    tasks = [validator(field, value) for validator in validators]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    for i, res in enumerate(results):
-        if isinstance(res, ma.ValidationError):
-            errors.extend(res.messages)
-        elif res:
-            raise res
+    tasks = []
+
+    for validator in validators:
+        try:
+            result = validator(field, value)
+            if isawaitable(result):
+                tasks.append(result)
+            elif result:  # non-None truthy → treat as error
+                raise result
+        except ma.ValidationError as exc:
+            errors.extend(exc.messages)
+
+    if tasks:
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for res in results:
+            if isinstance(res, ma.ValidationError):
+                errors.extend(res.messages)
+            elif isinstance(res, Exception):
+                raise res
     if errors:
         raise ma.ValidationError(errors)
 
@@ -432,7 +447,7 @@ class MotorAsyncIOBuilder(BaseBuilder):
             else:
                 validators = [validators]
             field.io_validate = [
-                v if asyncio.iscoroutinefunction(v) else asyncio.coroutine(v)
+                v if asyncio.iscoroutinefunction(v) else types.coroutine(v)
                 for v in validators
             ]
         if isinstance(field, ListField):

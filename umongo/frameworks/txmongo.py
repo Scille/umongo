@@ -1,5 +1,5 @@
 from twisted.internet.defer import (
-    inlineCallbacks, Deferred, DeferredList, returnValue, maybeDeferred)
+    inlineCallbacks, Deferred, DeferredList, maybeDeferred)
 from txmongo import filter as qf
 from txmongo.database import Database
 from pymongo.errors import DuplicateKeyError
@@ -214,7 +214,7 @@ class TxMongoDocument(DocumentImplementation):
         for index in cls.indexes:
             kwargs = index.document.copy()
             keys = kwargs.pop('key')
-            index = qf.sort(keys.items())
+            index = qf.sort(keys)
             yield cls.collection.create_index(index, **kwargs)
 
 
@@ -344,7 +344,7 @@ class TxMongoReference(Reference):
             if not self._document:
                 raise ma.ValidationError(self.error_messages['not_found'].format(
                     document=self.document_cls.__name__))
-        returnValue(self._document)
+        return self._document
 
 
 class TxMongoBuilder(BaseBuilder):

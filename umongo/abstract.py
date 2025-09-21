@@ -110,12 +110,21 @@ class BaseField(ma.fields.Field):
         if 'missing' in kwargs:
             raise DocumentDefinitionError(
                 "uMongo doesn't use `missing` argument, use `default` "
-                "instead and `marshmallow_missing`/`marshmallow_default` "
+                "instead and `marshmallow_load_default`/`marshmallow_dump_default` "
                 "to tell `as_marshmallow_field` to use a custom value when "
                 "generating pure Marshmallow field."
             )
         if 'default' in kwargs:
             kwargs['missing'] = kwargs['default']
+            kwargs["dump_default"] = kwargs.pop("default")
+
+        if "missing" in kwargs:
+            kwargs["load_default"] = kwargs.pop("missing")
+
+        if "default" in kwargs:
+            kwargs["dump_default"] = kwargs.pop("default")
+        if "missing" in kwargs:
+            kwargs["load_default"] = kwargs.pop("missing")
 
         # Store attributes prefixed with marshmallow_ to use them when
         # creating pure marshmallow Schema
@@ -132,8 +141,8 @@ class BaseField(ma.fields.Field):
 
         super().__init__(*args, **kwargs)
 
-        self._ma_kwargs.setdefault('missing', self.default)
-        self._ma_kwargs.setdefault('default', self.default)
+        self._ma_kwargs.setdefault('dump_default', self.dump_default)
+        self._ma_kwargs.setdefault('load_default', self.dump_default)
 
         # Overwrite error_messages to handle i18n translation
         self.error_messages = I18nErrorDict(self.error_messages)
