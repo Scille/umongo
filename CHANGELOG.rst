@@ -9,6 +9,7 @@ Features:
 
 * Support pymongo 4 (#392)
 * Support motor 3 (#392)
+* Support marshmallow 4 (#400)
 * *Backwards-incompatible*: ``missing`` and ``default`` attributes are no longer
   used in umongo fields, only ``dump_default`` and ``load_default`` are used.
   ``marshmallow_load_default`` and ``marshmallow_dump_default`` attributes may
@@ -21,6 +22,7 @@ Other:
   ``__email__`` from umongo.__init__.py (#395).
 * Support Python up to 3.13 (#392)
 * Drop Python 3.7 and 3.8 (#393)
+
 
 3.1.0 (2021-12-23)
 ------------------
