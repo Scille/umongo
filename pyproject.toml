@@ -92,6 +92,7 @@ ignore = [
     "ERA001",  # TODO: Found commented-out code"
     "FBT002",  # allow boolean default positional argument
     "FIX",     # allow "FIX" comments in code
+    "INP001",  # allow Python files outside of packages
     "INT001",  # TODO: f-string is resolved before function call; consider `_("string %s") % arg`
     "N805",  # allow first method argument not to be self (can be cls)
     "N806",    # allow uppercase variable names for variables that are classes
@@ -126,7 +127,6 @@ ignore = [
 "examples/*" = [
     "BLE001",  # allow blind exception catching
     "EXE001",  # allow shebang in non-executable file
-    "INP001",  # allow implicit namespace package
     "T", # allow prints
 ]
 
