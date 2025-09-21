@@ -23,12 +23,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "3.9-pymongo3", python: "3.9", tox: py39-pymongo3 }
-          - { name: "3.13-pymongo4", python: "3.13", tox: py313-pymongo4 }
-          - { name: "3.9-motor2", python: "3.9", tox: py39-motor2 }
-          - { name: "3.13-motor3", python: "3.13", tox: py313-motor3 }
-          - { name: "3.9-txmongo", python: "3.9", tox: py39-txmongo }
-          - { name: "3.13-txmongo", python: "3.13", tox: py313-txmongo }
+          - { name: "3.9-pymongo3-ma3", python: "3.9", tox: py39-pymongo3-ma3 }
+          - { name: "3.13-pymongo4-ma3", python: "3.13", tox: py313-pymongo4-ma3 }
+          - { name: "3.9-motor2-ma3", python: "3.9", tox: py39-motor2-ma3 }
+          - { name: "3.13-motor3-ma4", python: "3.13", tox: py313-motor3-ma4 }
+          - { name: "3.9-txmongo-ma4", python: "3.9", tox: py39-txmongo-ma4 }
+          - { name: "3.13-txmongo-ma4", python: "3.13", tox: py313-txmongo-ma4 }
     steps:
       - uses: actions/checkout@v5
       - name: Start MongoDB
