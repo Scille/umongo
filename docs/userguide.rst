@@ -35,8 +35,7 @@ Python dict example
     >>> {"str_field": "hello world", "int_field": 42, "date_field": datetime(2015, 1, 1)}
 
 To be integrated into μMongo, those data need to be deserialized and to leave
-μMongo they need to be serialized (under the hood μMongo uses
-`marshmallow <http://marshmallow.readthedocs.org/>`_ schema).
+μMongo they need to be serialized (under the hood μMongo uses `marshmallow`_ schemas).
 
 The deserialization operation is done automatically when instantiating a
 :class:`umongo.Document`. The serialization is done when calling
@@ -489,8 +488,7 @@ for a working example of i18n with `flask-babel <https://pythonhosted.org/Flask-
 Marshmallow integration
 =======================
 
-Under the hood, μMongo heavily uses `marshmallow <http://marshmallow.readthedocs.org>`_
-for all its data validation work.
+Under the hood, μMongo heavily uses `marshmallow`_ for all its data validation work.
 
 However an ODM has some special needs (i.g. handling ``required`` fields through MongoDB's
 unique indexes) that force to extend marshmallow base types.
@@ -725,3 +723,6 @@ wrapped by :class:`asyncio.coroutine` and called with ``yield from``.
 
 .. warning:: When converting to marshmallow with `as_marshmallow_schema` and
     `as_marshmallow_fields`, `io_validate` attribute will not be preserved.
+
+
+.. _marshmallow: <http://marshmallow.readthedocs.org/>

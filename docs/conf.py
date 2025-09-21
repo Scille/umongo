@@ -33,7 +33,6 @@ extensions = [
 intersphinx_mapping = {
     "pymongo": ("https://pymongo.readthedocs.io/en/latest/", None),
     "marshmallow": ("https://marshmallow.readthedocs.io/en/latest/", None),
-    "asyncio": ("https://asyncio.readthedocs.io/en/latest/", None),
 }
 
 # Add any paths that contain templates here, relative to this directory.

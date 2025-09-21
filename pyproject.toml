@@ -51,6 +51,9 @@ tests = [
     "pytest-asyncio",
 ]
 dev = ["umongo[tests]", "tox", "pre-commit>=4.3,<5.0"]
+docs = [
+  "sphinx==8.2.3",
+]
 
 [build-system]
 requires = ["flit_core<4"]

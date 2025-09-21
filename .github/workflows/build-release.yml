@@ -6,6 +6,16 @@ on:
   pull_request:
 
 jobs:
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install tox
+      - run: tox -e docs
   tests:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
