@@ -175,12 +175,12 @@ class DictField(BaseField, ma.fields.Dict):
                 return lambda: Dict(key_field, value_field, value())
             return Dict(key_field, value_field, value)
 
-        self.default = cast_value_or_callable(
+        self.dump_default = cast_value_or_callable(
             self.key_field,
             self.value_field,
             self.dump_default,
         )
-        self.missing = cast_value_or_callable(
+        self.load_default = cast_value_or_callable(
             self.key_field,
             self.value_field,
             self.load_default,
@@ -256,8 +256,8 @@ class ListField(BaseField, ma.fields.List):
                 return lambda: List(inner, value())
             return List(inner, value)
 
-        self.default = cast_value_or_callable(self.inner, self.dump_default)
-        self.missing = cast_value_or_callable(self.inner, self.load_default)
+        self.dump_default = cast_value_or_callable(self.inner, self.dump_default)
+        self.load_default = cast_value_or_callable(self.inner, self.load_default)
 
     def _deserialize(self, value, attr, data, **kwargs):
         value = super()._deserialize(value, attr, data, **kwargs)

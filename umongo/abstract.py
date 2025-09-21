@@ -23,9 +23,6 @@ class I18nErrorDict(dict):
 class BaseMarshmallowSchema(RemoveMissingSchema):
     """Base schema for pure marshmallow schemas"""
 
-    class Meta:
-        ordered = True
-
 
 class BaseSchema(ma.Schema):
     """All schema used in umongo should inherit from this base schema"""
@@ -34,9 +31,6 @@ class BaseSchema(ma.Schema):
     # to let the template set the base marshmallow schema class.
     # It may be overriden in Template classes.
     MA_BASE_SCHEMA_CLS = BaseMarshmallowSchema
-
-    class Meta:
-        ordered = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -113,16 +107,7 @@ class BaseField(ma.fields.Field):
                 "generating pure Marshmallow field.",
             )
         if "default" in kwargs:
-            kwargs["missing"] = kwargs["default"]
-            kwargs["dump_default"] = kwargs.pop("default")
-
-        if "missing" in kwargs:
-            kwargs["load_default"] = kwargs.pop("missing")
-
-        if "default" in kwargs:
-            kwargs["dump_default"] = kwargs.pop("default")
-        if "missing" in kwargs:
-            kwargs["load_default"] = kwargs.pop("missing")
+            kwargs["load_default"] = kwargs["dump_default"] = kwargs.pop("default")
 
         # Store attributes prefixed with marshmallow_ to use them when
         # creating pure marshmallow Schema
@@ -154,7 +139,7 @@ class BaseField(ma.fields.Field):
 
     def __repr__(self):
         return (
-            f"<fields.{self.__class__.__name__}(default={self.default!r}, "
+            f"<fields.{self.__class__.__name__}(default={self.load_default!r}, "
             f"attribute={self.attribute!r}, "
             f"validate={self.validate}, required={self.required}, "
             f"load_only={self.load_only}, dump_only={self.dump_only}, "
