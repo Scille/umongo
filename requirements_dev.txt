@@ -1,9 +1,0 @@
-bumpversion
-wheel
-flake8
-tox
-coverage
-Sphinx
-pytest
-pytest-cov
-pytest-asyncio

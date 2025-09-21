@@ -1,5 +1,5 @@
 # Translations template for umongo.
-# Copyright (C) 2021 Scille SAS and contributors
+# Copyright (C) 2025 Scille SAS and contributors
 # This file is distributed under the same license as the umongo project.
 # Jérôme Lafréchoux <jerome@jolimont.fr>, 2021.
 #
@@ -8,179 +8,69 @@ msgid ""
 msgstr ""
 "Project-Id-Version: umongo 3.0.0b14\n"
 "Report-Msgid-Bugs-To: jerome@jolimont.fr\n"
-"POT-Creation-Date: 2021-01-04 15:53+0100\n"
+"POT-Creation-Date: 2025-09-21 21:49+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Jérôme Lafréchoux <jerome@jolimont.fr>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.7.0\n"
+"Generated-By: Babel 2.17.0\n"
 
-#: umongo/abstract.py:103
+#: tests/test_i18n.py:26
+msgid "hello"
+msgstr ""
+
+#: umongo/abstract.py:101
 msgid "Field value must be unique."
 msgstr ""
 
-#: umongo/abstract.py:104
+#: umongo/abstract.py:102
+#, python-brace-format
 msgid "Values of fields {fields} must be unique together."
 msgstr ""
 
-#: umongo/data_objects.py:155
+#: umongo/data_objects.py:165
+#, python-brace-format
 msgid "Reference not found for document {document}."
 msgstr ""
 
-#: umongo/data_proxy.py:65
-msgid "{cls}: unknown \"{key}\" field found in DB."
-msgstr ""
-
-#: umongo/data_proxy.py:170
+#: umongo/data_proxy.py:172
 msgid "Missing data for required field."
 msgstr ""
 
-#: umongo/fields.py:347
+#: umongo/fields.py:351
+#, python-brace-format
 msgid "DBRef must be on collection `{collection}`."
 msgstr ""
 
-#: umongo/fields.py:352 umongo/fields.py:363
+#: umongo/fields.py:359 umongo/fields.py:374
+#, python-brace-format
 msgid "`{document}` reference expected."
 msgstr ""
 
-#: umongo/fields.py:360 umongo/fields.py:404
+#: umongo/fields.py:369 umongo/fields.py:417
 msgid "Cannot reference a document that has not been created yet."
 msgstr ""
 
-#: umongo/fields.py:386 umongo/fields.py:483
+#: umongo/fields.py:399 umongo/fields.py:502
+#, python-brace-format
 msgid "Unknown document `{document}`."
 msgstr ""
 
-#: umongo/fields.py:408 umongo/marshmallow_bonus.py:65
+#: umongo/fields.py:423 umongo/marshmallow_bonus.py:61
 msgid "Generic reference must have `id` and `cls` fields."
 msgstr ""
 
-#: umongo/fields.py:412 umongo/marshmallow_bonus.py:69
+#: umongo/fields.py:428 umongo/marshmallow_bonus.py:66
 msgid "Invalid `id` field."
 msgstr ""
 
-#: umongo/fields.py:415 umongo/marshmallow_bonus.py:63
+#: umongo/fields.py:431 umongo/marshmallow_bonus.py:58
 msgid "Invalid value for generic reference field."
 msgstr ""
 
-#: umongo/marshmallow_bonus.py:29
+#: umongo/marshmallow_bonus.py:28
 msgid "Invalid ObjectId."
-msgstr ""
-
-
-# Marshmallow fields #
-
-msgid "Missing data for required field."
-msgstr ""
-
-msgid "Invalid input type."
-msgstr ""
-
-msgid "Field may not be null."
-msgstr ""
-
-msgid "Invalid value."
-msgstr ""
-
-msgid "Invalid type."
-msgstr ""
-
-msgid "Not a valid list."
-msgstr ""
-
-msgid "Not a valid string."
-msgstr ""
-
-msgid "Not a valid number."
-msgstr ""
-
-msgid "Not a valid integer."
-msgstr ""
-
-msgid "Special numeric values are not permitted."
-msgstr ""
-
-msgid "Not a valid boolean."
-msgstr ""
-
-msgid "Cannot format string with given data."
-msgstr ""
-
-msgid "Not a valid datetime."
-msgstr ""
-
-msgid "\"{input}\" cannot be formatted as a datetime."
-msgstr ""
-
-msgid "Not a valid time."
-msgstr ""
-
-msgid "\"{input}\" cannot be formatted as a time."
-msgstr ""
-
-msgid "Not a valid date."
-msgstr ""
-
-msgid "\"{input}\" cannot be formatted as a date."
-msgstr ""
-
-msgid "Not a valid period of time."
-msgstr ""
-
-msgid "{input!r} cannot be formatted as a timedelta."
-msgstr ""
-
-msgid "Not a valid mapping type."
-msgstr ""
-
-msgid "Not a valid URL."
-msgstr ""
-
-msgid "Not a valid email address."
-msgstr ""
-
-# Marshmallow validate #
-msgid "Not a valid URL."
-msgstr ""
-
-msgid "Not a valid email address."
-msgstr ""
-
-msgid "Must be at least {min}."
-msgstr ""
-
-msgid "Must be at most {max}."
-msgstr ""
-
-msgid "Must be between {min} and {max}."
-msgstr ""
-
-msgid "Shorter than minimum length {min}."
-msgstr ""
-
-msgid "Longer than maximum length {max}."
-msgstr ""
-
-msgid "Length must be between {min} and {max}."
-msgstr ""
-
-msgid "Length must be {equal}."
-msgstr ""
-
-msgid "Must be equal to {other}."
-msgstr ""
-
-msgid "String does not match expected pattern."
-msgstr ""
-
-msgid "Invalid input."
-msgstr ""
-
-msgid "Not a valid choice."
-msgstr ""
-
-msgid "One or more of the choices you made was not acceptable."
 msgstr ""
 
