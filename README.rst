@@ -41,8 +41,6 @@ From this point, μMongo made a few design choices:
 .. _mongomock: https://github.com/vmalloc/mongomock
 .. _Marshmallow: http://marshmallow.readthedocs.org
 
-µMongo requires MongoDB 4.2+ and Python 3.7+.
-
 Quick example
 
 .. code-block:: python
