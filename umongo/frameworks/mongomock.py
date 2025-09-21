@@ -1,10 +1,9 @@
-from mongomock.database import Database
 from mongomock.collection import Cursor
+from mongomock.database import Database
 
-from .pymongo import PyMongoBuilder, PyMongoDocument, BaseWrappedCursor
-from ..instance import Instance
 from ..document import DocumentImplementation
-
+from ..instance import Instance
+from .pymongo import BaseWrappedCursor, PyMongoBuilder, PyMongoDocument
 
 # Mongomock aims at working like pymongo
 
@@ -24,9 +23,8 @@ class MongoMockBuilder(PyMongoBuilder):
 
 
 class MongoMockInstance(Instance):
-    """
-    :class:`umongo.instance.Instance` implementation for mongomock
-    """
+    """:class:`umongo.instance.Instance` implementation for mongomock"""
+
     BUILDER_CLS = MongoMockBuilder
 
     @staticmethod

@@ -2,18 +2,17 @@ import marshmallow as ma
 
 from .abstract import BaseValidator
 
-
 __all__ = (
-    'URL',
-    'Email',
-    'Range',
-    'Length',
-    'Equal',
-    'Regexp',
-    'Predicate',
-    'NoneOf',
-    'OneOf',
-    'ContainsOnly'
+    "URL",
+    "ContainsOnly",
+    "Email",
+    "Equal",
+    "Length",
+    "NoneOf",
+    "OneOf",
+    "Predicate",
+    "Range",
+    "Regexp",
 )
 
 

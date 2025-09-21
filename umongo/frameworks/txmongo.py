@@ -1,31 +1,38 @@
-from twisted.internet.defer import (
-    inlineCallbacks, Deferred, DeferredList, maybeDeferred)
-from txmongo import filter as qf
-from txmongo.database import Database
-from pymongo.errors import DuplicateKeyError
 import marshmallow as ma
 
-from ..builder import BaseBuilder
-from ..instance import Instance
-from ..document import DocumentImplementation
-from ..data_objects import Reference
-from ..exceptions import NotCreatedError, UpdateError, DeleteError, NoneReferenceError
-from ..fields import ReferenceField, ListField, DictField, EmbeddedField
-from ..query_mapper import map_query
+from pymongo.errors import DuplicateKeyError
+from txmongo import filter as qf
+from txmongo.database import Database
 
-from .tools import cook_find_filter, cook_find_projection, remove_cls_field_from_embedded_docs
+from twisted.internet.defer import (
+    Deferred,
+    DeferredList,
+    inlineCallbacks,
+    maybeDeferred,
+)
+
+from ..builder import BaseBuilder
+from ..data_objects import Reference
+from ..document import DocumentImplementation
+from ..exceptions import DeleteError, NoneReferenceError, NotCreatedError, UpdateError
+from ..fields import DictField, EmbeddedField, ListField, ReferenceField
+from ..instance import Instance
+from ..query_mapper import map_query
+from .tools import (
+    cook_find_filter,
+    cook_find_projection,
+    remove_cls_field_from_embedded_docs,
+)
 
 
 class TxMongoDocument(DocumentImplementation):
-
     __slots__ = ()
 
     opts = DocumentImplementation.opts
 
     @inlineCallbacks
     def reload(self):
-        """
-        Retrieve and replace document's data by the ones in database.
+        """Retrieve and replace document's data by the ones in database.
 
         Raises :class:`umongo.exceptions.NotCreatedError` if the document
         doesn't exist in database.
@@ -40,8 +47,7 @@ class TxMongoDocument(DocumentImplementation):
 
     @inlineCallbacks
     def commit(self, io_validate_all=False, conditions=None, replace=False):
-        """
-        Commit the document in database.
+        """Commit the document in database.
         If the document doesn't already exist it will be inserted, otherwise
         it will be updated.
 
@@ -53,12 +59,12 @@ class TxMongoDocument(DocumentImplementation):
         :param replace: Replace the document rather than update.
         :return: A :class:`pymongo.results.UpdateResult` or
             :class:`pymongo.results.InsertOneResult` depending of the operation.
-       """
+        """
         try:
             if self.is_created:
                 if self.is_modified() or replace:
                     query = conditions or {}
-                    query['_id'] = self.pk
+                    query["_id"] = self.pk
                     # pre_update can provide additional query filter and/or
                     # modify the fields' values
                     additional_filter = yield maybeDeferred(self.pre_update)
@@ -79,7 +85,7 @@ class TxMongoDocument(DocumentImplementation):
                     ret = None
             elif conditions:
                 raise NotCreatedError(
-                    'Document must already exist in database to use `conditions`.'
+                    "Document must already exist in database to use `conditions`.",
                 )
             else:
                 yield maybeDeferred(self.pre_insert)
@@ -93,26 +99,27 @@ class TxMongoDocument(DocumentImplementation):
                 yield maybeDeferred(self.post_insert, ret)
         except DuplicateKeyError as exc:
             # Sort value to make testing easier for compound indexes
-            keys = sorted(exc.details['keyPattern'].keys())
+            keys = sorted(exc.details["keyPattern"].keys())
             try:
                 fields = [self.schema.fields[k] for k in keys]
             except KeyError:
                 # A key in the index is unknwon from umongo
                 raise exc
             if len(keys) == 1:
-                msg = fields[0].error_messages['unique']
+                msg = fields[0].error_messages["unique"]
                 raise ma.ValidationError({keys[0]: msg})
-            raise ma.ValidationError({
-                k: f.error_messages['unique_compound'].format(fields=keys)
-                for k, f in zip(keys, fields)
-            })
+            raise ma.ValidationError(
+                {
+                    k: f.error_messages["unique_compound"].format(fields=keys)
+                    for k, f in zip(keys, fields)
+                },
+            )
         self._data.clear_modified()
         return ret
 
     @inlineCallbacks
     def delete(self, conditions=None):
-        """
-        Remove the document from database.
+        """Remove the document from database.
 
         :param conditions: Only perform delete if matching record in db
             satisfies condition(s) (e.g. version number).
@@ -128,7 +135,7 @@ class TxMongoDocument(DocumentImplementation):
         if not self.is_created:
             raise NotCreatedError("Document doesn't exists in database")
         query = conditions or {}
-        query['_id'] = self.pk
+        query["_id"] = self.pk
         # pre_delete can provide additional query filter
         additional_filter = yield maybeDeferred(self.pre_delete)
         if additional_filter:
@@ -141,8 +148,7 @@ class TxMongoDocument(DocumentImplementation):
         return ret
 
     def io_validate(self, validate_all=False):
-        """
-        Run the io_validators of the document's fields.
+        """Run the io_validators of the document's fields.
 
         :param validate_all: If False only run the io_validators of the
             fields that have been modified.
@@ -150,18 +156,24 @@ class TxMongoDocument(DocumentImplementation):
         if validate_all:
             return _io_validate_data_proxy(self.schema, self._data)
         return _io_validate_data_proxy(
-            self.schema, self._data, partial=self._data.get_modified_fields())
+            self.schema,
+            self._data,
+            partial=self._data.get_modified_fields(),
+        )
 
     @classmethod
     @inlineCallbacks
     def find_one(cls, filter=None, projection=None, *args, **kwargs):
-        """
-        Find a single document in database.
-        """
+        """Find a single document in database."""
         filter = cook_find_filter(cls, filter)
         if projection:
             projection = cook_find_projection(cls, projection)
-        ret = yield cls.collection.find_one(filter, projection=projection, *args, **kwargs)
+        ret = yield cls.collection.find_one(
+            filter,
+            projection=projection,
+            *args,
+            **kwargs,
+        )
         if ret is not None:
             ret = cls.build_from_mongo(ret, use_cls=True)
         return ret
@@ -169,8 +181,7 @@ class TxMongoDocument(DocumentImplementation):
     @classmethod
     @inlineCallbacks
     def find(cls, filter=None, *args, **kwargs):
-        """
-        Find a list document in database.
+        """Find a list document in database.
 
         Returns a list of Documents.
         """
@@ -181,13 +192,16 @@ class TxMongoDocument(DocumentImplementation):
     @classmethod
     @inlineCallbacks
     def find_with_cursor(cls, filter=None, *args, **kwargs):
-        """
-        Find a list document in database.
+        """Find a list document in database.
 
         Returns a cursor that provides Documents.
         """
         filter = cook_find_filter(cls, filter)
-        raw_cursor_or_list = yield cls.collection.find_with_cursor(filter, *args, **kwargs)
+        raw_cursor_or_list = yield cls.collection.find_with_cursor(
+            filter,
+            *args,
+            **kwargs,
+        )
 
         def wrap_raw_results(result):
             cursor = result[1]
@@ -199,27 +213,22 @@ class TxMongoDocument(DocumentImplementation):
 
     @classmethod
     def count(cls, filter=None, **kwargs):
-        """
-        Get the number of documents in this collection.
-        """
+        """Get the number of documents in this collection."""
         filter = cook_find_filter(cls, filter)
         return cls.collection.count(filter=filter, **kwargs)
 
     @classmethod
     @inlineCallbacks
     def ensure_indexes(cls):
-        """
-        Check&create if needed the Document's indexes in database
-        """
+        """Check&create if needed the Document's indexes in database"""
         for index in cls.indexes:
             kwargs = index.document.copy()
-            keys = kwargs.pop('key')
+            keys = kwargs.pop("key")
             index = qf.sort(keys)
             yield cls.collection.create_index(index, **kwargs)
 
 
 def _errback_factory(errors, field=None, subkey=None):
-
     def errback(err):
         if isinstance(err.value, ma.ValidationError):
             error = err.value.messages
@@ -248,7 +257,9 @@ def _run_validators(validators, field, value):
         else:
             if defer is None:
                 continue
-            assert isinstance(defer, Deferred), 'io_validate functions must return a Deferred'
+            assert isinstance(defer, Deferred), (
+                "io_validate functions must return a Deferred"
+            )
             defer.addErrback(_errback_factory(errors))
             defers.append(defer)
     yield DeferredList(defers)
@@ -325,12 +336,11 @@ def _dict_io_validate(field, value):
 
 def _embedded_document_io_validate(field, value):
     if not value:
-        return
+        return None
     return _io_validate_data_proxy(value.schema, value._data)
 
 
 class TxMongoReference(Reference):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._document = None
@@ -339,16 +349,18 @@ class TxMongoReference(Reference):
     def fetch(self, no_data=False, force_reload=False, projection=None):
         if not self._document or force_reload:
             if self.pk is None:
-                raise NoneReferenceError('Cannot retrieve a None Reference')
+                raise NoneReferenceError("Cannot retrieve a None Reference")
             self._document = yield self.document_cls.find_one(self.pk, projection)
             if not self._document:
-                raise ma.ValidationError(self.error_messages['not_found'].format(
-                    document=self.document_cls.__name__))
+                raise ma.ValidationError(
+                    self.error_messages["not_found"].format(
+                        document=self.document_cls.__name__,
+                    ),
+                )
         return self._document
 
 
 class TxMongoBuilder(BaseBuilder):
-
     BASE_DOCUMENT_CLS = TxMongoDocument
 
     def _patch_field(self, field):
@@ -358,7 +370,7 @@ class TxMongoBuilder(BaseBuilder):
         if not validators:
             field.io_validate = []
         else:
-            if hasattr(validators, '__iter__'):
+            if hasattr(validators, "__iter__"):
                 validators = list(validators)
             else:
                 validators = [validators]
@@ -375,9 +387,8 @@ class TxMongoBuilder(BaseBuilder):
 
 
 class TxMongoInstance(Instance):
-    """
-    :class:`umongo.instance.Instance` implementation for txmongo
-    """
+    """:class:`umongo.instance.Instance` implementation for txmongo"""
+
     BUILDER_CLS = TxMongoBuilder
 
     @staticmethod
@@ -395,7 +406,8 @@ class TxMongoMigrationInstance(TxMongoInstance):
         - EmbeddedDocument _cls field is only set if child of concrete embedded document
         """
         concrete_not_children = [
-            name for name, ed in self._embedded_lookup.items()
+            name
+            for name, ed in self._embedded_lookup.items()
             if not ed.opts.is_child and not ed.opts.abstract
         ]
 

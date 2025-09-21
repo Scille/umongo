@@ -1,23 +1,22 @@
 """umongo EmbeddedDocument"""
+
 import marshmallow as ma
 
-from .template import Implementation, Template
 from .data_objects import BaseDataObject
-from .expose_missing import EXPOSE_MISSING
 from .exceptions import AbstractDocumentError
-
+from .expose_missing import EXPOSE_MISSING
+from .template import Implementation, Template
 
 __all__ = (
-    'EmbeddedDocumentTemplate',
-    'EmbeddedDocument',
-    'EmbeddedDocumentOpts',
-    'EmbeddedDocumentImplementation'
+    "EmbeddedDocument",
+    "EmbeddedDocumentImplementation",
+    "EmbeddedDocumentOpts",
+    "EmbeddedDocumentTemplate",
 )
 
 
 class EmbeddedDocumentTemplate(Template):
-    """
-    Base class to define a umongo embedded document.
+    """Base class to define a umongo embedded document.
 
     .. note::
         Once defined, this class must be registered inside a
@@ -31,8 +30,7 @@ EmbeddedDocument = EmbeddedDocumentTemplate
 
 
 class EmbeddedDocumentOpts:
-    """
-    Configuration for an :class:`umongo.embedded_document.EmbeddedDocument`.
+    """Configuration for an :class:`umongo.embedded_document.EmbeddedDocument`.
 
     Should be passed as a Meta class to the :class:`EmbeddedDocument`
 
@@ -42,6 +40,7 @@ class EmbeddedDocumentOpts:
         class MyEmbeddedDoc(EmbeddedDocument):
             class Meta:
                 abstract = True
+
 
         assert MyEmbeddedDoc.opts.abstract == True
 
@@ -59,18 +58,27 @@ class EmbeddedDocumentOpts:
     offspring            no                     List of embedded documents inheriting this one
     ==================== ====================== ===========
     """
-    def __repr__(self):
-        return ('<{ClassName}('
-                'instance={self.instance}, '
-                'template={self.template}, '
-                'abstract={self.abstract}, '
-                'is_child={self.is_child}, '
-                'strict={self.strict}, '
-                'offspring={self.offspring})>'
-                .format(ClassName=self.__class__.__name__, self=self))
 
-    def __init__(self, instance, template, abstract=False,
-                 is_child=False, strict=True, offspring=None):
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__name__}("
+            f"instance={self.instance}, "
+            f"template={self.template}, "
+            f"abstract={self.abstract}, "
+            f"is_child={self.is_child}, "
+            f"strict={self.strict}, "
+            f"offspring={self.offspring})>"
+        )
+
+    def __init__(
+        self,
+        instance,
+        template,
+        abstract=False,
+        is_child=False,
+        strict=True,
+        offspring=None,
+    ):
         self.instance = instance
         self.template = template
         self.abstract = abstract
@@ -80,28 +88,32 @@ class EmbeddedDocumentOpts:
 
 
 class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
-    """
-    Represent an embedded document once it has been implemented inside a
+    """Represent an embedded document once it has been implemented inside a
     :class:`umongo.instance.BaseInstance`.
     """
 
-    __slots__ = ('_data', )
+    __slots__ = ("_data",)
     opts = EmbeddedDocumentOpts(None, EmbeddedDocumentTemplate, abstract=True)
 
     def __init__(self, **kwargs):
         super().__init__()
         if self.opts.abstract:
-            raise AbstractDocumentError("Cannot instantiate an abstract EmbeddedDocument")
+            raise AbstractDocumentError(
+                "Cannot instantiate an abstract EmbeddedDocument",
+            )
         self._data = self.DataProxy(kwargs)
 
     def __repr__(self):
-        return '<object EmbeddedDocument %s.%s(%s)>' % (
-            self.__module__, self.__class__.__name__, dict(self._data.items()))
+        return "<object EmbeddedDocument %s.%s(%s)>" % (
+            self.__module__,
+            self.__class__.__name__,
+            dict(self._data.items()),
+        )
 
     def __eq__(self, other):
         if isinstance(other, dict):
             return self._data == other
-        if hasattr(other, '_data'):
+        if hasattr(other, "_data"):
             return self._data == other._data
         return NotImplemented
 
@@ -109,9 +121,7 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
         return self._data.is_modified()
 
     def clear_modified(self):
-        """
-        Reset the list of document's modified items.
-        """
+        """Reset the list of document's modified items."""
         self._data.clear_modified()
 
     def required_validate(self):
@@ -119,16 +129,15 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
 
     @classmethod
     def build_from_mongo(cls, data, use_cls=True):
-        """
-        Create an embedded document instance from MongoDB data
+        """Create an embedded document instance from MongoDB data
 
         :param data: data as retrieved from MongoDB
         :param use_cls: if the data contains a ``_cls`` field,
             use it determine the EmbeddedDocument class to instanciate
         """
         # If a _cls is specified, we have to use this document class
-        if use_cls and '_cls' in data:
-            cls = cls.opts.instance.retrieve_embedded_document(data['_cls'])
+        if use_cls and "_cls" in data:
+            cls = cls.opts.instance.retrieve_embedded_document(data["_cls"])
         doc = cls()
         doc.from_mongo(data)
         return doc
@@ -140,15 +149,11 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
         return self._data.to_mongo(update=update)
 
     def update(self, data):
-        """
-        Update the embedded document with the given data.
-        """
+        """Update the embedded document with the given data."""
         return self._data.update(data)
 
     def dump(self):
-        """
-        Dump the embedded document.
-        """
+        """Dump the embedded document."""
         return self._data.dump()
 
     def items(self):

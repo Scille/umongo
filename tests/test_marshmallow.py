@@ -1,22 +1,29 @@
 """Test marshmallow-related features"""
+
 import datetime as dt
 
 import pytest
 
-from bson import ObjectId
 import marshmallow as ma
 
+from bson import ObjectId
+
 from umongo import (
-    Document, EmbeddedDocument, fields, set_gettext, validate, missing, RemoveMissingSchema
+    Document,
+    EmbeddedDocument,
+    RemoveMissingSchema,
+    fields,
+    missing,
+    set_gettext,
+    validate,
 )
 from umongo import marshmallow_bonus as ma_bonus_fields
-from umongo.abstract import BaseField, BaseSchema, BaseMarshmallowSchema
+from umongo.abstract import BaseField, BaseMarshmallowSchema, BaseSchema
 
 from .common import BaseTest
 
 
 class TestMarshmallow(BaseTest):
-
     def teardown_method(self, method):
         # Reset i18n config before each test
         set_gettext(None)
@@ -31,7 +38,7 @@ class TestMarshmallow(BaseTest):
         self.User = self.instance.register(User)
 
     def test_by_field(self):
-        ma_name_field = self.User.schema.fields['name'].as_marshmallow_field()
+        ma_name_field = self.User.schema.fields["name"].as_marshmallow_field()
         assert isinstance(ma_name_field, ma.fields.Field)
         assert not isinstance(ma_name_field, BaseField)
 
@@ -45,7 +52,6 @@ class TestMarshmallow(BaseTest):
         assert ma_schema_cls.Meta.ordered
 
     def test_custom_ma_base_schema_cls(self):
-
         # Define custom marshmallow schema base class
         class ExcludeBaseSchema(ma.Schema):
             class Meta:
@@ -79,18 +85,19 @@ class TestMarshmallow(BaseTest):
             content = fields.ListField(fields.EmbeddedField(Accessory))
 
         data = {
-            'item': {'brief': 'sportbag', 'value': 100, 'name': 'Unknown'},
-            'content': [
-                {'brief': 'cellphone', 'value': 500, 'name': 'Unknown'},
-                {'brief': 'lighter', 'value': 2, 'name': 'Unknown'}
+            "item": {"brief": "sportbag", "value": 100, "name": "Unknown"},
+            "content": [
+                {"brief": "cellphone", "value": 500, "name": "Unknown"},
+                {"brief": "lighter", "value": 2, "name": "Unknown"},
             ],
-            'name': 'Unknown',
+            "name": "Unknown",
         }
         excl_data = {
-            'item': {'brief': 'sportbag', 'value': 100},
-            'content': [
-                {'brief': 'cellphone', 'value': 500},
-                {'brief': 'lighter', 'value': 2}]
+            "item": {"brief": "sportbag", "value": 100},
+            "content": [
+                {"brief": "cellphone", "value": 500},
+                {"brief": "lighter", "value": 2},
+            ],
         }
 
         ma_schema = Bag.schema.as_marshmallow_schema()
@@ -99,27 +106,27 @@ class TestMarshmallow(BaseTest):
     def test_as_marshmallow_field_pass_params(self):
         @self.instance.register
         class MyDoc(Document):
-            dk = fields.IntField(marshmallow_data_key='dkdk')
-            at = fields.IntField(marshmallow_attribute='atat')
+            dk = fields.IntField(marshmallow_data_key="dkdk")
+            at = fields.IntField(marshmallow_attribute="atat")
             re = fields.IntField(marshmallow_required=True)
             an = fields.IntField(marshmallow_allow_none=True)
             lo = fields.IntField(marshmallow_load_only=True)
             do = fields.IntField(marshmallow_dump_only=True)
             va = fields.IntField(marshmallow_validate=validate.Range(min=0))
-            em = fields.IntField(marshmallow_error_messages={'invalid': 'Wrong'})
+            em = fields.IntField(marshmallow_error_messages={"invalid": "Wrong"})
 
         MyMaDoc = MyDoc.schema.as_marshmallow_schema()
 
-        assert MyMaDoc().fields['dk'].data_key == 'dkdk'
-        assert MyMaDoc().fields['at'].attribute == 'atat'
-        assert MyMaDoc().fields['re'].required is True
-        assert MyMaDoc().fields['an'].allow_none is True
-        assert MyMaDoc().fields['lo'].load_only is True
-        assert MyMaDoc().fields['do'].dump_only is True
+        assert MyMaDoc().fields["dk"].data_key == "dkdk"
+        assert MyMaDoc().fields["at"].attribute == "atat"
+        assert MyMaDoc().fields["re"].required is True
+        assert MyMaDoc().fields["an"].allow_none is True
+        assert MyMaDoc().fields["lo"].load_only is True
+        assert MyMaDoc().fields["do"].dump_only is True
         with pytest.raises(ma.ValidationError) as excinfo:
-            MyMaDoc().load({'va': -1})
-        assert 'va' in excinfo.value.messages
-        assert MyMaDoc().fields['em'].error_messages['invalid'] == 'Wrong'
+            MyMaDoc().load({"va": -1})
+        assert "va" in excinfo.value.messages
+        assert MyMaDoc().fields["em"].error_messages["invalid"] == "Wrong"
 
     def test_as_marshmallow_field_infer_missing_default(self):
         @self.instance.register
@@ -134,18 +141,18 @@ class TestMarshmallow(BaseTest):
 
         data = MyMaDoc().load({})
         assert data == {
-            'de': 42,
-            'mm': 12,
-            'mmd': 12,
-            'mdd': 42,
+            "de": 42,
+            "mm": 12,
+            "mmd": 12,
+            "mdd": 42,
         }
 
         data = MyMaDoc().dump({})
         assert data == {
-            'de': 42,
-            'md': 12,
-            'mmd': 42,
-            'mdd': 12,
+            "de": 42,
+            "md": 12,
+            "mmd": 42,
+            "mdd": 12,
         }
 
     def test_as_marshmallow_schema_cache(self):
@@ -165,70 +172,80 @@ class TestMarshmallow(BaseTest):
 
         with pytest.raises(ma.ValidationError) as excinfo:
             schema.load({})
-        assert excinfo.value.messages == {'category': ['Missing data for required field.']}
-        assert schema.load({'category': 'Car'}) == {'category': 'Car', 'nb_wheels': 4}
+        assert excinfo.value.messages == {
+            "category": ["Missing data for required field."],
+        }
+        assert schema.load({"category": "Car"}) == {"category": "Car", "nb_wheels": 4}
 
-        assert schema.fields['brand'].metadata['description'] == 'Manufacturer name'
+        assert schema.fields["brand"].metadata["description"] == "Manufacturer name"
 
     def test_keep_validators(self):
         @self.instance.register
         class WithMailUser(self.User):
-            email = fields.StrField(validate=[validate.Email(), validate.Length(max=100)])
+            email = fields.StrField(
+                validate=[validate.Email(), validate.Length(max=100)],
+            )
             number_of_legs = fields.IntField(validate=[validate.OneOf([0, 1, 2])])
 
         ma_schema_cls = WithMailUser.schema.as_marshmallow_schema()
         schema = ma_schema_cls()
 
         with pytest.raises(ma.ValidationError) as excinfo:
-            schema.load({'email': 'a' * 100 + '@user.com', 'number_of_legs': 4})
+            schema.load({"email": "a" * 100 + "@user.com", "number_of_legs": 4})
         assert excinfo.value.messages == {
-            'email': ['Longer than maximum length 100.'],
-            'number_of_legs': ['Must be one of: 0, 1, 2.']}
+            "email": ["Longer than maximum length 100."],
+            "number_of_legs": ["Must be one of: 0, 1, 2."],
+        }
 
-        data = {'email': 'user@user.com', 'number_of_legs': 2}
+        data = {"email": "user@user.com", "number_of_legs": 2}
         assert schema.load(data) == data
 
     def test_inheritance(self):
         @self.instance.register
         class AdvancedUser(self.User):
-            name = fields.StrField(default='1337')
+            name = fields.StrField(default="1337")
             is_left_handed = fields.BooleanField()
 
         ma_schema_cls = AdvancedUser.schema.as_marshmallow_schema()
         schema = ma_schema_cls()
 
-        assert schema.dump({'is_left_handed': True}) == {
-            'name': '1337', 'is_left_handed': True, 'cls': 'AdvancedUser'}
+        assert schema.dump({"is_left_handed": True}) == {
+            "name": "1337",
+            "is_left_handed": True,
+            "cls": "AdvancedUser",
+        }
 
     def test_to_mongo(self):
         @self.instance.register
         class Dog(Document):
-            name = fields.StrField(attribute='_id', required=True)
+            name = fields.StrField(attribute="_id", required=True)
             age = fields.IntField()
 
-        payload = {'name': 'Scruffy', 'age': 2}
+        payload = {"name": "Scruffy", "age": 2}
         ma_schema_cls = Dog.schema.as_marshmallow_schema()
 
         ret = ma_schema_cls().load(payload)
-        assert ret == {'name': 'Scruffy', 'age': 2}
+        assert ret == {"name": "Scruffy", "age": 2}
         assert ma_schema_cls().dump(ret) == payload
 
     def test_i18n(self):
         # i18n support should be kept, because it's pretty cool to have this !
         def my_gettext(message):
-            return 'OMG !!! ' + message
+            return "OMG !!! " + message
 
         set_gettext(my_gettext)
 
         ma_schema_cls = self.User.schema.as_marshmallow_schema()
         with pytest.raises(ma.ValidationError) as excinfo:
-            ma_schema_cls().load({'name': 'John', 'birthday': 'not_a_date', 'dummy_field': 'dummy'})
+            ma_schema_cls().load(
+                {"name": "John", "birthday": "not_a_date", "dummy_field": "dummy"},
+            )
         assert excinfo.value.messages == {
-            'birthday': ['OMG !!! Not a valid datetime.'],
-            'dummy_field': ['OMG !!! Unknown field.']}
+            "birthday": ["OMG !!! Not a valid datetime."],
+            "dummy_field": ["OMG !!! Unknown field."],
+        }
 
     def test_unknown_fields(self):
-
         class ExcludeBaseSchema(ma.Schema):
             class Meta:
                 unknown = ma.EXCLUDE
@@ -242,64 +259,68 @@ class TestMarshmallow(BaseTest):
         exclude_user_ma_schema_cls = ExcludeUser.schema.as_marshmallow_schema()
         assert issubclass(exclude_user_ma_schema_cls, ExcludeBaseSchema)
 
-        data = {'name': 'John', 'dummy': 'dummy'}
-        excl_data = {'name': 'John'}
+        data = {"name": "John", "dummy": "dummy"}
+        excl_data = {"name": "John"}
 
         # By default, marshmallow schemas raise on unknown fields
         with pytest.raises(ma.ValidationError) as excinfo:
             user_ma_schema_cls().load(data)
-        assert excinfo.value.messages == {'dummy': ['Unknown field.']}
+        assert excinfo.value.messages == {"dummy": ["Unknown field."]}
 
         # With custom schema, exclude unknown fields
         assert exclude_user_ma_schema_cls().load(data) == excl_data
 
     def test_missing_accessor(self):
-
         @self.instance.register
         class WithDefault(Document):
             with_umongo_default = fields.DateTimeField(default=dt.datetime(1999, 1, 1))
             with_marshmallow_missing = fields.DateTimeField(
-                marshmallow_load_default=dt.datetime(2000, 1, 1))
+                marshmallow_load_default=dt.datetime(2000, 1, 1),
+            )
             with_marshmallow_default = fields.DateTimeField(
-                marshmallow_dump_default=dt.datetime(2001, 1, 1))
+                marshmallow_dump_default=dt.datetime(2001, 1, 1),
+            )
             with_marshmallow_and_umongo = fields.DateTimeField(
                 default=dt.datetime(1999, 1, 1),
                 marshmallow_load_default=dt.datetime(2000, 1, 1),
-                marshmallow_dump_default=dt.datetime(2001, 1, 1)
+                marshmallow_dump_default=dt.datetime(2001, 1, 1),
             )
             with_force_missing = fields.DateTimeField(
                 default=dt.datetime(2001, 1, 1),
                 marshmallow_load_default=missing,
-                marshmallow_dump_default=missing
+                marshmallow_dump_default=missing,
             )
             with_nothing = fields.StrField()
 
         ma_schema = WithDefault.schema.as_marshmallow_schema()()
         assert ma_schema.dump({}) == {
-            'with_umongo_default': '1999-01-01T00:00:00',
-            'with_marshmallow_default': '2001-01-01T00:00:00',
-            'with_marshmallow_and_umongo': '2001-01-01T00:00:00',
+            "with_umongo_default": "1999-01-01T00:00:00",
+            "with_marshmallow_default": "2001-01-01T00:00:00",
+            "with_marshmallow_and_umongo": "2001-01-01T00:00:00",
         }
         assert ma_schema.load({}) == {
-            'with_umongo_default': dt.datetime(1999, 1, 1),
-            'with_marshmallow_missing': dt.datetime(2000, 1, 1),
-            'with_marshmallow_and_umongo': dt.datetime(2000, 1, 1),
+            "with_umongo_default": dt.datetime(1999, 1, 1),
+            "with_marshmallow_missing": dt.datetime(2000, 1, 1),
+            "with_marshmallow_and_umongo": dt.datetime(2000, 1, 1),
         }
 
     def test_nested_field(self):
         @self.instance.register
         class Accessory(EmbeddedDocument):
-            brief = fields.StrField(attribute='id', required=True)
+            brief = fields.StrField(attribute="id", required=True)
             value = fields.IntField()
 
         @self.instance.register
         class Bag(Document):
-            id = fields.EmbeddedField(Accessory, attribute='_id', required=True)
+            id = fields.EmbeddedField(Accessory, attribute="_id", required=True)
             content = fields.ListField(fields.EmbeddedField(Accessory))
 
         data = {
-            'id': {'brief': 'sportbag', 'value': 100},
-            'content': [{'brief': 'cellphone', 'value': 500}, {'brief': 'lighter', 'value': 2}]
+            "id": {"brief": "sportbag", "value": 100},
+            "content": [
+                {"brief": "cellphone", "value": 500},
+                {"brief": "lighter", "value": 2},
+            ],
         }
 
         # Here data is the same in both OO world and user world
@@ -315,28 +336,28 @@ class TestMarshmallow(BaseTest):
         # Fields related to mongodb provided for marshmallow
         @self.instance.register
         class Doc(Document):
-            id = fields.ObjectIdField(attribute='_id')
-            ref = fields.ReferenceField('Doc')
+            id = fields.ObjectIdField(attribute="_id")
+            ref = fields.ReferenceField("Doc")
             gen_ref = fields.GenericReferenceField()
 
         for name, field_cls in (
-                ('id', ma_bonus_fields.ObjectId),
-                ('ref', ma_bonus_fields.ObjectId),
-                ('gen_ref', ma_bonus_fields.GenericReference)
+            ("id", ma_bonus_fields.ObjectId),
+            ("ref", ma_bonus_fields.ObjectId),
+            ("gen_ref", ma_bonus_fields.GenericReference),
         ):
             ma_field = Doc.schema.fields[name].as_marshmallow_field()
             assert isinstance(ma_field, field_cls)
             assert not isinstance(ma_field, BaseField)
 
         oo_data = {
-            'id': ObjectId("57c1a71113adf27ab96b2c4f"),
-            'ref': ObjectId("57c1a71113adf27ab96b2c4f"),
-            "gen_ref": {'cls': 'Doc', 'id': ObjectId("57c1a71113adf27ab96b2c4f")}
+            "id": ObjectId("57c1a71113adf27ab96b2c4f"),
+            "ref": ObjectId("57c1a71113adf27ab96b2c4f"),
+            "gen_ref": {"cls": "Doc", "id": ObjectId("57c1a71113adf27ab96b2c4f")},
         }
         serialized = {
-            'id': "57c1a71113adf27ab96b2c4f",
-            'ref': "57c1a71113adf27ab96b2c4f",
-            "gen_ref": {'cls': 'Doc', 'id': "57c1a71113adf27ab96b2c4f"}
+            "id": "57c1a71113adf27ab96b2c4f",
+            "ref": "57c1a71113adf27ab96b2c4f",
+            "gen_ref": {"cls": "Doc", "id": "57c1a71113adf27ab96b2c4f"},
         }
         doc = Doc(**oo_data)
         ma_schema_cls = Doc.schema.as_marshmallow_schema()
@@ -349,7 +370,6 @@ class TestMarshmallow(BaseTest):
         assert ma_schema.load(serialized) == oo_data
 
     def test_marshmallow_bonus_objectid_field(self):
-
         class DocSchema(ma.Schema):
             id = ma_bonus_fields.ObjectId()
 
@@ -359,7 +379,8 @@ class TestMarshmallow(BaseTest):
         schema = DocSchema()
 
         assert schema.load({"id": "57c1a71113adf27ab96b2c4f"}) == {
-            "id": ObjectId("57c1a71113adf27ab96b2c4f")}
+            "id": ObjectId("57c1a71113adf27ab96b2c4f"),
+        }
 
         for invalid_id in ("lol", [1, 2], {"1", 2}):
             with pytest.raises(ma.ValidationError) as exc:
@@ -367,7 +388,6 @@ class TestMarshmallow(BaseTest):
             assert exc.value.messages == {"id": ["Invalid ObjectId."]}
 
     def test_marshmallow_remove_missing_schema(self):
-
         @self.instance.register
         class Doc(Document):
             a = fields.IntField()
@@ -383,13 +403,13 @@ class TestMarshmallow(BaseTest):
             a = ma.fields.Int()
 
         data = VanillaDocSchema().dump(Doc())
-        assert data == {'a': None}
+        assert data == {"a": None}
 
         data = RemoveMissingDocSchema().dump(Doc())
         assert data == {}
 
         data = RemoveMissingDocSchema().dump(Doc(a=1))
-        assert data == {'a': 1}
+        assert data == {"a": 1}
 
     @pytest.mark.parametrize("base_schema", (BaseMarshmallowSchema, ma.Schema))
     def test_marshmallow_base_schema_remove_missing(self, base_schema):
@@ -425,25 +445,23 @@ class TestMarshmallow(BaseTest):
             content = fields.ListField(fields.EmbeddedField(Accessory))
 
         data = {
-            'item': {'brief': 'sportbag'},
-            'content': [
-                {'brief': 'cellphone'},
-                {'brief': 'lighter'}]
+            "item": {"brief": "sportbag"},
+            "content": [{"brief": "cellphone"}, {"brief": "lighter"}],
         }
         dump = {
-            'id': None,
-            'content': [
-                {'brief': 'cellphone', 'value': None},
-                {'brief': 'lighter', 'value': None}
+            "id": None,
+            "content": [
+                {"brief": "cellphone", "value": None},
+                {"brief": "lighter", "value": None},
             ],
-            'item': {'brief': 'sportbag', 'value': None}
+            "item": {"brief": "sportbag", "value": None},
         }
         remove_missing_dump = {
-            'item': {'brief': 'sportbag'},
-            'content': [
-                {'brief': 'cellphone'},
-                {'brief': 'lighter'}
-            ]
+            "item": {"brief": "sportbag"},
+            "content": [
+                {"brief": "cellphone"},
+                {"brief": "lighter"},
+            ],
         }
         expected_dump = {
             BaseMarshmallowSchema: remove_missing_dump,
@@ -455,12 +473,11 @@ class TestMarshmallow(BaseTest):
         assert ma_schema().dump(bag) == expected_dump
 
     def test_marshmallow_access_custom_attributes(self):
-
         @self.instance.register
         class Doc(EmbeddedDocument):
             a = fields.IntField()
 
-            attribute_foo = 'foo'
+            attribute_foo = "foo"
 
             @property
             def str_prop(self):
@@ -481,14 +498,13 @@ class TestMarshmallow(BaseTest):
             attribute_foo = ma.fields.Str(dump_only=True)
 
         assert Schema().dump(Doc(a=1)) == {
-            'a': 1,
-            'str_prop': "I'm a property !",
-            'none_prop': None,
-            'attribute_foo': 'foo',
+            "a": 1,
+            "str_prop": "I'm a property !",
+            "none_prop": None,
+            "attribute_foo": "foo",
         }
 
     def test_dump_only(self):
-
         @self.instance.register
         class Doc(Document):
             dl = fields.IntField()
@@ -502,8 +518,11 @@ class TestMarshmallow(BaseTest):
         with pytest.raises(ma.ValidationError):
             Doc(nope=1)
 
-        assert Doc(dl=1, lo=2).dump() == {'dl': 1}
+        assert Doc(dl=1, lo=2).dump() == {"dl": 1}
 
         with pytest.raises(ma.ValidationError) as excinfo:
             Doc(nope=ma.missing, do=ma.missing)
-        assert excinfo.value.messages == {'nope': ['Unknown field.'], 'do': ['Unknown field.']}
+        assert excinfo.value.messages == {
+            "nope": ["Unknown field."],
+            "do": ["Unknown field."],
+        }

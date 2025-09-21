@@ -1,51 +1,47 @@
 """umongo fields"""
+
 import collections
 import datetime as dt
 
-from bson import DBRef, ObjectId, Decimal128
 import marshmallow as ma
+
+from bson import DBRef, Decimal128, ObjectId
+
+from . import marshmallow_bonus as ma_bonus_fields
+from .abstract import BaseField, I18nErrorDict
+from .data_objects import Dict, List, Reference
 
 # from .registerer import retrieve_document
 from .document import DocumentImplementation
-from .exceptions import NotRegisteredDocumentError, DocumentDefinitionError
-from .template import get_template
-from .data_objects import Reference, List, Dict
-from . import marshmallow_bonus as ma_bonus_fields
-from .abstract import BaseField, I18nErrorDict
+from .exceptions import DocumentDefinitionError, NotRegisteredDocumentError
 from .i18n import gettext as _
-
+from .template import get_template
 
 __all__ = (
-    # 'RawField',
-    # 'MappingField',
-    # 'TupleField',
-    'StringField',
-    'UUIDField',
-    'NumberField',
-    'IntegerField',
-    'DecimalField',
-    'BooleanField',
-    'FloatField',
-    'DateTimeField',
-    'NaiveDateTimeField',
-    'AwareDateTimeField',
-    # 'TimeField',
-    'DateField',
-    # 'TimeDeltaField',
-    'UrlField',
-    'URLField',
-    'EmailField',
-    'StrField',
-    'BoolField',
-    'IntField',
-    'DictField',
-    'ListField',
-    'ConstantField',
-    # 'PluckField'
-    'ObjectIdField',
-    'ReferenceField',
-    'GenericReferenceField',
-    'EmbeddedField'
+    "AwareDateTimeField",
+    "BoolField",
+    "BooleanField",
+    "ConstantField",
+    "DateField",
+    "DateTimeField",
+    "DecimalField",
+    "DictField",
+    "EmailField",
+    "EmbeddedField",
+    "FloatField",
+    "GenericReferenceField",
+    "IntField",
+    "IntegerField",
+    "ListField",
+    "NaiveDateTimeField",
+    "NumberField",
+    "ObjectIdField",
+    "ReferenceField",
+    "StrField",
+    "StringField",
+    "URLField",
+    "UUIDField",
+    "UrlField",
 )
 
 
@@ -101,7 +97,6 @@ def _round_to_millisecond(datetime):
 
 
 class DateTimeField(BaseField, ma.fields.DateTime):
-
     def _deserialize(self, value, attr, data, **kwargs):
         if isinstance(value, dt.datetime):
             ret = value
@@ -111,7 +106,6 @@ class DateTimeField(BaseField, ma.fields.DateTime):
 
 
 class NaiveDateTimeField(BaseField, ma.fields.NaiveDateTime):
-
     def _deserialize(self, value, attr, data, **kwargs):
         if isinstance(value, dt.datetime):
             ret = value
@@ -121,7 +115,6 @@ class NaiveDateTimeField(BaseField, ma.fields.NaiveDateTime):
 
 
 class AwareDateTimeField(BaseField, ma.fields.AwareDateTime):
-
     def _deserialize(self, value, attr, data, **kwargs):
         if isinstance(value, dt.datetime):
             ret = value
@@ -172,7 +165,6 @@ class ConstantField(BaseField, ma.fields.Constant):
 
 
 class DictField(BaseField, ma.fields.Dict):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -183,8 +175,16 @@ class DictField(BaseField, ma.fields.Dict):
                 return lambda: Dict(key_field, value_field, value())
             return Dict(key_field, value_field, value)
 
-        self.default = cast_value_or_callable(self.key_field, self.value_field, self.dump_default)
-        self.missing = cast_value_or_callable(self.key_field, self.value_field, self.load_default)
+        self.default = cast_value_or_callable(
+            self.key_field,
+            self.value_field,
+            self.dump_default,
+        )
+        self.missing = cast_value_or_callable(
+            self.key_field,
+            self.value_field,
+            self.load_default,
+        )
 
     def _deserialize(self, value, attr, data, **kwargs):
         value = super()._deserialize(value, attr, data, **kwargs)
@@ -194,8 +194,9 @@ class DictField(BaseField, ma.fields.Dict):
         if obj is None:
             return ma.missing
         return {
-            self.key_field.serialize_to_mongo(k) if self.key_field else k:
-            self.value_field.serialize_to_mongo(v) if self.value_field else v
+            self.key_field.serialize_to_mongo(k)
+            if self.key_field
+            else k: self.value_field.serialize_to_mongo(v) if self.value_field else v
             for k, v in obj.items()
         }
 
@@ -205,10 +206,13 @@ class DictField(BaseField, ma.fields.Dict):
                 self.key_field,
                 self.value_field,
                 {
-                    self.key_field.deserialize_from_mongo(k) if self.key_field else k:
-                    self.value_field.deserialize_from_mongo(v) if self.value_field else v
+                    self.key_field.deserialize_from_mongo(k)
+                    if self.key_field
+                    else k: self.value_field.deserialize_from_mongo(v)
+                    if self.value_field
+                    else v
                     for k, v in value.items()
-                }
+                },
             )
         return Dict(self.key_field, self.value_field)
 
@@ -219,12 +223,16 @@ class DictField(BaseField, ma.fields.Dict):
         else:
             inner_ma_field = None
         m_field = ma.fields.Dict(
-            self.key_field, inner_ma_field, metadata=self.metadata, **field_kwargs)
+            self.key_field,
+            inner_ma_field,
+            metadata=self.metadata,
+            **field_kwargs,
+        )
         m_field.error_messages = I18nErrorDict(m_field.error_messages)
         return m_field
 
     def _required_validate(self, value):
-        if not hasattr(self.value_field, '_required_validate'):
+        if not hasattr(self.value_field, "_required_validate"):
             return
         required_validate = self.value_field._required_validate
         errors = collections.defaultdict(dict)
@@ -238,7 +246,6 @@ class DictField(BaseField, ma.fields.Dict):
 
 
 class ListField(BaseField, ma.fields.List):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -265,15 +272,14 @@ class ListField(BaseField, ma.fields.List):
         if value:
             return List(
                 self.inner,
-                [self.inner.deserialize_from_mongo(each) for each in value]
+                [self.inner.deserialize_from_mongo(each) for each in value],
             )
         return List(self.inner)
 
     def map_to_field(self, mongo_path, path, func):
-        """Apply a function to every field in the schema
-        """
+        """Apply a function to every field in the schema"""
         func(mongo_path, path, self.inner)
-        if hasattr(self.inner, 'map_to_field'):
+        if hasattr(self.inner, "map_to_field"):
             self.inner.map_to_field(mongo_path, path, func)
 
     def as_marshmallow_field(self):
@@ -284,7 +290,7 @@ class ListField(BaseField, ma.fields.List):
         return m_field
 
     def _required_validate(self, value):
-        if not hasattr(self.inner, '_required_validate'):
+        if not hasattr(self.inner, "_required_validate"):
             return
         required_validate = self.inner._required_validate
         errors = {}
@@ -309,10 +315,8 @@ class ObjectIdField(BaseField, ma_bonus_fields.ObjectId):
 
 
 class ReferenceField(BaseField, ma_bonus_fields.Reference):
-
     def __init__(self, document, *args, reference_cls=Reference, **kwargs):
-        """
-        :param document: Can be a :class:`umongo.embedded_document.DocumentTemplate`,
+        """:param document: Can be a :class:`umongo.embedded_document.DocumentTemplate`,
             another instance's :class:`umongo.embedded_document.DocumentImplementation` or
             the embedded document class name.
 
@@ -331,8 +335,7 @@ class ReferenceField(BaseField, ma_bonus_fields.Reference):
 
     @property
     def document_cls(self):
-        """
-        Return the instance's :class:`umongo.embedded_document.DocumentImplementation`
+        """Return the instance's :class:`umongo.embedded_document.DocumentImplementation`
         implementing the `document` attribute.
         """
         if not self._document_cls:
@@ -344,24 +347,34 @@ class ReferenceField(BaseField, ma_bonus_fields.Reference):
             return None
         if isinstance(value, DBRef):
             if self.document_cls.collection.name != value.collection:
-                raise ma.ValidationError(_("DBRef must be on collection `{collection}`.").format(
-                    self.document_cls.collection.name))
+                raise ma.ValidationError(
+                    _("DBRef must be on collection `{collection}`.").format(
+                        self.document_cls.collection.name,
+                    ),
+                )
             value = value.id
         elif isinstance(value, Reference):
             if value.document_cls != self.document_cls:
-                raise ma.ValidationError(_("`{document}` reference expected.").format(
-                    document=self.document_cls.__name__))
+                raise ma.ValidationError(
+                    _("`{document}` reference expected.").format(
+                        document=self.document_cls.__name__,
+                    ),
+                )
             if not isinstance(value, self.reference_cls):
                 value = self.reference_cls(value.document_cls, value.pk)
             return value
         elif isinstance(value, self.document_cls):
             if not value.is_created:
                 raise ma.ValidationError(
-                    _("Cannot reference a document that has not been created yet."))
+                    _("Cannot reference a document that has not been created yet."),
+                )
             value = value.pk
         elif isinstance(value, self._document_implementation_cls):
-            raise ma.ValidationError(_("`{document}` reference expected.").format(
-                document=self.document_cls.__name__))
+            raise ma.ValidationError(
+                _("`{document}` reference expected.").format(
+                    document=self.document_cls.__name__,
+                ),
+            )
         value = super()._deserialize(value, attr, data, **kwargs)
         return self.reference_cls(self.document_cls, value)
 
@@ -373,7 +386,6 @@ class ReferenceField(BaseField, ma_bonus_fields.Reference):
 
 
 class GenericReferenceField(BaseField, ma_bonus_fields.GenericReference):
-
     def __init__(self, *args, reference_cls=Reference, **kwargs):
         super().__init__(*args, **kwargs)
         self.reference_cls = reference_cls
@@ -383,13 +395,14 @@ class GenericReferenceField(BaseField, ma_bonus_fields.GenericReference):
         try:
             return self.instance.retrieve_document(class_name)
         except NotRegisteredDocumentError:
-            raise ma.ValidationError(_('Unknown document `{document}`.').format(
-                document=class_name))
+            raise ma.ValidationError(
+                _("Unknown document `{document}`.").format(document=class_name),
+            )
 
     def _serialize(self, value, attr, obj):
         if value is None:
             return None
-        return {'id': str(value.pk), 'cls': value.document_cls.__name__}
+        return {"id": str(value.pk), "cls": value.document_cls.__name__}
 
     def _deserialize(self, value, attr, data, **kwargs):
         if value is None:
@@ -401,35 +414,36 @@ class GenericReferenceField(BaseField, ma_bonus_fields.GenericReference):
         if isinstance(value, self._document_implementation_cls):
             if not value.is_created:
                 raise ma.ValidationError(
-                    _("Cannot reference a document that has not been created yet."))
+                    _("Cannot reference a document that has not been created yet."),
+                )
             return self.reference_cls(value.__class__, value.pk)
         if isinstance(value, dict):
-            if value.keys() != {'cls', 'id'}:
-                raise ma.ValidationError(_("Generic reference must have `id` and `cls` fields."))
+            if value.keys() != {"cls", "id"}:
+                raise ma.ValidationError(
+                    _("Generic reference must have `id` and `cls` fields."),
+                )
             try:
-                _id = ObjectId(value['id'])
+                _id = ObjectId(value["id"])
             except ValueError:
                 raise ma.ValidationError(_("Invalid `id` field."))
-            document_cls = self._document_cls(value['cls'])
+            document_cls = self._document_cls(value["cls"])
             return self.reference_cls(document_cls, _id)
         raise ma.ValidationError(_("Invalid value for generic reference field."))
 
     def _serialize_to_mongo(self, obj):
-        return {'_id': obj.pk, '_cls': obj.document_cls.__name__}
+        return {"_id": obj.pk, "_cls": obj.document_cls.__name__}
 
     def _deserialize_from_mongo(self, value):
-        document_cls = self._document_cls(value['_cls'])
-        return self.reference_cls(document_cls, value['_id'])
+        document_cls = self._document_cls(value["_cls"])
+        return self.reference_cls(document_cls, value["_id"])
 
 
 class EmbeddedField(BaseField, ma.fields.Nested):
-
     def __init__(self, embedded_document, *args, **kwargs):
-        """
-        :param embedded_document: Can be a
-            :class:`umongo.embedded_document.EmbeddedDocumentTemplate`,
-            another instance's :class:`umongo.embedded_document.EmbeddedDocumentImplementation`
-            or the embedded document class name.
+        """:param embedded_document: Can be a
+        :class:`umongo.embedded_document.EmbeddedDocumentTemplate`,
+        another instance's :class:`umongo.embedded_document.EmbeddedDocumentImplementation`
+        or the embedded document class name.
         """
         # Don't need to pass `nested` attribute given it is overloaded
         super().__init__(None, *args, **kwargs)
@@ -451,15 +465,16 @@ class EmbeddedField(BaseField, ma.fields.Nested):
 
     @property
     def embedded_document_cls(self):
-        """
-        Return the instance's :class:`umongo.embedded_document.EmbeddedDocumentImplementation`
+        """Return the instance's :class:`umongo.embedded_document.EmbeddedDocumentImplementation`
         implementing the `embedded_document` attribute.
         """
         if not self._embedded_document_cls:
-            embedded_document_cls = self.instance.retrieve_embedded_document(self.embedded_document)
+            embedded_document_cls = self.instance.retrieve_embedded_document(
+                self.embedded_document,
+            )
             if embedded_document_cls.opts.abstract:
                 raise DocumentDefinitionError(
-                    "EmbeddedField doesn't accept abstract embedded document"
+                    "EmbeddedField doesn't accept abstract embedded document",
                 )
             self._embedded_document_cls = embedded_document_cls
         return self._embedded_document_cls
@@ -474,17 +489,26 @@ class EmbeddedField(BaseField, ma.fields.Nested):
         if isinstance(value, embedded_document_cls):
             return value
         if not isinstance(value, dict):
-            raise ma.ValidationError({'_schema': ['Invalid input type.']})
+            raise ma.ValidationError({"_schema": ["Invalid input type."]})
         # Handle inheritance deserialization here using `cls` field as hint
-        if embedded_document_cls.opts.offspring and 'cls' in value:
-            to_use_cls_name = value.pop('cls')
-            if not any(o for o in embedded_document_cls.opts.offspring
-                       if o.__name__ == to_use_cls_name):
-                raise ma.ValidationError(_('Unknown document `{document}`.').format(
-                    document=to_use_cls_name))
+        if embedded_document_cls.opts.offspring and "cls" in value:
+            to_use_cls_name = value.pop("cls")
+            if not any(
+                o
+                for o in embedded_document_cls.opts.offspring
+                if o.__name__ == to_use_cls_name
+            ):
+                raise ma.ValidationError(
+                    _("Unknown document `{document}`.").format(
+                        document=to_use_cls_name,
+                    ),
+                )
             try:
-                to_use_cls = embedded_document_cls.opts.instance.retrieve_embedded_document(
-                    to_use_cls_name)
+                to_use_cls = (
+                    embedded_document_cls.opts.instance.retrieve_embedded_document(
+                        to_use_cls_name,
+                    )
+                )
             except NotRegisteredDocumentError as exc:
                 raise ma.ValidationError(str(exc))
             return to_use_cls(**value)
@@ -501,6 +525,7 @@ class EmbeddedField(BaseField, ma.fields.Nested):
         super()._validate_missing(value)
         errors = {}
         if value is ma.missing:
+
             def get_sub_value(_):
                 return ma.missing
         elif isinstance(value, dict):
@@ -531,17 +556,21 @@ class EmbeddedField(BaseField, ma.fields.Nested):
     def map_to_field(self, mongo_path, path, func):
         """Apply a function to every field in the schema"""
         for name, field in self.embedded_document_cls.schema.fields.items():
-            cur_path = '%s.%s' % (path, name)
-            cur_mongo_path = '%s.%s' % (mongo_path, field.attribute or name)
+            cur_path = "%s.%s" % (path, name)
+            cur_mongo_path = "%s.%s" % (mongo_path, field.attribute or name)
             func(cur_mongo_path, cur_path, field)
-            if hasattr(field, 'map_to_field'):
+            if hasattr(field, "map_to_field"):
                 field.map_to_field(cur_mongo_path, cur_path, func)
 
     def as_marshmallow_field(self):
         # Overwrite default `as_marshmallow_field` to handle nesting
         field_kwargs = self._extract_marshmallow_field_params()
         nested_ma_schema = self.embedded_document_cls.schema.as_marshmallow_schema()
-        m_field = ma.fields.Nested(nested_ma_schema, metadata=self.metadata, **field_kwargs)
+        m_field = ma.fields.Nested(
+            nested_ma_schema,
+            metadata=self.metadata,
+            **field_kwargs,
+        )
         m_field.error_messages = I18nErrorDict(m_field.error_messages)
         return m_field
 

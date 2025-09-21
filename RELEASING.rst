@@ -11,10 +11,10 @@ Prerequisites
 Steps
 -----
 
-#. Add an entry to ``HISTORY.rst``, or update the ``Unreleased`` entry, with the
+#. Add an entry to ``CHANGELOG.rst``, or update the ``Unreleased`` entry, with the
    new version and the date of release. Include any bug fixes, features, or
    backwards incompatibilities included in this release.
-#. Commit the changes to ``HISTORY.rst``.
+#. Commit the changes to ``CHANGELOG.rst``.
 #. Run bumpversion_ to update the version string in ``umongo/__init__.py`` and
    ``setup.py``.
 

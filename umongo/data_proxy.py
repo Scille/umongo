@@ -1,17 +1,18 @@
 """umongo BaseDataProxy"""
+
 import marshmallow as ma
 
 from .abstract import BaseDataObject
 from .exceptions import UnknownFieldInDBError
 from .i18n import gettext as _
 
-
-__all__ = ('data_proxy_factory')
+__all__ = [
+    "data_proxy_factory",
+]
 
 
 class BaseDataProxy:
-
-    __slots__ = ('_data', '_modified_data')
+    __slots__ = ("_data", "_modified_data")
     schema = None
     _fields = None
     _fields_from_mongo_key = None
@@ -49,9 +50,9 @@ class BaseDataProxy:
             else:
                 set_data[name] = val
         if set_data:
-            mongo_data['$set'] = set_data
+            mongo_data["$set"] = set_data
         if unset_data:
-            mongo_data['$unset'] = {k: "" for k in unset_data}
+            mongo_data["$unset"] = dict.fromkeys(unset_data, "")
         return mongo_data or None
 
     def from_mongo(self, data):
@@ -60,10 +61,11 @@ class BaseDataProxy:
             try:
                 field = self._fields_from_mongo_key[key]
             except KeyError:
-                raise UnknownFieldInDBError(_(
-                    '{cls}: unknown "{key}" field found in DB.'
-                    .format(key=key, cls=self.__class__.__name__)
-                ))
+                raise UnknownFieldInDBError(
+                    _(
+                        f'{self.__class__.__name__}: unknown "{key}" field found in DB.',
+                    ),
+                )
             self._data[key] = field.deserialize_from_mongo(val)
         self.clear_modified()
         self._add_missing_fields()
@@ -104,8 +106,8 @@ class BaseDataProxy:
 
     def set(self, name, value):
         name, field = self._get_field(name)
-        if value is None and not getattr(field, 'allow_none', False):
-            raise ma.ValidationError(field.error_messages['null'])
+        if value is None and not getattr(field, "allow_none", False):
+            raise ma.ValidationError(field.error_messages["null"])
         if value is not None:
             value = field._deserialize(value, name, None)
             field._validate(value)
@@ -125,7 +127,7 @@ class BaseDataProxy:
     def __eq__(self, other):
         if isinstance(other, dict):
             return self._data == other
-        if hasattr(other, '_data'):
+        if hasattr(other, "_data"):
             return self._data == other._data
         return NotImplemented
 
@@ -135,7 +137,8 @@ class BaseDataProxy:
             value_name = field.attribute or name
             value = self._data[value_name]
             if value_name in self._modified_data or (
-                    isinstance(value, BaseDataObject) and value.is_modified()):
+                isinstance(value, BaseDataObject) and value.is_modified()
+            ):
                 modified.add(name)
         return modified
 
@@ -146,10 +149,9 @@ class BaseDataProxy:
                 val.clear_modified()
 
     def is_modified(self):
-        return (
-            bool(self._modified_data) or
-            any(isinstance(v, BaseDataObject) and v.is_modified()
-                for v in self._data.values())
+        return bool(self._modified_data) or any(
+            isinstance(v, BaseDataObject) and v.is_modified()
+            for v in self._data.values()
         )
 
     def _add_missing_fields(self):
@@ -170,7 +172,7 @@ class BaseDataProxy:
                 errors[name] = [_("Missing data for required field.")]
             elif value is ma.missing or value is None:
                 continue
-            elif hasattr(field, '_required_validate'):
+            elif hasattr(field, "_required_validate"):
                 try:
                     field._required_validate(value)
                 except ma.ValidationError as exc:
@@ -182,7 +184,8 @@ class BaseDataProxy:
 
     def items(self):
         return (
-            (key, self._data[field.attribute or key]) for key, field in self._fields.items()
+            (key, self._data[field.attribute or key])
+            for key, field in self._fields.items()
         )
 
     def keys(self):
@@ -193,12 +196,11 @@ class BaseDataProxy:
 
 
 class BaseNonStrictDataProxy(BaseDataProxy):
-    """
-    This data proxy will accept unknown data comming from mongo and will
+    """This data proxy will accept unknown data comming from mongo and will
     return them along with other data when ask.
     """
 
-    __slots__ = ('_additional_data', )
+    __slots__ = ("_additional_data",)
 
     def __init__(self, data=None):
         self._additional_data = {}
@@ -223,21 +225,25 @@ class BaseNonStrictDataProxy(BaseDataProxy):
 
 
 def data_proxy_factory(basename, schema, strict=True):
-    """
-    Generate a DataProxy from the given schema.
+    """Generate a DataProxy from the given schema.
 
     This way all generic informations (like schema and fields lookups)
     are kept inside the  DataProxy class and it instances are just flyweights.
     """
-
     cls_name = "%sDataProxy" % basename
 
     nmspc = {
-        '__slots__': (),
-        'schema': schema,
-        '_fields': schema.fields,
-        '_fields_from_mongo_key': {v.attribute or k: v for k, v in schema.fields.items()}
+        "__slots__": (),
+        "schema": schema,
+        "_fields": schema.fields,
+        "_fields_from_mongo_key": {
+            v.attribute or k: v for k, v in schema.fields.items()
+        },
     }
 
-    data_proxy_cls = type(cls_name, (BaseDataProxy if strict else BaseNonStrictDataProxy, ), nmspc)
+    data_proxy_cls = type(
+        cls_name,
+        (BaseDataProxy if strict else BaseNonStrictDataProxy,),
+        nmspc,
+    )
     return data_proxy_cls
