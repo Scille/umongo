@@ -16,7 +16,8 @@ Features:
   by ``as_marshmallow_field`` method. (#392)
 
 Other:
-* Support Python 3.12 (#392)
+* Support Python up to 3.13 (#392)
+* Drop Python 3.7 and 3.8 (#393)
 
 3.1.0 (2021-12-23)
 ------------------
