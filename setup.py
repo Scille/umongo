@@ -30,7 +30,7 @@ setup(
     url='https://github.com/touilleMan/umongo',
     packages=['umongo', 'umongo.frameworks'],
     include_package_data=True,
-    python_requires='>=3.7',
+    python_requires='>=3.9',
     install_requires=requirements,
     extras_require={
         'motor': ['motor>=3.1.1'],
