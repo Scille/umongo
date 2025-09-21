@@ -26,3 +26,4 @@ Contributors
 * Attila Kóbor `@atti92 <https://github.com/atti92>`_
 * Denis Moskalets `@denya <https://github.com/denya>`_
 * Phil Chiu `@whophil <https://github.com/whophil>`_
+* sanju sci `@sanjusci <https://github.com/sanjusci>`_

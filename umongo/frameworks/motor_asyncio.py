@@ -312,7 +312,7 @@ async def _run_validators(validators, field, value):
             result = validator(field, value)
             if isawaitable(result):
                 tasks.append(result)
-            elif result:  # non-None truthy → treat as error
+            elif result:  # truthy -> treat as error
                 raise result
         except ma.ValidationError as exc:
             errors.extend(exc.messages)
