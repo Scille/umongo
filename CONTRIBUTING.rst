@@ -60,6 +60,7 @@ Get Started!
 Ready to contribute? Here's how to set up `umongo` for local development.
 
 1. Fork the `umongo` repo on GitHub.
+
 2. Clone your fork locally::
 
     $ git clone git@github.com:your_name_here/umongo.git
@@ -68,50 +69,29 @@ Ready to contribute? Here's how to set up `umongo` for local development.
 
     $ mkvirtualenv umongo
     $ cd umongo/
-    $ python setup.py develop
+    $ pip install -e .[dev]
 
-4. Create a branch for local development::
+4. Install the pre-commit hooks, which will format and lint your git staged files::
+
+    $ pre-commit install
+
+5. Create a branch for local development::
 
     $ git checkout -b name-of-your-bugfix-or-feature
 
-   Now you can make your changes locally.
+   Now you can make your changes locally. Please add necessary feature or non-regression tests.
 
-5. When you're done making changes, check that your changes pass flake8 and the tests, including testing other Python versions with tox::
+5. When you're done making changes, check that your changes pass tests::
 
-    $ flake8 umongo
-    $ py.test tests
-    $ tox
-
-   To get flake8, pytest and tox, just pip install them into your virtualenv.
-
-.. note:: You need pytest>=2.8
+    $ pytest
 
 6. Commit your changes and push your branch to GitHub::
 
     $ git add .
-    $ git commit -m "Your detailed description of your changes."
-    $ git push origin name-of-your-bugfix-or-feature
+    $ git commit -m "Detailed description of your changes."
+    $ git push -u origin name-of-your-bugfix-or-feature
 
 7. Submit a pull request through the GitHub website.
-
-I18n
-----
-
-There are additional steps to make changes involving translated strings.
-
-1. Extract translatable strings from the code into messages.pot::
-
-    $ make extract_messages
-
-2. Update flask example translation files::
-
-    $ make update_flask_example_messages
-
-3. Update/fix translations
-
-4. Compile new binary translation files::
-
-    $ make compile_flask_example_messages
 
 Pull Request Guidelines
 -----------------------
@@ -122,6 +102,3 @@ Before you submit a pull request, check that it meets these guidelines:
 2. If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring, and add the
    feature to the list in README.rst.
-3. The pull request should work for Python 3.7 and 3.8. Check
-   https://travis-ci.org/touilleMan/umongo/pull_requests
-   and make sure that the tests pass for all supported Python versions.
