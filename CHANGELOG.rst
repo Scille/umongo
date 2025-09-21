@@ -16,6 +16,8 @@ Features:
   by ``as_marshmallow_field`` method. (#392)
 
 Other:
+* *Backwards-incompatible*: Remove ``__version__``, ``__author__`` and
+  ``__email__`` from umongo.__init__.py (#395).
 * Support Python up to 3.13 (#392)
 * Drop Python 3.7 and 3.8 (#393)
 
