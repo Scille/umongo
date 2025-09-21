@@ -41,6 +41,7 @@ def make_db():
 def db():
     return make_db()
 
+
 @pytest.fixture
 def loop():
     if sys.version_info >= (3, 10):
