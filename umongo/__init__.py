@@ -25,9 +25,6 @@ from .i18n import set_gettext
 from .instance import Instance
 from .mixin import MixinDocument
 
-__author__ = "Emmanuel Leblond, Jérôme Lafréchoux"
-__email__ = "jerome@jolimont.fr"
-__version__ = "3.1.0"
 __all__ = (
     "AlreadyCreatedError",
     "DeleteError",
