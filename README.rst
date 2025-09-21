@@ -2,31 +2,25 @@
 μMongo: sync/async ODM
 ======================
 
-.. image:: https://img.shields.io/pypi/v/umongo.svg
-    :target: https://pypi.python.org/pypi/umongo
+|pypi| |build-status| |pre-commit| |docs|
+
+.. |pypi| image:: https://badgen.net/pypi/v/umongo
+    :target: https://pypi.org/project/umongo/
     :alt: Latest version
 
-.. image:: https://img.shields.io/pypi/pyversions/umongo.svg
-    :target: https://pypi.org/project/umongo/
-    :alt: Python versions
-
-.. image:: https://img.shields.io/badge/marshmallow-3-blue.svg
-    :target: https://marshmallow.readthedocs.io/en/latest/upgrading.html
-    :alt: marshmallow 3 only
-
-.. image:: https://img.shields.io/pypi/l/umongo.svg
-    :target: https://umongo.readthedocs.io/en/latest/license.html
-    :alt: License
-
-.. image:: https://dev.azure.com/lafrech/umongo/_apis/build/status/Scille.umongo?branchName=master
-    :target: https://dev.azure.com/lafrech/umongo/_build/latest?definitionId=1&branchName=master
+.. |build-status| image:: https://github.com/Scille/umongo/actions/workflows/build-release.yml/badge.svg
+    :target: https://github.com/Scille/umongo/actions/workflows/build-release.yml
     :alt: Build status
 
-.. image:: https://readthedocs.org/projects/umongo/badge/
-        :target: http://umongo.readthedocs.io/
-        :alt: Documentation
+.. |pre-commit| image:: https://results.pre-commit.ci/badge/github/Scille/umongo/main.svg
+   :target: https://results.pre-commit.ci/latest/github/Scille/umongo/main
+   :alt: pre-commit.ci status
 
-μMongo is a Python MongoDB ODM. It inception comes from two needs:
+.. |docs| image:: https://readthedocs.org/projects/umongo/badge/
+   :target: https://umongo.readthedocs.io/
+   :alt: Documentation
+
+μMongo is a Python MongoDB ODM. Its inception comes from two needs:
 the lack of async ODM and the difficulty to do document (un)serialization
 with existing ODMs.
 
