@@ -1,25 +1,27 @@
+import asyncio
 import collections
 import types
-from contextvars import ContextVar
 from contextlib import asynccontextmanager
-
+from contextvars import ContextVar
 from inspect import isawaitable
-import asyncio
 
-from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorCursor
-from pymongo.errors import DuplicateKeyError
 import marshmallow as ma
 
+from motor.motor_asyncio import AsyncIOMotorCursor, AsyncIOMotorDatabase
+from pymongo.errors import DuplicateKeyError
+
 from ..builder import BaseBuilder
-from ..instance import Instance
-from ..document import DocumentImplementation
 from ..data_objects import Reference
-from ..exceptions import NotCreatedError, UpdateError, DeleteError, NoneReferenceError
-from ..fields import ReferenceField, ListField, DictField, EmbeddedField
+from ..document import DocumentImplementation
+from ..exceptions import DeleteError, NoneReferenceError, NotCreatedError, UpdateError
+from ..fields import DictField, EmbeddedField, ListField, ReferenceField
+from ..instance import Instance
 from ..query_mapper import map_query
-
-from .tools import cook_find_filter, cook_find_projection, remove_cls_field_from_embedded_docs
-
+from .tools import (
+    cook_find_filter,
+    cook_find_projection,
+    remove_cls_field_from_embedded_docs,
+)
 
 SESSION = ContextVar("session", default=None)
 if not hasattr(asyncio, "coroutine"):
@@ -27,8 +29,7 @@ if not hasattr(asyncio, "coroutine"):
 
 
 class WrappedCursor(AsyncIOMotorCursor):
-
-    __slots__ = ('raw_cursor', 'document_cls')
+    __slots__ = ("document_cls", "raw_cursor")
 
     def __init__(self, document_cls, cursor):
         # Such a cunning plan my lord !
@@ -61,6 +62,7 @@ class WrappedCursor(AsyncIOMotorCursor):
             if not error and result is not None:
                 result = self.document_cls.build_from_mongo(result, use_cls=True)
             return callback(result, error)
+
         return self.raw_cursor.each(wrapped_callback)
 
     def to_list(self, length, callback=None):
@@ -77,7 +79,6 @@ class WrappedCursor(AsyncIOMotorCursor):
 
 
 class MotorAsyncIODocument(DocumentImplementation):
-
     __slots__ = ()
 
     opts = DocumentImplementation.opts
@@ -122,8 +123,7 @@ class MotorAsyncIODocument(DocumentImplementation):
         return ret
 
     async def reload(self):
-        """
-        Retrieve and replace document's data by the ones in database.
+        """Retrieve and replace document's data by the ones in database.
 
         Raises :class:`umongo.exceptions.NotCreatedError` if the document
         doesn't exist in database.
@@ -137,8 +137,7 @@ class MotorAsyncIODocument(DocumentImplementation):
         self._data.from_mongo(ret)
 
     async def commit(self, io_validate_all=False, conditions=None, replace=False):
-        """
-        Commit the document in database.
+        """Commit the document in database.
         If the document doesn't already exist it will be inserted, otherwise
         it will be updated.
 
@@ -155,7 +154,7 @@ class MotorAsyncIODocument(DocumentImplementation):
             if self.is_created:
                 if self.is_modified() or replace:
                     query = conditions or {}
-                    query['_id'] = self.pk
+                    query["_id"] = self.pk
                     # pre_update can provide additional query filter and/or
                     # modify the fields' values
                     additional_filter = await self.__coroutined_pre_update()
@@ -166,11 +165,17 @@ class MotorAsyncIODocument(DocumentImplementation):
                     if replace:
                         payload = self._data.to_mongo(update=False)
                         ret = await self.collection.replace_one(
-                            query, payload, session=SESSION.get())
+                            query,
+                            payload,
+                            session=SESSION.get(),
+                        )
                     else:
                         payload = self._data.to_mongo(update=True)
                         ret = await self.collection.update_one(
-                            query, payload, session=SESSION.get())
+                            query,
+                            payload,
+                            session=SESSION.get(),
+                        )
                     if ret.matched_count != 1:
                         raise UpdateError(ret)
                     await self.__coroutined_post_update(ret)
@@ -178,7 +183,7 @@ class MotorAsyncIODocument(DocumentImplementation):
                     ret = None
             elif conditions:
                 raise NotCreatedError(
-                    'Document must already exist in database to use `conditions`.'
+                    "Document must already exist in database to use `conditions`.",
                 )
             else:
                 await self.__coroutined_pre_insert()
@@ -192,31 +197,30 @@ class MotorAsyncIODocument(DocumentImplementation):
                 await self.__coroutined_post_insert(ret)
         except DuplicateKeyError as exc:
             # Sort value to make testing easier for compound indexes
-            keys = sorted(exc.details['keyPattern'].keys())
+            keys = sorted(exc.details["keyPattern"].keys())
             try:
                 fields = [self.schema.fields[k] for k in keys]
             except KeyError:
                 # A key in the index is unknwon from umongo
                 raise exc
             if len(keys) == 1:
-                msg = fields[0].error_messages['unique']
+                msg = fields[0].error_messages["unique"]
                 raise ma.ValidationError({keys[0]: msg})
-            raise ma.ValidationError({
-                k: f.error_messages['unique_compound'].format(fields=keys)
-                for k, f in zip(keys, fields)
-            })
+            raise ma.ValidationError(
+                {
+                    k: f.error_messages["unique_compound"].format(fields=keys)
+                    for k, f in zip(keys, fields)
+                },
+            )
         self._data.clear_modified()
         return ret
 
     async def delete(self, conditions=None):
-        """
-        Alias of :meth:`remove` to enforce default api.
-        """
+        """Alias of :meth:`remove` to enforce default api."""
         return await self.remove(conditions=conditions)
 
     async def remove(self, conditions=None):
-        """
-        Remove the document from database.
+        """Remove the document from database.
 
         :param conditions: Only perform delete if matching record in db
             satisfies condition(s) (e.g. version number).
@@ -232,7 +236,7 @@ class MotorAsyncIODocument(DocumentImplementation):
         if not self.is_created:
             raise NotCreatedError("Document doesn't exists in database")
         query = conditions or {}
-        query['_id'] = self.pk
+        query["_id"] = self.pk
         # pre_delete can provide additional query filter
         additional_filter = await self.__coroutined_pre_delete()
         if additional_filter:
@@ -245,8 +249,7 @@ class MotorAsyncIODocument(DocumentImplementation):
         return ret
 
     async def io_validate(self, validate_all=False):
-        """
-        Run the io_validators of the document's fields.
+        """Run the io_validators of the document's fields.
 
         :param validate_all: If False only run the io_validators of the
             fields that have been modified.
@@ -254,51 +257,56 @@ class MotorAsyncIODocument(DocumentImplementation):
         if validate_all:
             return await _io_validate_data_proxy(self.schema, self._data)
         return await _io_validate_data_proxy(
-            self.schema, self._data, partial=self._data.get_modified_fields())
+            self.schema,
+            self._data,
+            partial=self._data.get_modified_fields(),
+        )
 
     @classmethod
     async def find_one(cls, filter=None, projection=None, *args, **kwargs):
-        """
-        Find a single document in database.
-        """
+        """Find a single document in database."""
         filter = cook_find_filter(cls, filter)
         if projection:
             projection = cook_find_projection(cls, projection)
-        ret = await cls.collection.find_one(filter, projection=projection,
-                                            session=SESSION.get(), *args, **kwargs)
+        ret = await cls.collection.find_one(
+            filter,
+            projection=projection,
+            session=SESSION.get(),
+            *args,
+            **kwargs,
+        )
         if ret is not None:
             ret = cls.build_from_mongo(ret, use_cls=True)
         return ret
 
     @classmethod
     def find(cls, filter=None, *args, **kwargs):
-        """
-        Find a list document in database.
+        """Find a list document in database.
 
         Returns a cursor that provide Documents.
         """
         filter = cook_find_filter(cls, filter)
         return WrappedCursor(
             cls,
-            cls.collection.find(filter, session=SESSION.get(), *args, **kwargs)
+            cls.collection.find(filter, session=SESSION.get(), *args, **kwargs),
         )
 
     @classmethod
     async def count_documents(cls, filter=None, *, with_limit_and_skip=False, **kwargs):
-        """
-        Return a count of the documents in a collection.
-        """
+        """Return a count of the documents in a collection."""
         filter = cook_find_filter(cls, filter or {})
-        return await cls.collection.count_documents(filter, session=SESSION.get(), **kwargs)
+        return await cls.collection.count_documents(
+            filter,
+            session=SESSION.get(),
+            **kwargs,
+        )
 
     @classmethod
     async def ensure_indexes(cls):
-        """
-        Check&create if needed the Document's indexes in database
-        """
+        """Check&create if needed the Document's indexes in database"""
         for index in cls.indexes:
             kwargs = index.document.copy()
-            keys = kwargs.pop('key').items()
+            keys = kwargs.pop("key").items()
             await cls.collection.create_index(keys, session=SESSION.get(), **kwargs)
 
 
@@ -361,8 +369,11 @@ async def _reference_io_validate(field, value):
         return
     exists = await value.exists
     if not exists:
-        raise ma.ValidationError(value.error_messages['not_found'].format(
-            document=value.document_cls.__name__))
+        raise ma.ValidationError(
+            value.error_messages["not_found"].format(
+                document=value.document_cls.__name__,
+            ),
+        )
 
 
 async def _list_io_validate(field, value):
@@ -410,7 +421,6 @@ async def _embedded_document_io_validate(field, value):
 
 
 class MotorAsyncIOReference(Reference):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._document = None
@@ -418,21 +428,31 @@ class MotorAsyncIOReference(Reference):
     async def fetch(self, no_data=False, force_reload=False, projection=None):
         if not self._document or force_reload:
             if self.pk is None:
-                raise NoneReferenceError('Cannot retrieve a None Reference')
-            self._document = await self.document_cls.find_one(self.pk, projection=projection)
+                raise NoneReferenceError("Cannot retrieve a None Reference")
+            self._document = await self.document_cls.find_one(
+                self.pk,
+                projection=projection,
+            )
             if not self._document:
-                raise ma.ValidationError(self.error_messages['not_found'].format(
-                    document=self.document_cls.__name__))
+                raise ma.ValidationError(
+                    self.error_messages["not_found"].format(
+                        document=self.document_cls.__name__,
+                    ),
+                )
         return self._document
 
     @property
     async def exists(self):
-        return await self.document_cls.collection.find_one(self.pk,
-                                                           projection={'_id': True}) is not None
+        return (
+            await self.document_cls.collection.find_one(
+                self.pk,
+                projection={"_id": True},
+            )
+            is not None
+        )
 
 
 class MotorAsyncIOBuilder(BaseBuilder):
-
     BASE_DOCUMENT_CLS = MotorAsyncIODocument
 
     def _patch_field(self, field):
@@ -442,7 +462,7 @@ class MotorAsyncIOBuilder(BaseBuilder):
         if not validators:
             field.io_validate = []
         else:
-            if hasattr(validators, '__iter__'):
+            if hasattr(validators, "__iter__"):
                 validators = list(validators)
             else:
                 validators = [validators]
@@ -462,9 +482,8 @@ class MotorAsyncIOBuilder(BaseBuilder):
 
 
 class MotorAsyncIOInstance(Instance):
-    """
-    :class:`umongo.instance.Instance` implementation for motor-asyncio
-    """
+    """:class:`umongo.instance.Instance` implementation for motor-asyncio"""
+
     BUILDER_CLS = MotorAsyncIOBuilder
 
     @staticmethod
@@ -490,7 +509,8 @@ class MotorAsyncIOMigrationInstance(MotorAsyncIOInstance):
         - EmbeddedDocument _cls field is only set if child of concrete embedded document
         """
         concrete_not_children = [
-            name for name, ed in self._embedded_lookup.items()
+            name
+            for name, ed in self._embedded_lookup.items()
             if not ed.opts.is_child and not ed.opts.abstract
         ]
 

@@ -1,16 +1,16 @@
 """umongo MixinDocument"""
+
 from .template import Implementation, Template
 
 __all__ = (
-    'MixinDocumentTemplate',
-    'MixinDocument',
-    'MixinDocumentImplementation'
+    "MixinDocument",
+    "MixinDocumentImplementation",
+    "MixinDocumentTemplate",
 )
 
 
 class MixinDocumentTemplate(Template):
-    """
-    Base class to define a umongo mixin document.
+    """Base class to define a umongo mixin document.
 
     .. note::
         Once defined, this class must be registered inside a
@@ -24,8 +24,7 @@ MixinDocument = MixinDocumentTemplate
 
 
 class MixinDocumentOpts:
-    """
-    Configuration for an :class:`umongo.mixin.MixinDocument`.
+    """Configuration for an :class:`umongo.mixin.MixinDocument`.
 
     ==================== ====================== ===========
     attribute            configurable in Meta   description
@@ -34,11 +33,13 @@ class MixinDocumentOpts:
     instance             no                     Implementation's instance
     ==================== ====================== ===========
     """
+
     def __repr__(self):
-        return ('<{ClassName}('
-                'instance={self.instance}, '
-                'template={self.template}, '
-                .format(ClassName=self.__class__.__name__, self=self))
+        return (
+            f"<{self.__class__.__name__}("
+            f"instance={self.instance}, "
+            f"template={self.template}, "
+        )
 
     def __init__(self, instance, template):
         self.instance = instance
@@ -46,11 +47,14 @@ class MixinDocumentOpts:
 
 
 class MixinDocumentImplementation(Implementation):
-    """
-    Represent a mixin document once it has been implemented inside a
+    """Represent a mixin document once it has been implemented inside a
     :class:`umongo.instance.BaseInstance`.
     """
+
     opts = MixinDocumentOpts(None, MixinDocumentTemplate)
 
     def __repr__(self):
-        return '<object MixinDocument %s.%s>' % (self.__module__, self.__class__.__name__)
+        return "<object MixinDocument %s.%s>" % (
+            self.__module__,
+            self.__class__.__name__,
+        )

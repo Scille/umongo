@@ -42,11 +42,13 @@ For instance, given following umongo 3 application code
     # Register embedded documents
     [...]
 
+
     @instance.register
     class Doc(Document):
         name = fields.StrField()
         # Embed documents
         embedded = fields.EmbeddedField([...])
+
 
     instance.set_db(pymongo.MongoClient())
 
@@ -65,11 +67,13 @@ the migration can be performed by calling migrate_2_to_3.
     # Register embedded documents
     [...]
 
+
     @instance.register
     class Doc(Document):
         name = fields.StrField()
         # Embed documents
         embedded = fields.EmbeddedField([...])
+
 
     instance.set_db(pymongo.MongoClient())
     instance.migrate_2_to_3()

@@ -1,21 +1,24 @@
 import abc
 
-from .exceptions import (
-    NotRegisteredDocumentError, AlreadyRegisteredDocumentError, NoDBDefinedError)
 from .document import DocumentTemplate
 from .embedded_document import EmbeddedDocumentTemplate
+from .exceptions import (
+    AlreadyRegisteredDocumentError,
+    NoDBDefinedError,
+    NotRegisteredDocumentError,
+)
 from .template import get_template
 
 
 class Instance(abc.ABC):
-    """
-    Abstract instance class
+    """Abstract instance class
 
     Instances aims at collecting and implementing :class:`umongo.template.Template`::
 
         # Doc is a template, cannot use it for the moment
         class Doc(DocumentTemplate):
             pass
+
 
         instance = MyFrameworkInstance()
         # doc_cls is the instance's implementation of Doc
@@ -29,6 +32,7 @@ class Instance(abc.ABC):
         Instance registration is divided between :class:`umongo.Document` and
         :class:`umongo.EmbeddedDocument`.
     """
+
     BUILDER_CLS = None
 
     def __init__(self, db=None):
@@ -42,27 +46,27 @@ class Instance(abc.ABC):
 
     @classmethod
     def from_db(cls, db):
-        from .frameworks import find_instance_from_db
+        from .frameworks import find_instance_from_db  # noqa: PLC0415
+
         instance_cls = find_instance_from_db(db)
         instance = instance_cls()
         instance.set_db(db)
         return instance
 
     def retrieve_document(self, name_or_template):
-        """
-        Retrieve a :class:`umongo.document.DocumentImplementation` registered into this
+        """Retrieve a :class:`umongo.document.DocumentImplementation` registered into this
         instance from it name or it template class (i.e. :class:`umongo.Document`).
         """
         if not isinstance(name_or_template, str):
             name_or_template = name_or_template.__name__
         if name_or_template not in self._doc_lookup:
             raise NotRegisteredDocumentError(
-                'Unknown document class "%s"' % name_or_template)
+                'Unknown document class "%s"' % name_or_template,
+            )
         return self._doc_lookup[name_or_template]
 
     def retrieve_embedded_document(self, name_or_template):
-        """
-        Retrieve a :class:`umongo.embedded_document.EmbeddedDocumentImplementation`
+        """Retrieve a :class:`umongo.embedded_document.EmbeddedDocumentImplementation`
         registered into this instance from it name or it template class
         (i.e. :class:`umongo.EmbeddedDocument`).
         """
@@ -70,12 +74,12 @@ class Instance(abc.ABC):
             name_or_template = name_or_template.__name__
         if name_or_template not in self._embedded_lookup:
             raise NotRegisteredDocumentError(
-                'Unknown embedded document class "%s"' % name_or_template)
+                'Unknown embedded document class "%s"' % name_or_template,
+            )
         return self._embedded_lookup[name_or_template]
 
     def register(self, template):
-        """
-        Generate an :class:`umongo.template.Implementation` from the given
+        """Generate an :class:`umongo.template.Implementation` from the given
         :class:`umongo.template.Template` for this instance.
 
         :param template: :class:`umongo.template.Template` to implement
@@ -90,9 +94,11 @@ class Instance(abc.ABC):
                 class MyEmbedded(EmbeddedDocument):
                     pass
 
+
                 @instance.register
                 class MyDoc(Document):
                     emb = fields.EmbeddedField(MyEmbedded)
+
 
                 MyDoc.find()
 
@@ -111,7 +117,8 @@ class Instance(abc.ABC):
         implementation = self.builder.build_from_template(template)
         if implementation.__name__ in self._doc_lookup:
             raise AlreadyRegisteredDocumentError(
-                'Document `%s` already registered' % implementation.__name__)
+                "Document `%s` already registered" % implementation.__name__,
+            )
         self._doc_lookup[implementation.__name__] = implementation
         return implementation
 
@@ -119,7 +126,8 @@ class Instance(abc.ABC):
         implementation = self.builder.build_from_template(template)
         if implementation.__name__ in self._embedded_lookup:
             raise AlreadyRegisteredDocumentError(
-                'EmbeddedDocument `%s` already registered' % implementation.__name__)
+                "EmbeddedDocument `%s` already registered" % implementation.__name__,
+            )
         self._embedded_lookup[implementation.__name__] = implementation
         return implementation
 
@@ -127,14 +135,15 @@ class Instance(abc.ABC):
         implementation = self.builder.build_from_template(template)
         if implementation.__name__ in self._mixin_lookup:
             raise AlreadyRegisteredDocumentError(
-                'MixinDocument `%s` already registered' % implementation.__name__)
+                "MixinDocument `%s` already registered" % implementation.__name__,
+            )
         self._mixin_lookup[implementation.__name__] = implementation
         return implementation
 
     @property
     def db(self):
         if self._db is None:
-            raise NoDBDefinedError('db not set, please call set_db')
+            raise NoDBDefinedError("db not set, please call set_db")
         return self._db
 
     @abc.abstractmethod
@@ -142,8 +151,7 @@ class Instance(abc.ABC):
         return NotImplemented
 
     def set_db(self, db):
-        """
-        Set the database to use whithin this instance.
+        """Set the database to use whithin this instance.
 
         .. note::
             The documents registered in the instance cannot be used

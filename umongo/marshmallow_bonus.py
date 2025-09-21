@@ -1,14 +1,15 @@
 """Pure marshmallow fields used in umongo"""
-import bson
+
 import marshmallow as ma
+
+import bson
 
 from .i18n import gettext as _
 
-
 __all__ = (
-    'ObjectId',
-    'Reference',
-    'GenericReference'
+    "GenericReference",
+    "ObjectId",
+    "Reference",
 )
 
 
@@ -24,7 +25,7 @@ class ObjectId(ma.fields.Field):
         try:
             return bson.ObjectId(value)
         except (TypeError, bson.errors.InvalidId):
-            raise ma.ValidationError(_('Invalid ObjectId.'))
+            raise ma.ValidationError(_("Invalid ObjectId."))
 
 
 class Reference(ObjectId):
@@ -49,16 +50,18 @@ class GenericReference(ma.fields.Field):
         # In OO world, value is a :class:`umongo.data_object.Reference`
         # or a dict before being loaded into a Document
         if isinstance(value, dict):
-            return {'id': str(value['id']), 'cls': value['cls']}
-        return {'id': str(value.pk), 'cls': value.document_cls.__name__}
+            return {"id": str(value["id"]), "cls": value["cls"]}
+        return {"id": str(value.pk), "cls": value.document_cls.__name__}
 
     def _deserialize(self, value, attr, data, **kwargs):
         if not isinstance(value, dict):
             raise ma.ValidationError(_("Invalid value for generic reference field."))
-        if value.keys() != {'cls', 'id'}:
-            raise ma.ValidationError(_("Generic reference must have `id` and `cls` fields."))
+        if value.keys() != {"cls", "id"}:
+            raise ma.ValidationError(
+                _("Generic reference must have `id` and `cls` fields."),
+            )
         try:
-            _id = bson.ObjectId(value['id'])
+            _id = bson.ObjectId(value["id"])
         except ValueError:
             raise ma.ValidationError(_("Invalid `id` field."))
-        return {'cls': value['cls'], 'id': _id}
+        return {"cls": value["cls"], "id": _id}

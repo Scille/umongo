@@ -1,11 +1,10 @@
-from umongo.fields import ListField, EmbeddedField
 from umongo.document import DocumentImplementation
 from umongo.embedded_document import EmbeddedDocumentImplementation
+from umongo.fields import EmbeddedField, ListField
 
 
 def map_entry(entry, fields):
-    """
-    Retrieve the entry from the given fields and replace it if it should
+    """Retrieve the entry from the given fields and replace it if it should
     have a different name within the database.
 
     :param entry: is one of the followings:
@@ -19,23 +18,20 @@ def map_entry(entry, fields):
         fields = field.inner.embedded_document_cls.schema.fields
     elif isinstance(field, EmbeddedField):
         fields = field.embedded_document_cls.schema.fields
-    return getattr(field, 'attribute', None) or entry, fields
+    return getattr(field, "attribute", None) or entry, fields
 
 
 def map_entry_with_dots(entry, fields):
-    """
-    Consider the given entry can be a '.' separated combination of single entries.
-    """
+    """Consider the given entry can be a '.' separated combination of single entries."""
     mapped = []
-    for sub_entry in entry.split('.'):
+    for sub_entry in entry.split("."):
         mapped_sub_entry, fields = map_entry(sub_entry, fields)
         mapped.append(mapped_sub_entry)
-    return '.'.join(mapped), fields
+    return ".".join(mapped), fields
 
 
 def map_query(query, fields):
-    """
-    Retrieve given fields within the query and replace their names with
+    """Retrieve given fields within the query and replace their names with
     the names they should have within the database.
     """
     if isinstance(query, dict):

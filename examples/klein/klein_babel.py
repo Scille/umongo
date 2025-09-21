@@ -2,13 +2,13 @@
 
 import re
 from functools import wraps
-from twisted.python import context
+
 from babel import support
+from twisted.python import context
 
-
-locale_delim_re = re.compile(r'[_-]')
+locale_delim_re = re.compile(r"[_-]")
 accept_re = re.compile(
-    r'''(                         # media-range capturing-parenthesis
+    r"""(                         # media-range capturing-parenthesis
             [^\s;,]+              # type/subtype
             (?:[ \t]*;[ \t]*      # ";"
             (?:                   # parameter non-capturing-parenthesis
@@ -22,7 +22,9 @@ accept_re = re.compile(
             (\d*(?:\.\d+)?)       # qvalue capturing-parentheses
             [^,]*                 # "extension" accept params: who cares?
         )?                        # accept params are optional
-    ''', re.VERBOSE)
+    """,
+    re.VERBOSE,
+)
 
 
 def parse_accept_header(header):
@@ -38,8 +40,8 @@ def parse_accept_header(header):
     return result
 
 
-def select_locale_by_request(request, default='en'):
-    accept_language = request.getHeader('ACCEPT-LANGUAGE')
+def select_locale_by_request(request, default="en"):
+    accept_language = request.getHeader("ACCEPT-LANGUAGE")
     if not accept_language:
         return default
 
@@ -54,18 +56,21 @@ def select_locale_by_request(request, default='en'):
 
 
 def locale_from_request(fn):
-
     @wraps(fn)
     def wrapper(request, *args, **kwargs):
         locale = select_locale_by_request(request)
         translations = support.Translations.load(
-            'translations', locales=locale, domain='messages')
-        ctx = {'locale': locale, 'translations': translations}
+            "translations",
+            locales=locale,
+            domain="messages",
+        )
+        ctx = {"locale": locale, "translations": translations}
         return context.call(ctx, fn, request, *args, **kwargs)
 
     return wrapper
 
 
 def gettext(string):
-    return context.get(
-        'translations', default=support.NullTranslations()).gettext(string)
+    return context.get("translations", default=support.NullTranslations()).gettext(
+        string,
+    )

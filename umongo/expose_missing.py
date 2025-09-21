@@ -3,15 +3,15 @@
 Allows the user to let umongo document return missing rather than None for
 empty fields.
 """
-from contextvars import ContextVar
+
 from contextlib import AbstractContextManager
+from contextvars import ContextVar
 
 import marshmallow as ma
 
-
 __all__ = (
-    'ExposeMissing',
-    'RemoveMissingSchema',
+    "ExposeMissing",
+    "RemoveMissingSchema",
 )
 
 
@@ -26,6 +26,7 @@ class ExposeMissing(AbstractContextManager):
     be useful is cases where the user want to distinguish between None and
     missing value.
     """
+
     def __enter__(self):
         self.token = EXPOSE_MISSING.set(True)
 
@@ -34,11 +35,11 @@ class ExposeMissing(AbstractContextManager):
 
 
 class RemoveMissingSchema(ma.Schema):
-    """
-    Custom :class:`marshmallow.Schema` subclass that skips missing fields
+    """Custom :class:`marshmallow.Schema` subclass that skips missing fields
     rather than returning None for missing fields when dumping umongo
     :class:`umongo.Document`s.
     """
+
     def dump(self, *args, **kwargs):
         with ExposeMissing():
             return super().dump(*args, **kwargs)

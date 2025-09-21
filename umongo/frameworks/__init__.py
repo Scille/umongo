@@ -1,28 +1,24 @@
-"""
-Frameworks
+"""Frameworks
 ==========
 """
+
 from ..exceptions import NoCompatibleInstanceError
 from .pymongo import PyMongoInstance
 
-
 __all__ = (
-    'InstanceRegisterer',
-
-    'default_instance_registerer',
-    'register_instance',
-    'unregister_instance',
-    'find_instance_from_db',
-
-    'PyMongoInstance',
-    'TxMongoInstance',
-    'MotorAsyncIOInstance',
-    'MongoMockInstance'
+    "InstanceRegisterer",
+    "MongoMockInstance",
+    "MotorAsyncIOInstance",
+    "PyMongoInstance",
+    "TxMongoInstance",
+    "default_instance_registerer",
+    "find_instance_from_db",
+    "register_instance",
+    "unregister_instance",
 )
 
 
 class InstanceRegisterer:
-
     def __init__(self):
         self.instances = []
 
@@ -40,7 +36,8 @@ class InstanceRegisterer:
             if instance.is_compatible_with(db):
                 return instance
         raise NoCompatibleInstanceError(
-            'Cannot find a umongo instance compatible with %s' % type(db))
+            "Cannot find a umongo instance compatible with %s" % type(db),
+        )
 
 
 default_instance_registerer = InstanceRegisterer()
@@ -56,6 +53,7 @@ register_instance(PyMongoInstance)
 
 try:
     from .txmongo import TxMongoInstance
+
     register_instance(TxMongoInstance)
 except ImportError:  # pragma: no cover
     pass
@@ -63,6 +61,7 @@ except ImportError:  # pragma: no cover
 
 try:
     from .motor_asyncio import MotorAsyncIOInstance
+
     register_instance(MotorAsyncIOInstance)
 except ImportError:  # pragma: no cover
     pass
@@ -70,6 +69,7 @@ except ImportError:  # pragma: no cover
 
 try:
     from .mongomock import MongoMockInstance
+
     register_instance(MongoMockInstance)
 except ImportError:  # pragma: no cover
     pass

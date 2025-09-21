@@ -1,5 +1,6 @@
-import pytest
 from functools import namedtuple
+
+import pytest
 
 from umongo import Document, EmbeddedDocument, fields
 from umongo.instance import Instance
@@ -13,15 +14,14 @@ def instance(db):
 
 @pytest.fixture
 def classroom_model(instance):
-
     @instance.register
     class Teacher(Document):
         name = fields.StrField(required=True)
-        has_apple = fields.BooleanField(required=False, attribute='_has_apple')
+        has_apple = fields.BooleanField(required=False, attribute="_has_apple")
 
     @instance.register
     class Room(EmbeddedDocument):
-        seats = fields.IntField(required=True, attribute='_seats')
+        seats = fields.IntField(required=True, attribute="_seats")
 
     @instance.register
     class Course(Document):
@@ -35,5 +35,5 @@ def classroom_model(instance):
         birthday = fields.DateTimeField()
         courses = fields.ListField(fields.ReferenceField(Course))
 
-    Mapping = namedtuple('Mapping', ('Teacher', 'Course', 'Student', 'Room'))
+    Mapping = namedtuple("Mapping", ("Teacher", "Course", "Student", "Room"))
     return Mapping(Teacher, Course, Student, Room)

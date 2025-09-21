@@ -3,13 +3,11 @@ from bson import DBRef
 from .abstract import BaseDataObject, I18nErrorDict
 from .i18n import N_
 
-
-__all__ = ('List', 'Dict', 'Reference')
+__all__ = ("Dict", "List", "Reference")
 
 
 class List(BaseDataObject, list):
-
-    __slots__ = ('inner_field', '_modified')
+    __slots__ = ("_modified", "inner_field")
 
     def __init__(self, inner_field, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -69,8 +67,11 @@ class List(BaseDataObject, list):
         return ret
 
     def __repr__(self):
-        return '<object %s.%s(%s)>' % (
-            self.__module__, self.__class__.__name__, list(self))
+        return "<object %s.%s(%s)>" % (
+            self.__module__,
+            self.__class__.__name__,
+            list(self),
+        )
 
     def is_modified(self):
         if self._modified:
@@ -90,8 +91,7 @@ class List(BaseDataObject, list):
 
 
 class Dict(BaseDataObject, dict):
-
-    __slots__ = ('key_field', 'value_field', '_modified')
+    __slots__ = ("_modified", "key_field", "value_field")
 
     def __init__(self, key_field, value_field, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -128,16 +128,20 @@ class Dict(BaseDataObject, dict):
 
     def update(self, other):
         new = {
-            self.key_field.deserialize(k) if self.key_field else k:
-            self.value_field.deserialize(v) if self.value_field else v
+            self.key_field.deserialize(k)
+            if self.key_field
+            else k: self.value_field.deserialize(v) if self.value_field else v
             for k, v in other.items()
         }
         super().update(new)
         self.set_modified()
 
     def __repr__(self):
-        return '<object %s.%s(%s)>' % (
-            self.__module__, self.__class__.__name__, dict(self))
+        return "<object %s.%s(%s)>" % (
+            self.__module__,
+            self.__class__.__name__,
+            dict(self),
+        )
 
     def is_modified(self):
         if self._modified:
@@ -157,8 +161,9 @@ class Dict(BaseDataObject, dict):
 
 
 class Reference:
-
-    error_messages = I18nErrorDict(not_found=N_('Reference not found for document {document}.'))
+    error_messages = I18nErrorDict(
+        not_found=N_("Reference not found for document {document}."),
+    )
 
     def __init__(self, document_cls, pk):
         self.document_cls = document_cls
@@ -166,8 +171,7 @@ class Reference:
         self._document = None
 
     def fetch(self, no_data=False, force_reload=False, projection=None):
-        """
-        Retrieve from the database the referenced document
+        """Retrieve from the database the referenced document
 
         :param no_data: if True, the caller is only interested in whether
             the document is present in database. This means the
@@ -181,14 +185,16 @@ class Reference:
 
     @property
     def exists(self):
-        """
-        Check if the reference document exists in the database.
-        """
+        """Check if the reference document exists in the database."""
         raise NotImplementedError
 
     def __repr__(self):
-        return '<object %s.%s(document=%s, pk=%r)>' % (
-            self.__module__, self.__class__.__name__, self.document_cls.__name__, self.pk)
+        return "<object %s.%s(document=%s, pk=%r)>" % (
+            self.__module__,
+            self.__class__.__name__,
+            self.document_cls.__name__,
+            self.pk,
+        )
 
     def __eq__(self, other):
         if isinstance(other, self.document_cls):
@@ -196,5 +202,8 @@ class Reference:
         if isinstance(other, Reference):
             return self.pk == other.pk and self.document_cls == other.document_cls
         if isinstance(other, DBRef):
-            return self.pk == other.id and self.document_cls.collection.name == other.collection
+            return (
+                self.pk == other.id
+                and self.document_cls.collection.name == other.collection
+            )
         return NotImplemented

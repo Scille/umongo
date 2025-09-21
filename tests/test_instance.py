@@ -4,27 +4,31 @@ import pytest
 
 from bson import ObjectId
 
-from umongo import Document, fields, EmbeddedDocument
-from umongo.instance import Instance
-from umongo.document import DocumentTemplate, DocumentImplementation
-from umongo.embedded_document import EmbeddedDocumentTemplate, EmbeddedDocumentImplementation
 import umongo.frameworks
-from umongo.exceptions import (
-    AlreadyRegisteredDocumentError, NotRegisteredDocumentError, NoDBDefinedError
+from umongo import Document, EmbeddedDocument, fields
+from umongo.document import DocumentImplementation, DocumentTemplate
+from umongo.embedded_document import (
+    EmbeddedDocumentImplementation,
+    EmbeddedDocumentTemplate,
 )
+from umongo.exceptions import (
+    AlreadyRegisteredDocumentError,
+    NoDBDefinedError,
+    NotRegisteredDocumentError,
+)
+from umongo.instance import Instance
 
 from .common import MockedDB, MockedInstance
 
-
 # Try to retrieve framework's db to test against each of them
 DB_AND_INSTANCE_PER_FRAMEWORK = [
-    (MockedDB('my_db'), MockedInstance),
+    (MockedDB("my_db"), MockedInstance),
 ]
 for mod_name, inst_name in (
-        ('mongomock', 'MongoMockInstance'),
-        ('motor_asyncio', 'MotorAsyncIOInstance'),
-        ('txmongo', 'TxMongoInstance'),
-        ('pymongo', 'PyMongoInstance'),
+    ("mongomock", "MongoMockInstance"),
+    ("motor_asyncio", "MotorAsyncIOInstance"),
+    ("txmongo", "TxMongoInstance"),
+    ("pymongo", "PyMongoInstance"),
 ):
     inst = getattr(umongo.frameworks, inst_name, None)
     if inst is not None:
@@ -43,9 +47,7 @@ def db_and_instance(request):
 
 
 class TestInstance:
-
     def test_already_register(self, instance):
-
         class Doc(Document):
             pass
 
@@ -63,17 +65,20 @@ class TestInstance:
             instance.register(Embedded)
 
     def test_not_register_documents(self, instance):
-
         with pytest.raises(NotRegisteredDocumentError):
+
             @instance.register
             class Doc1(Document):
-                ref = fields.ReferenceField('DummyDoc')
-            Doc1(ref=ObjectId('56dee8dd1d41c8860b263d86'))
+                ref = fields.ReferenceField("DummyDoc")
+
+            Doc1(ref=ObjectId("56dee8dd1d41c8860b263d86"))
 
         with pytest.raises(NotRegisteredDocumentError):
+
             @instance.register
             class Doc2(Document):
-                nested = fields.EmbeddedField('DummyNested')
+                nested = fields.EmbeddedField("DummyNested")
+
             Doc2(nested={})
 
     def test_multiple_instances(self, db):
@@ -127,6 +132,7 @@ class TestInstance:
             pass
 
         with pytest.raises(NotRegisteredDocumentError):
+
             @instance.register
             class Child(Parent):
                 pass
@@ -135,6 +141,7 @@ class TestInstance:
             pass
 
         with pytest.raises(NotRegisteredDocumentError):
+
             @instance.register
             class ChildEmbedded(ParentEmbedded):
                 pass
@@ -149,16 +156,16 @@ class TestInstance:
         Doc_imp = instance.register(Doc)
         Embedded_imp = instance.register(Embedded)
 
-        assert instance.retrieve_document('Doc') is Doc_imp
+        assert instance.retrieve_document("Doc") is Doc_imp
         assert instance.retrieve_document(Doc) is Doc_imp
-        assert instance.retrieve_embedded_document('Embedded') is Embedded_imp
+        assert instance.retrieve_embedded_document("Embedded") is Embedded_imp
         assert instance.retrieve_embedded_document(Embedded) is Embedded_imp
 
         with pytest.raises(NotRegisteredDocumentError):
-            instance.retrieve_document('Dummy')
+            instance.retrieve_document("Dummy")
 
         with pytest.raises(NotRegisteredDocumentError):
-            instance.retrieve_embedded_document('Dummy')
+            instance.retrieve_embedded_document("Dummy")
 
     def test_mix_doc_and_embedded(self, instance):
         @instance.register
@@ -170,10 +177,10 @@ class TestInstance:
             pass
 
         with pytest.raises(NotRegisteredDocumentError):
-            instance.retrieve_document('Embedded')
+            instance.retrieve_document("Embedded")
 
         with pytest.raises(NotRegisteredDocumentError):
-            instance.retrieve_embedded_document('Doc')
+            instance.retrieve_embedded_document("Doc")
 
     def test_instance_lazy_loading(self, db_and_instance):
         db, instance = db_and_instance
@@ -189,10 +196,9 @@ class TestInstance:
 
         instance.set_db(db)
 
-        assert doc_impl_cls.collection == db['doc']
+        assert doc_impl_cls.collection == db["doc"]
 
     def test_patched_fields(self, db):
-
         instance1 = Instance.from_db(db)
         instance2 = Instance.from_db(db)
 
@@ -217,26 +223,40 @@ class TestInstance:
 
         assert issubclass(Doc.embedded.embedded_document, EmbeddedDocumentTemplate)
         assert issubclass(
-            Doc1.schema.fields['embedded'].embedded_document, EmbeddedDocumentTemplate)
+            Doc1.schema.fields["embedded"].embedded_document,
+            EmbeddedDocumentTemplate,
+        )
         assert issubclass(
-            Doc2.schema.fields['embedded'].embedded_document, EmbeddedDocumentTemplate)
+            Doc2.schema.fields["embedded"].embedded_document,
+            EmbeddedDocumentTemplate,
+        )
         assert issubclass(
-            Doc1.schema.fields['embedded'].embedded_document_cls, EmbeddedDocumentImplementation)
+            Doc1.schema.fields["embedded"].embedded_document_cls,
+            EmbeddedDocumentImplementation,
+        )
         assert issubclass(
-            Doc2.schema.fields['embedded'].embedded_document_cls, EmbeddedDocumentImplementation)
+            Doc2.schema.fields["embedded"].embedded_document_cls,
+            EmbeddedDocumentImplementation,
+        )
 
         assert issubclass(Doc.ref.document, DocumentTemplate)
-        assert issubclass(Doc1.schema.fields['ref'].document, DocumentTemplate)
-        assert issubclass(Doc2.schema.fields['ref'].document, DocumentTemplate)
-        assert issubclass(Doc1.schema.fields['ref'].document_cls, DocumentImplementation)
-        assert issubclass(Doc2.schema.fields['ref'].document_cls, DocumentImplementation)
+        assert issubclass(Doc1.schema.fields["ref"].document, DocumentTemplate)
+        assert issubclass(Doc2.schema.fields["ref"].document, DocumentTemplate)
+        assert issubclass(
+            Doc1.schema.fields["ref"].document_cls,
+            DocumentImplementation,
+        )
+        assert issubclass(
+            Doc2.schema.fields["ref"].document_cls,
+            DocumentImplementation,
+        )
 
-        assert Embedded1.schema.fields['simple'].instance is instance1
+        assert Embedded1.schema.fields["simple"].instance is instance1
         assert Embedded1.opts.instance is instance1
-        assert Embedded2.schema.fields['simple'].instance is instance2
+        assert Embedded2.schema.fields["simple"].instance is instance2
         assert Embedded2.opts.instance is instance2
 
-        assert Doc1.schema.fields['embedded'].instance is instance1
+        assert Doc1.schema.fields["embedded"].instance is instance1
         assert Doc1.opts.instance is instance1
-        assert Doc2.schema.fields['embedded'].instance is instance2
+        assert Doc2.schema.fields["embedded"].instance is instance2
         assert Doc2.opts.instance is instance2

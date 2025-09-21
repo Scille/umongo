@@ -1,14 +1,12 @@
 import pytest
 
-from umongo import Document, fields, exceptions
+from umongo import Document, exceptions, fields
 
 from .common import BaseTest
 
 
 class TestInheritance(BaseTest):
-
     def test_cls_field(self):
-
         @self.instance.register
         class Parent(Document):
             last_name = fields.StrField()
@@ -17,50 +15,51 @@ class TestInheritance(BaseTest):
         class Child(Parent):
             first_name = fields.StrField()
 
-        assert 'cls' in Child.schema.fields
-        Child.schema.fields['cls']
-        assert not hasattr(Parent(), 'cls')
-        assert Child().cls == 'Child'
+        assert "cls" in Child.schema.fields
+        Child.schema.fields["cls"]
+        assert not hasattr(Parent(), "cls")
+        assert Child().cls == "Child"
 
         loaded = Parent.build_from_mongo(
-            {'_cls': 'Child', 'first_name': 'John', 'last_name': 'Doe'}, use_cls=True)
-        assert loaded.cls == 'Child'
+            {"_cls": "Child", "first_name": "John", "last_name": "Doe"},
+            use_cls=True,
+        )
+        assert loaded.cls == "Child"
 
     def test_simple(self):
-
         @self.instance.register
         class Parent(Document):
             last_name = fields.StrField()
 
             class Meta:
-                collection_name = 'parent_col'
+                collection_name = "parent_col"
 
         assert Parent.opts.abstract is False
-        assert Parent.opts.collection_name == 'parent_col'
-        assert Parent.collection.name == 'parent_col'
+        assert Parent.opts.collection_name == "parent_col"
+        assert Parent.collection.name == "parent_col"
 
         @self.instance.register
         class Child(Parent):
             first_name = fields.StrField()
 
         assert Child.opts.abstract is False
-        assert Child.opts.collection_name == 'parent_col'
-        assert Child.collection.name == 'parent_col'
-        Child(first_name='John', last_name='Doe')
+        assert Child.opts.collection_name == "parent_col"
+        assert Child.collection.name == "parent_col"
+        Child(first_name="John", last_name="Doe")
 
     def test_abstract(self):
-
         # Cannot define a collection_name for an abstract doc !
         with pytest.raises(exceptions.DocumentDefinitionError):
+
             @self.instance.register
             class BadAbstractDoc(Document):
                 class Meta:
                     abstract = True
-                    collection_name = 'my_col'
+                    collection_name = "my_col"
 
         @self.instance.register
         class AbstractDoc(Document):
-            abs_field = fields.StrField(default='from abstract')
+            abs_field = fields.StrField(default="from abstract")
 
             class Meta:
                 abstract = True
@@ -82,10 +81,9 @@ class TestInheritance(BaseTest):
             pass
 
         assert ConcreteDoc.opts.abstract is False
-        assert ConcreteDoc().abs_field == 'from abstract'
+        assert ConcreteDoc().abs_field == "from abstract"
 
     def test_non_document_inheritance(self):
-
         class NotDoc1:
             @staticmethod
             def my_func1():
@@ -106,7 +104,7 @@ class TestInheritance(BaseTest):
         assert isinstance(Doc(), NotDoc2)
         assert Doc.my_func1() == 24
         assert Doc.my_func2() == 42
-        doc = Doc(a='test')
+        doc = Doc(a="test")
         assert doc.my_func1() == 24
         assert doc.my_func2() == 42
-        assert doc.a == 'test'
+        assert doc.a == "test"

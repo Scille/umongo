@@ -1,22 +1,25 @@
 import collections
-from contextvars import ContextVar
 from contextlib import contextmanager
+from contextvars import ContextVar
 
-from pymongo.database import Database
-from pymongo.cursor import Cursor
-from pymongo.errors import DuplicateKeyError
 import marshmallow as ma
 
+from pymongo.cursor import Cursor
+from pymongo.database import Database
+from pymongo.errors import DuplicateKeyError
+
 from ..builder import BaseBuilder
-from ..instance import Instance
-from ..document import DocumentImplementation
 from ..data_objects import Reference
-from ..exceptions import NotCreatedError, UpdateError, DeleteError, NoneReferenceError
-from ..fields import ReferenceField, ListField, DictField, EmbeddedField
+from ..document import DocumentImplementation
+from ..exceptions import DeleteError, NoneReferenceError, NotCreatedError, UpdateError
+from ..fields import DictField, EmbeddedField, ListField, ReferenceField
+from ..instance import Instance
 from ..query_mapper import map_query
-
-from .tools import cook_find_filter, cook_find_projection, remove_cls_field_from_embedded_docs
-
+from .tools import (
+    cook_find_filter,
+    cook_find_projection,
+    remove_cls_field_from_embedded_docs,
+)
 
 SESSION = ContextVar("session", default=None)
 
@@ -24,8 +27,7 @@ SESSION = ContextVar("session", default=None)
 # pymongo.Cursor defines __del__ method, hence mongomock's WrappedCursor should
 # not inherit from this class otherwise garbage collection will crash...
 class BaseWrappedCursor:
-
-    __slots__ = ('raw_cursor', 'document_cls')
+    __slots__ = ("document_cls", "raw_cursor")
 
     def __init__(self, document_cls, cursor, *args, **kwargs):
         # Such a cunning plan my lord !
@@ -43,8 +45,9 @@ class BaseWrappedCursor:
     def __getitem__(self, index):
         if isinstance(index, slice):
             elems = self.raw_cursor[index]
-            return (self.document_cls.build_from_mongo(elem, use_cls=True)
-                    for elem in elems)
+            return (
+                self.document_cls.build_from_mongo(elem, use_cls=True) for elem in elems
+            )
         elem = self.raw_cursor[index]
         return self.document_cls.build_from_mongo(elem, use_cls=True)
 
@@ -62,15 +65,13 @@ class WrappedCursor(BaseWrappedCursor, Cursor):
 
 
 class PyMongoDocument(DocumentImplementation):
-
     __slots__ = ()
     cursor_cls = WrappedCursor  # Easier to customize this for mongomock this way
 
     opts = DocumentImplementation.opts
 
     def reload(self):
-        """
-        Retrieve and replace document's data by the ones in database.
+        """Retrieve and replace document's data by the ones in database.
 
         Raises :class:`umongo.exceptions.NotCreatedError` if the document
         doesn't exist in database.
@@ -84,8 +85,7 @@ class PyMongoDocument(DocumentImplementation):
         self._data.from_mongo(ret)
 
     def commit(self, io_validate_all=False, conditions=None, replace=False):
-        """
-        Commit the document in database.
+        """Commit the document in database.
         If the document doesn't already exist it will be inserted, otherwise
         it will be updated.
 
@@ -102,7 +102,7 @@ class PyMongoDocument(DocumentImplementation):
             if self.is_created:
                 if self.is_modified() or replace:
                     query = conditions or {}
-                    query['_id'] = self.pk
+                    query["_id"] = self.pk
                     # pre_update can provide additional query filter and/or
                     # modify the fields' values
                     additional_filter = self.pre_update()
@@ -112,10 +112,18 @@ class PyMongoDocument(DocumentImplementation):
                     self.io_validate(validate_all=io_validate_all)
                     if replace:
                         payload = self._data.to_mongo(update=False)
-                        ret = self.collection.replace_one(query, payload, session=SESSION.get())
+                        ret = self.collection.replace_one(
+                            query,
+                            payload,
+                            session=SESSION.get(),
+                        )
                     else:
                         payload = self._data.to_mongo(update=True)
-                        ret = self.collection.update_one(query, payload, session=SESSION.get())
+                        ret = self.collection.update_one(
+                            query,
+                            payload,
+                            session=SESSION.get(),
+                        )
                     if ret.matched_count != 1:
                         raise UpdateError(ret)
                     self.post_update(ret)
@@ -123,7 +131,7 @@ class PyMongoDocument(DocumentImplementation):
                     ret = None
             elif conditions:
                 raise NotCreatedError(
-                    'Document must already exist in database to use `conditions`.'
+                    "Document must already exist in database to use `conditions`.",
                 )
             else:
                 self.pre_insert()
@@ -137,25 +145,26 @@ class PyMongoDocument(DocumentImplementation):
                 self.post_insert(ret)
         except DuplicateKeyError as exc:
             # Sort value to make testing easier for compound indexes
-            keys = sorted(exc.details['keyPattern'].keys())
+            keys = sorted(exc.details["keyPattern"].keys())
             try:
                 fields = [self.schema.fields[k] for k in keys]
             except KeyError:
                 # A key in the index is unknwon from umongo
                 raise exc
             if len(keys) == 1:
-                msg = fields[0].error_messages['unique']
+                msg = fields[0].error_messages["unique"]
                 raise ma.ValidationError({keys[0]: msg})
-            raise ma.ValidationError({
-                k: f.error_messages['unique_compound'].format(fields=keys)
-                for k, f in zip(keys, fields)
-            })
+            raise ma.ValidationError(
+                {
+                    k: f.error_messages["unique_compound"].format(fields=keys)
+                    for k, f in zip(keys, fields)
+                },
+            )
         self._data.clear_modified()
         return ret
 
     def delete(self, conditions=None):
-        """
-        Remove the document from database.
+        """Remove the document from database.
 
         :param conditions: Only perform delete if matching record in db
             satisfies condition(s) (e.g. version number).
@@ -171,7 +180,7 @@ class PyMongoDocument(DocumentImplementation):
         if not self.is_created:
             raise NotCreatedError("Document doesn't exists in database")
         query = conditions or {}
-        query['_id'] = self.pk
+        query["_id"] = self.pk
         # pre_delete can provide additional query filter
         additional_filter = self.pre_delete()
         if additional_filter:
@@ -184,8 +193,7 @@ class PyMongoDocument(DocumentImplementation):
         return ret
 
     def io_validate(self, validate_all=False):
-        """
-        Run the io_validators of the document's fields.
+        """Run the io_validators of the document's fields.
 
         :param validate_all: If False only run the io_validators of the
             fields that have been modified.
@@ -194,26 +202,31 @@ class PyMongoDocument(DocumentImplementation):
             _io_validate_data_proxy(self.schema, self._data)
         else:
             _io_validate_data_proxy(
-                self.schema, self._data, partial=self._data.get_modified_fields())
+                self.schema,
+                self._data,
+                partial=self._data.get_modified_fields(),
+            )
 
     @classmethod
     def find_one(cls, filter=None, projection=None, *args, **kwargs):
-        """
-        Find a single document in database.
-        """
+        """Find a single document in database."""
         filter = cook_find_filter(cls, filter)
         if projection:
             projection = cook_find_projection(cls, projection)
-        ret = cls.collection.find_one(filter, projection=projection,
-                                      session=SESSION.get(), *args, **kwargs)
+        ret = cls.collection.find_one(
+            filter,
+            projection=projection,
+            session=SESSION.get(),
+            *args,
+            **kwargs,
+        )
         if ret is not None:
             ret = cls.build_from_mongo(ret, use_cls=True)
         return ret
 
     @classmethod
     def find(cls, filter=None, *args, **kwargs):
-        """
-        Find a list document in database.
+        """Find a list document in database.
 
         Returns a cursor that provide Documents.
         """
@@ -223,8 +236,7 @@ class PyMongoDocument(DocumentImplementation):
 
     @classmethod
     def count_documents(cls, filter=None, **kwargs):
-        """
-        Get the number of documents in this collection.
+        """Get the number of documents in this collection.
 
         Unlike pymongo's collection.count_documents, filter is optional and
         defaults to an empty filter.
@@ -234,16 +246,14 @@ class PyMongoDocument(DocumentImplementation):
 
     @classmethod
     def ensure_indexes(cls):
-        """
-        Check&create if needed the Document's indexes in database
-        """
+        """Check&create if needed the Document's indexes in database"""
         if cls.indexes:
             cls.collection.create_indexes(cls.indexes, session=SESSION.get())
 
 
 # Run multiple validators and collect all errors in one
 def _run_validators(validators, field, value):
-    if not hasattr(validators, '__iter__'):
+    if not hasattr(validators, "__iter__"):
         validators(field, value)
     else:
         errors = []
@@ -279,8 +289,11 @@ def _reference_io_validate(field, value):
     if value is None:
         return
     if not value.exists:
-        raise ma.ValidationError(value.error_messages['not_found'].format(
-            document=value.document_cls.__name__))
+        raise ma.ValidationError(
+            value.error_messages["not_found"].format(
+                document=value.document_cls.__name__,
+            ),
+        )
 
 
 def _list_io_validate(field, value):
@@ -322,7 +335,6 @@ def _embedded_document_io_validate(field, value):
 
 
 class PyMongoReference(Reference):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._document = None
@@ -330,20 +342,25 @@ class PyMongoReference(Reference):
     def fetch(self, no_data=False, force_reload=False, projection=None):
         if not self._document or force_reload:
             if self.pk is None:
-                raise NoneReferenceError('Cannot retrieve a None Reference')
+                raise NoneReferenceError("Cannot retrieve a None Reference")
             self._document = self.document_cls.find_one(self.pk, projection=projection)
             if not self._document:
-                raise ma.ValidationError(self.error_messages['not_found'].format(
-                    document=self.document_cls.__name__))
+                raise ma.ValidationError(
+                    self.error_messages["not_found"].format(
+                        document=self.document_cls.__name__,
+                    ),
+                )
         return self._document
 
     @property
     def exists(self):
-        return self.document_cls.collection.find_one(self.pk, projection={'_id': True}) is not None
+        return (
+            self.document_cls.collection.find_one(self.pk, projection={"_id": True})
+            is not None
+        )
 
 
 class PyMongoBuilder(BaseBuilder):
-
     BASE_DOCUMENT_CLS = PyMongoDocument
 
     def _patch_field(self, field):
@@ -352,11 +369,10 @@ class PyMongoBuilder(BaseBuilder):
         validators = field.io_validate
         if not validators:
             field.io_validate = []
+        elif hasattr(validators, "__iter__"):
+            field.io_validate = list(validators)
         else:
-            if hasattr(validators, '__iter__'):
-                field.io_validate = list(validators)
-            else:
-                field.io_validate = [validators]
+            field.io_validate = [validators]
         if isinstance(field, ListField):
             field.io_validate_recursive = _list_io_validate
         if isinstance(field, DictField):
@@ -369,9 +385,8 @@ class PyMongoBuilder(BaseBuilder):
 
 
 class PyMongoInstance(Instance):
-    """
-    :class:`umongo.instance.Instance` implementation for pymongo
-    """
+    """:class:`umongo.instance.Instance` implementation for pymongo"""
+
     BUILDER_CLS = PyMongoBuilder
 
     @staticmethod
@@ -397,7 +412,8 @@ class PyMongoMigrationInstance(PyMongoInstance):
         - EmbeddedDocument _cls field is only set if child of concrete embedded document
         """
         concrete_not_children = [
-            name for name, ed in self._embedded_lookup.items()
+            name
+            for name, ed in self._embedded_lookup.items()
             if not ed.opts.is_child and not ed.opts.abstract
         ]
 
