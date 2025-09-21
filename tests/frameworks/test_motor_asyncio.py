@@ -3,6 +3,7 @@ import datetime as dt
 
 from unittest import mock
 import pytest
+import sys
 
 from bson import ObjectId
 import marshmallow as ma
@@ -40,12 +41,18 @@ def make_db():
 def db():
     return make_db()
 
-
 @pytest.fixture
 def loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+    if sys.version_info >= (3, 10):
+        # Python 3.10+ requires explicit event loop management
+        loop = asyncio.new_event_loop()
+        yield loop
+        loop.close()
+    else:
+        # On Python < 3.10, pytest-asyncio can reuse the default loop
+        loop = asyncio.get_event_loop()
+        yield loop
+
 
 @pytest.mark.skipif(dep_error, reason=DEP_ERROR)
 class TestMotorAsyncIO(BaseDBTest):
