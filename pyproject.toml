@@ -47,7 +47,6 @@ mongomock = [
 tests = [
     "pytest",
     "pytest-cov",
-    "pytest-asyncio",
 ]
 dev = ["umongo[tests]", "tox", "pre-commit>=4.3,<5.0"]
 docs = [

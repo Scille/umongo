@@ -25,8 +25,8 @@ jobs:
         include:
           - { name: "3.10-pymongo3-ma3", python: "3.10", tox: py310-pymongo3-ma3 }
           - { name: "3.13-pymongo4-ma3", python: "3.13", tox: py313-pymongo4-ma3 }
-          - { name: "3.10-motor2-ma3", python: "3.10", tox: py310-motor2-ma3 }
-          - { name: "3.13-motor3-ma4", python: "3.13", tox: py313-motor3-ma4 }
+          - { name: "3.10-motor-ma3", python: "3.10", tox: py310-motor-ma3 }
+          - { name: "3.13-motor-ma4", python: "3.13", tox: py313-motor-ma4 }
           - { name: "3.10-txmongo-ma4", python: "3.10", tox: py310-txmongo-ma4 }
           - { name: "3.13-txmongo-ma4", python: "3.13", tox: py313-txmongo-ma4 }
     steps:
