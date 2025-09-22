@@ -39,12 +39,6 @@ From this point, μMongo made a few design choices:
 - Free software: MIT license
 - Test with 90%+ coverage ;-)
 
-.. _PyMongo: https://api.mongodb.org/python/current/
-.. _TxMongo: https://txmongo.readthedocs.org/en/latest/
-.. _motor_asyncio: https://motor.readthedocs.org/en/stable/
-.. _mongomock: https://github.com/vmalloc/mongomock
-.. _Marshmallow: http://marshmallow.readthedocs.org
-
 Quick example
 
 .. code-block:: python
@@ -96,3 +90,21 @@ Or to get it along with the MongoDB driver you're planing to use::
     $ pip install umongo[motor]
     $ pip install umongo[txmongo]
     $ pip install umongo[mongomock]
+
+Support umongo
+==============
+
+If you'd like to support the future of the project, please consider
+contributing to Marshmallow_'s Open Collective:
+
+.. image:: https://opencollective.com/marshmallow/donate/button.png
+    :target: https://opencollective.com/marshmallow
+    :width: 200
+    :alt: Donate to our collective
+
+
+.. _PyMongo: https://api.mongodb.org/python/current/
+.. _TxMongo: https://txmongo.readthedocs.org/en/latest/
+.. _motor_asyncio: https://motor.readthedocs.org/en/stable/
+.. _mongomock: https://github.com/vmalloc/mongomock
+.. _Marshmallow: http://marshmallow.readthedocs.org
