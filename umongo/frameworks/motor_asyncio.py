@@ -209,7 +209,7 @@ class MotorAsyncIODocument(DocumentImplementation):
             raise ma.ValidationError(
                 {
                     k: f.error_messages["unique_compound"].format(fields=keys)
-                    for k, f in zip(keys, fields)
+                    for k, f in zip(keys, fields, strict=True)
                 },
             )
         self._data.clear_modified()
@@ -405,7 +405,7 @@ async def _dict_io_validate(field, value):
         tasks.append(_run_validators(validators, field.value_field, val))
     results = await asyncio.gather(*tasks, return_exceptions=True)
     errors = collections.defaultdict(dict)
-    for key, res in zip(value.keys(), results):
+    for key, res in zip(value.keys(), results, strict=True):
         if isinstance(res, ma.ValidationError):
             errors[key]["value"] = res.messages
         elif res:

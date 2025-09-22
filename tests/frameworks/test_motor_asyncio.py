@@ -1,6 +1,5 @@
 import asyncio
 import datetime as dt
-import sys
 from unittest import mock
 
 import pytest
@@ -49,15 +48,9 @@ def db():
 
 @pytest.fixture
 def loop():
-    if sys.version_info >= (3, 10):
-        # Python 3.10+ requires explicit event loop management
-        loop = asyncio.new_event_loop()
-        yield loop
-        loop.close()
-    else:
-        # On Python < 3.10, pytest-asyncio can reuse the default loop
-        loop = asyncio.get_event_loop()
-        yield loop
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
 
 
 @pytest.mark.skipif(dep_error, reason=DEP_ERROR)
@@ -546,7 +539,9 @@ class TestMotorAsyncIO(BaseDBTest):
                     allow_none=True,
                 )
 
-            student = IOStudent(name="Marty", io_field=dict(zip(keys, values)))
+            student = IOStudent(
+                name="Marty", io_field=dict(zip(keys, values, strict=True))
+            )
             await student.io_validate()
             assert called == values
 

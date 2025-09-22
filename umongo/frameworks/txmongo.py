@@ -111,7 +111,7 @@ class TxMongoDocument(DocumentImplementation):
             raise ma.ValidationError(
                 {
                     k: f.error_messages["unique_compound"].format(fields=keys)
-                    for k, f in zip(keys, fields)
+                    for k, f in zip(keys, fields, strict=True)
                 },
             )
         self._data.clear_modified()

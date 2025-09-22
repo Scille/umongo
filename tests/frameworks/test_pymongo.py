@@ -404,7 +404,7 @@ class TestPymongo(BaseDBTest):
                 allow_none=True,
             )
 
-        student = IOStudent(name="Marty", io_field=dict(zip(keys, values)))
+        student = IOStudent(name="Marty", io_field=dict(zip(keys, values, strict=True)))
         student.io_validate()
         assert called == values
 
