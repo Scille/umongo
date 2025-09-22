@@ -2,6 +2,14 @@
 History
 =======
 
+4.0.0b2 (2025-09-22)
+--------------------
+
+Other:
+
+* Drop motor 2 (#406)
+* Require Python 3.10 (#406)
+
 4.0.0b1 (2025-09-21)
 --------------------
 
@@ -20,10 +28,9 @@ Other:
 
 * *Backwards-incompatible*: Remove ``__version__``, ``__author__`` and
   ``__email__`` from umongo.__init__.py (#395).
-* Drop motor 2 (#406)
 * Require marshmallow >=3.26 (#401)
 * Support Python up to 3.13 (#392)
-* Require Python 3.10 (#393 and #406)
+* Drop Python 3.7 and 3.8 (#393)
 
 3.1.0 (2021-12-23)
 ------------------
