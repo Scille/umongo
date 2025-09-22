@@ -2,7 +2,7 @@
 μMongo: sync/async ODM
 ======================
 
-|pypi| |build-status| |pre-commit| |docs|
+|pypi| |build-status| |pre-commit| |docs| |coverage|
 
 .. |pypi| image:: https://badgen.net/pypi/v/umongo
     :target: https://pypi.org/project/umongo/
@@ -19,6 +19,10 @@
 .. |docs| image:: https://readthedocs.org/projects/umongo/badge/
    :target: https://umongo.readthedocs.io/
    :alt: Documentation
+
+.. |coverage| image:: https://codecov.io/github/Scille/umongo/graph/badge.svg
+   :target: https://codecov.io/github/Scille/umongo
+   :alt: Coverage
 
 μMongo is a Python MongoDB ODM. Its inception comes from two needs:
 the lack of async ODM and the difficulty to do document (un)serialization
