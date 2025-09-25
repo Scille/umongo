@@ -215,6 +215,30 @@ class MotorAsyncIODocument(DocumentImplementation):
         self._data.clear_modified()
         return ret
 
+    async def commit_many(self, conditions=None, replace_arrays=False):
+        """
+        Commit changes to multiple documents per conditions.
+        :param conditions: Only perform commit if matching record in db
+            satisfies condition(s) (e.g. version number).
+            Raises :class:`umongo.exceptions.UpdateError` if the
+            conditions are not satisfied.
+        :param replace_arrays: False (default) to add array elements to document using a $push operator
+            or True to replace fields containing arrays with the supplied value(s) using a $set operator
+        :return: A :class:`pymongo.results.UpdateResult`
+        """
+        query = conditions or {}
+        # pre_update can provide additional query filter and/or
+        # modify the fields' values
+        additional_filter = await self.__coroutined_pre_update()
+        if additional_filter:
+            query.update(map_query(additional_filter, self.schema.fields))
+        await self.io_validate(validate_all=False)
+        payload = self._data.to_mongo_update_many(replace_arrays=replace_arrays)
+        ret = await self.collection.update_many(query, payload, session=SESSION.get())
+        await self.__coroutined_post_update(ret)
+        self._data.clear_modified()
+        return ret
+
     async def delete(self, conditions=None):
         """Alias of :meth:`remove` to enforce default api."""
         return await self.remove(conditions=conditions)

@@ -106,6 +106,21 @@ class TestTxMongo(BaseDBTest):
             yield Student(name="Joe").commit(conditions={"name": "dummy"})
 
     @pytest_inlineCallbacks
+    def test_update_many(self, classroom_model):
+        Teacher = classroom_model.Teacher
+        john = Teacher(name='John Buck', has_apple=False)
+        yield john.commit()
+        jane = Teacher(name='Jane Buck', has_apple=False)
+        yield jane.commit()
+        query = {"name": {"$regex": ".*Buck$"}}
+        result = yield Teacher(has_apple=True).commit_many(query)
+        assert result.modified_count == 2
+        yield john.reload()
+        assert john.has_apple
+        yield jane.reload()
+        assert jane.has_apple
+
+    @pytest_inlineCallbacks
     def test_replace(self, classroom_model):
         Student = classroom_model.Student
         john = Student(name="John Doe", birthday=dt.datetime(1995, 12, 12))

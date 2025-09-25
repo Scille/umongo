@@ -55,6 +55,18 @@ class BaseDataProxy:
             mongo_data["$unset"] = dict.fromkeys(unset_data, "")
         return mongo_data or None
 
+    def to_mongo_update_many(self, replace_arrays=False):
+        mongo_fields = self.MongoFieldChanges(replace_arrays=replace_arrays)
+        for name in self.get_modified_fields():
+            field = self._fields[name]
+            name = field.attribute or name
+            val = field.serialize_to_mongo(self._data[name])
+            if val is ma.missing:
+                mongo_fields.unset_field_value(name)
+            else:
+                mongo_fields.set_field_value(name, val)
+        return mongo_fields.mongo_data
+
     def from_mongo(self, data):
         self._data = {}
         for key, val in data.items():
@@ -193,6 +205,59 @@ class BaseDataProxy:
 
     def values(self):
         return self._data.values()
+
+    # helper class to compute update_many field names and operators
+    class MongoFieldChanges:
+        def __init__(self, replace_arrays=False):
+            self._replace_arrays = replace_arrays
+            self._set_data = {}
+            self._push_data = {}
+            self._unset_data = []
+
+        @property
+        def mongo_data(self):
+            _mongo_data = {}
+            if self._set_data:
+                _mongo_data['$set'] = self._set_data
+            if self._push_data:
+                _mongo_data['$push'] = self._push_data
+            if self._unset_data:
+                _mongo_data['$unset'] = {k: "" for k in self._unset_data}
+            return _mongo_data or None
+
+        def set_field_value(self, field_name, value):
+            field_type = type(value)
+            if field_type is list:
+                self._set_list_data(field_name, value)
+            elif field_type is dict:
+                self._set_dict_data(field_name, value)
+            else:
+                self._set_data[field_name] = value
+
+        def unset_field_value(self, field):
+            self._unset_data.append(field)
+
+        def _set_dict_data(self, name: str, val: dict):
+            for key, value in val.items():
+                set_name = f'{name}.{key}'
+                if type(value) is dict:
+                    self._set_dict_data(set_name, value)
+                elif type(value) is list:
+                    self._set_list_data(set_name, value)
+                else:
+                    self._set_data[set_name] = value
+
+        def _set_list_data(self, name: str, val: list):
+            if self._replace_arrays:
+                # replacing the list value - use the $set operator
+                self._set_data[name] = val
+            else:
+                # adding items in val to list - if the length of the list is 1, then just $push the value
+                if len(val) == 1:
+                    self._push_data[name] = val[0]
+                else:
+                    # use the $each operator with the value so that each value is added to the field's array
+                    self._push_data[name] = {'$each': val}
 
 
 class BaseNonStrictDataProxy(BaseDataProxy):
