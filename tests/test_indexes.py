@@ -101,13 +101,13 @@ class TestIndexes(BaseTest):
             ],
         )
 
-    def test_bad_index(self):
-        for bad in [1, None, object()]:
-            with pytest.raises(TypeError) as exc:
-                parse_index(1)
-            assert exc.value.args[0] == (
-                "Index type must be <str>, <list>, <dict> or <pymongo.IndexModel>"
-            )
+    @pytest.mark.parametrize("bad_index", (1, None, object()))
+    def test_bad_index(self, bad_index):
+        with pytest.raises(TypeError) as exc:
+            parse_index(bad_index)
+        assert exc.value.args[0] == (
+            "Index type must be <str>, <list>, <dict> or <pymongo.IndexModel>"
+        )
 
     def test_nested_indexes(self):
         """Test multikey indexes

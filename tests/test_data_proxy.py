@@ -357,7 +357,8 @@ class TestDataProxy(BaseTest):
             },
         )
         d.required_validate()
-        # Empty list/dict should not trigger required if embedded field has required fields
+        # Empty list/dict should not trigger required
+        # if embedded field has required fields
         d.load({"embedded": {"required": 42}, "required": 42})
         d.required_validate()
 
@@ -366,10 +367,12 @@ class TestDataProxy(BaseTest):
             d.required_validate()
         assert exc.value.messages == {"required": ["Missing data for required field."]}
 
-        # Missing embedded is valid even though some fields are required in the embedded document
+        # Missing embedded is valid even though some fields are required
+        # in the embedded document
         d.load({"required": 42})
         d.required_validate()
-        # Required fields in the embedded document are only checked if the document is not missing
+        # Required fields in the embedded document are only checked
+        # if the document is not missing
         d.load({"embedded": {}, "required": 42})
         with pytest.raises(ma.ValidationError) as exc:
             d.required_validate()

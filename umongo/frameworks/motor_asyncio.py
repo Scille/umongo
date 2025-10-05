@@ -10,13 +10,19 @@ import marshmallow as ma
 from motor.motor_asyncio import AsyncIOMotorCursor, AsyncIOMotorDatabase
 from pymongo.errors import DuplicateKeyError
 
-from ..builder import BaseBuilder
-from ..data_objects import Reference
-from ..document import DocumentImplementation
-from ..exceptions import DeleteError, NoneReferenceError, NotCreatedError, UpdateError
-from ..fields import DictField, EmbeddedField, ListField, ReferenceField
-from ..instance import Instance
-from ..query_mapper import map_query
+from umongo.builder import BaseBuilder
+from umongo.data_objects import Reference
+from umongo.document import DocumentImplementation
+from umongo.exceptions import (
+    DeleteError,
+    NoneReferenceError,
+    NotCreatedError,
+    UpdateError,
+)
+from umongo.fields import DictField, EmbeddedField, ListField, ReferenceField
+from umongo.instance import Instance
+from umongo.query_mapper import map_query
+
 from .tools import (
     cook_find_filter,
     cook_find_projection,
@@ -201,17 +207,17 @@ class MotorAsyncIODocument(DocumentImplementation):
             try:
                 fields = [self.schema.fields[k] for k in keys]
             except KeyError:
-                # A key in the index is unknwon from umongo
-                raise exc
+                # A key in the index is unknown from umongo
+                raise exc from None
             if len(keys) == 1:
                 msg = fields[0].error_messages["unique"]
-                raise ma.ValidationError({keys[0]: msg})
+                raise ma.ValidationError({keys[0]: msg}) from exc
             raise ma.ValidationError(
                 {
                     k: f.error_messages["unique_compound"].format(fields=keys)
                     for k, f in zip(keys, fields, strict=True)
                 },
-            )
+            ) from exc
         self._data.clear_modified()
         return ret
 
@@ -400,9 +406,9 @@ async def _dict_io_validate(field, value):
     validators = field.value_field.io_validate
     if not validators:
         return
-    tasks = []
-    for key, val in value.items():
-        tasks.append(_run_validators(validators, field.value_field, val))
+    tasks = [
+        _run_validators(validators, field.value_field, val) for val in value.values()
+    ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     errors = collections.defaultdict(dict)
     for key, res in zip(value.keys(), results, strict=True):

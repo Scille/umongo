@@ -120,7 +120,8 @@ class BaseBuilder:
     :class:`umongo.document.Implementation`.
 
     .. note:: This class should not be used directly, it should be inherited by
-              concrete implementations such as :class:`umongo.frameworks.pymongo.PyMongoBuilder`
+              concrete implementations such as
+              :class:`umongo.frameworks.pymongo.PyMongoBuilder`
     """
 
     BASE_DOCUMENT_CLS = None
@@ -201,7 +202,8 @@ class BaseBuilder:
                     if popts.collection_name:
                         if collection_name:
                             raise DocumentDefinitionError(
-                                "Cannot redefine collection_name in a child, use abstract instead",
+                                "Cannot redefine collection_name in a child, "
+                                "use abstract instead",
                             )
                         collection_name = popts.collection_name
 

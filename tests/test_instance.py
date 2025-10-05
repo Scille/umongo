@@ -65,20 +65,18 @@ class TestInstance:
             instance.register(Embedded)
 
     def test_not_register_documents(self, instance):
+        @instance.register
+        class Doc1(Document):
+            ref = fields.ReferenceField("DummyDoc")
+
         with pytest.raises(NotRegisteredDocumentError):
-
-            @instance.register
-            class Doc1(Document):
-                ref = fields.ReferenceField("DummyDoc")
-
             Doc1(ref=ObjectId("56dee8dd1d41c8860b263d86"))
 
+        @instance.register
+        class Doc2(Document):
+            nested = fields.EmbeddedField("DummyNested")
+
         with pytest.raises(NotRegisteredDocumentError):
-
-            @instance.register
-            class Doc2(Document):
-                nested = fields.EmbeddedField("DummyNested")
-
             Doc2(nested={})
 
     def test_multiple_instances(self, db):

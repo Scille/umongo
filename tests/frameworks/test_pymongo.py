@@ -582,14 +582,22 @@ class TestPymongo(BaseDBTest):
         with pytest.raises(ma.ValidationError) as exc:
             UniqueIndexCompoundDoc(not_unique="a", compound1=1, compound2=1).commit()
         assert exc.value.messages == {
-            "compound2": "Values of fields ['compound1', 'compound2'] must be unique together.",
-            "compound1": "Values of fields ['compound1', 'compound2'] must be unique together.",
+            "compound2": (
+                "Values of fields ['compound1', 'compound2'] must be unique together."
+            ),
+            "compound1": (
+                "Values of fields ['compound1', 'compound2'] must be unique together."
+            ),
         }
         with pytest.raises(ma.ValidationError) as exc:
             UniqueIndexCompoundDoc(not_unique="a", compound1=2, compound2=1).commit()
         assert exc.value.messages == {
-            "compound2": "Values of fields ['compound1', 'compound2'] must be unique together.",
-            "compound1": "Values of fields ['compound1', 'compound2'] must be unique together.",
+            "compound2": (
+                "Values of fields ['compound1', 'compound2'] must be unique together."
+            ),
+            "compound1": (
+                "Values of fields ['compound1', 'compound2'] must be unique together."
+            ),
         }
 
     @pytest.mark.xfail

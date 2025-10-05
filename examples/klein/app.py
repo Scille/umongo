@@ -205,7 +205,7 @@ def update_user(request, nick_or_id):
         user.update(data)
         yield user.commit()
     except ValidationError as ve:
-        raise Error(400, jsonify(request, message=ve.args[0]))
+        raise Error(400, jsonify(request, message=ve.args[0])) from ve
     returnValue(jsonify(request, dump_user_no_pass(user)))
 
 
@@ -219,7 +219,7 @@ def delete_user(request, nick_or_id):
     try:
         yield user.delete()
     except ValidationError as ve:
-        raise Error(400, jsonify(message=ve.args[0]))
+        raise Error(400, jsonify(message=ve.args[0])) from ve
     returnValue("Ok")
 
 
@@ -242,7 +242,7 @@ def change_password_user(request, nick_or_id):
         user.password = data["password"]
         yield user.commit()
     except ValidationError as ve:
-        raise Error(400, jsonify(request, message=ve.args[0]))
+        raise Error(400, jsonify(request, message=ve.args[0])) from ve
     returnValue(jsonify(request, dump_user_no_pass(user)))
 
 
@@ -279,7 +279,7 @@ def create_user(request):
         user = User(**payload)
         yield user.commit()
     except ValidationError as ve:
-        raise Error(400, jsonify(request, message=ve.args[0]))
+        raise Error(400, jsonify(request, message=ve.args[0])) from ve
     returnValue(jsonify(request, dump_user_no_pass(user)))
 
 

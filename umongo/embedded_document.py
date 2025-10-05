@@ -51,11 +51,12 @@ class EmbeddedDocumentOpts:
     template             no                     Origin template of the embedded document
     instance             no                     Implementation's instance
     abstract             yes                    Embedded document can only be inherited
-    is_child             no                     Embedded document inherit of a non-abstract
-                                                embedded document
+    is_child             no                     Embedded document inherit of a
+                                                non-abstract embedded document
     strict               yes                    Don't accept unknown fields from mongo
                                                 (default: True)
-    offspring            no                     List of embedded documents inheriting this one
+    offspring            no                     List of embedded documents inheriting
+                                                this one
     ==================== ====================== ===========
     """
 

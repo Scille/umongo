@@ -13,7 +13,8 @@ def gettext(message):
 def set_gettext(gettext):
     """Define a function that will be used to localize messages.
 
-    .. note:: Most common function to use for this would be default :func:`gettext.gettext`
+    .. note:: Most common function to use for this would be default
+        :func:`gettext.gettext`
     """
     global _gettext  # noqa: PLW0603
     _gettext = gettext
