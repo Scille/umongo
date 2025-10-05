@@ -166,9 +166,6 @@ class BaseField(ma.fields.Field):
             return ma.missing
         return self._serialize_to_mongo(obj)
 
-    # def serialize_to_mongo_update(self, path, obj):
-    #     return self._serialize_to_mongo(attr, obj=obj, update=update)
-
     def deserialize_from_mongo(self, value):
         if value is None and getattr(self, "allow_none", False) is True:
             return None

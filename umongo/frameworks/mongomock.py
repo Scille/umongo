@@ -1,8 +1,9 @@
 from mongomock.collection import Cursor
 from mongomock.database import Database
 
-from ..document import DocumentImplementation
-from ..instance import Instance
+from umongo.document import DocumentImplementation
+from umongo.instance import Instance
+
 from .pymongo import BaseWrappedCursor, PyMongoBuilder, PyMongoDocument
 
 # Mongomock aims at working like pymongo

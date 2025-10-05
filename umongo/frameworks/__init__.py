@@ -2,7 +2,8 @@
 ==========
 """
 
-from ..exceptions import NoCompatibleInstanceError
+from umongo.exceptions import NoCompatibleInstanceError
+
 from .pymongo import PyMongoInstance
 
 __all__ = (

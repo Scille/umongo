@@ -10,8 +10,6 @@ from bson import DBRef, Decimal128, ObjectId
 from . import marshmallow_bonus as ma_bonus_fields
 from .abstract import BaseField, I18nErrorDict
 from .data_objects import Dict, List, Reference
-
-# from .registerer import retrieve_document
 from .document import DocumentImplementation
 from .exceptions import DocumentDefinitionError, NotRegisteredDocumentError
 from .i18n import gettext as _
@@ -317,8 +315,8 @@ class ObjectIdField(BaseField, ma_bonus_fields.ObjectId):
 class ReferenceField(BaseField, ma_bonus_fields.Reference):
     def __init__(self, document, *args, reference_cls=Reference, **kwargs):
         """:param document: Can be a :class:`umongo.embedded_document.DocumentTemplate`,
-            another instance's :class:`umongo.embedded_document.DocumentImplementation` or
-            the embedded document class name.
+            another instance's :class:`umongo.embedded_document.DocumentImplementation`
+            or the embedded document class name.
 
         .. warning:: The referenced document's _id must be an `ObjectId`.
         """
@@ -335,7 +333,8 @@ class ReferenceField(BaseField, ma_bonus_fields.Reference):
 
     @property
     def document_cls(self):
-        """Return the instance's :class:`umongo.embedded_document.DocumentImplementation`
+        """Return the instance's
+        :class:`umongo.embedded_document.DocumentImplementation`
         implementing the `document` attribute.
         """
         if not self._document_cls:
@@ -394,10 +393,10 @@ class GenericReferenceField(BaseField, ma_bonus_fields.GenericReference):
     def _document_cls(self, class_name):
         try:
             return self.instance.retrieve_document(class_name)
-        except NotRegisteredDocumentError:
+        except NotRegisteredDocumentError as exc:
             raise ma.ValidationError(
                 _("Unknown document `{document}`.").format(document=class_name),
-            )
+            ) from exc
 
     def _serialize(self, value, attr, obj):
         if value is None:
@@ -424,8 +423,8 @@ class GenericReferenceField(BaseField, ma_bonus_fields.GenericReference):
                 )
             try:
                 _id = ObjectId(value["id"])
-            except ValueError:
-                raise ma.ValidationError(_("Invalid `id` field."))
+            except ValueError as exc:
+                raise ma.ValidationError(_("Invalid `id` field.")) from exc
             document_cls = self._document_cls(value["cls"])
             return self.reference_cls(document_cls, _id)
         raise ma.ValidationError(_("Invalid value for generic reference field."))
@@ -442,7 +441,8 @@ class EmbeddedField(BaseField, ma.fields.Nested):
     def __init__(self, embedded_document, *args, **kwargs):
         """:param embedded_document: Can be a
         :class:`umongo.embedded_document.EmbeddedDocumentTemplate`,
-        another instance's :class:`umongo.embedded_document.EmbeddedDocumentImplementation`
+        another instance's
+        :class:`umongo.embedded_document.EmbeddedDocumentImplementation`
         or the embedded document class name.
         """
         # Don't need to pass `nested` attribute given it is overloaded
@@ -465,7 +465,8 @@ class EmbeddedField(BaseField, ma.fields.Nested):
 
     @property
     def embedded_document_cls(self):
-        """Return the instance's :class:`umongo.embedded_document.EmbeddedDocumentImplementation`
+        """Return the instance's
+        :class:`umongo.embedded_document.EmbeddedDocumentImplementation`
         implementing the `embedded_document` attribute.
         """
         if not self._embedded_document_cls:
@@ -510,7 +511,7 @@ class EmbeddedField(BaseField, ma.fields.Nested):
                     )
                 )
             except NotRegisteredDocumentError as exc:
-                raise ma.ValidationError(str(exc))
+                raise ma.ValidationError(str(exc)) from exc
             return to_use_cls(**value)
         return embedded_document_cls(**value)
 

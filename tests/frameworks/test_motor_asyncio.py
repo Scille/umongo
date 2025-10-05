@@ -763,8 +763,14 @@ class TestMotorAsyncIO(BaseDBTest):
                     compound2=1,
                 ).commit()
             assert exc.value.messages == {
-                "compound2": "Values of fields ['compound1', 'compound2'] must be unique together.",
-                "compound1": "Values of fields ['compound1', 'compound2'] must be unique together.",
+                "compound2": (
+                    "Values of fields ['compound1', 'compound2'] "
+                    "must be unique together."
+                ),
+                "compound1": (
+                    "Values of fields ['compound1', 'compound2'] "
+                    "must be unique together."
+                ),
             }
             with pytest.raises(ma.ValidationError) as exc:
                 await UniqueIndexCompoundDoc(
@@ -773,8 +779,14 @@ class TestMotorAsyncIO(BaseDBTest):
                     compound2=1,
                 ).commit()
             assert exc.value.messages == {
-                "compound2": "Values of fields ['compound1', 'compound2'] must be unique together.",
-                "compound1": "Values of fields ['compound1', 'compound2'] must be unique together.",
+                "compound2": (
+                    "Values of fields ['compound1', 'compound2'] "
+                    "must be unique together."
+                ),
+                "compound1": (
+                    "Values of fields ['compound1', 'compound2'] "
+                    "must be unique together."
+                ),
             }
 
         loop.run_until_complete(do_test())

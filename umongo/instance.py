@@ -54,8 +54,9 @@ class Instance(abc.ABC):
         return instance
 
     def retrieve_document(self, name_or_template):
-        """Retrieve a :class:`umongo.document.DocumentImplementation` registered into this
-        instance from it name or it template class (i.e. :class:`umongo.Document`).
+        """Retrieve a :class:`umongo.document.DocumentImplementation` registered
+        into this instance from its name or its template class
+        (i.e. :class:`umongo.Document`).
         """
         if not isinstance(name_or_template, str):
             name_or_template = name_or_template.__name__

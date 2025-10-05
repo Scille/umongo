@@ -81,7 +81,8 @@ class DocumentOpts:
                                                 and can only be inherited
     collection_name      yes                    Name of the collection to store
                                                 the document into
-    is_child             no                     Document inherit of a non-abstract document
+    is_child             no                     Document inherits a non-abstract
+                                                document
     strict               yes                    Don't accept unknown fields from mongo
                                                 (default: True)
     indexes              yes                    List of custom indexes
@@ -196,7 +197,8 @@ class DocumentImplementation(
     :class:`umongo.instance.BaseInstance`.
 
     .. note:: This class should not be used directly, it should be inherited by
-              concrete implementations such as :class:`umongo.frameworks.pymongo.PyMongoDocument`
+              concrete implementations such as
+              :class:`umongo.frameworks.pymongo.PyMongoDocument`
     """
 
     __slots__ = ("_data", "is_created")
@@ -206,7 +208,6 @@ class DocumentImplementation(
         if self.opts.abstract:
             raise AbstractDocumentError("Cannot instantiate an abstract Document")
         self.is_created = False
-        "Return True if the document has been commited to database"  # is_created's docstring
         super().__init__(**kwargs)
 
     def __repr__(self):

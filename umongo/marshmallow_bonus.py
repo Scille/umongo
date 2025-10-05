@@ -24,8 +24,8 @@ class ObjectId(ma.fields.Field):
     def _deserialize(self, value, attr, data, **kwargs):
         try:
             return bson.ObjectId(value)
-        except (TypeError, bson.errors.InvalidId):
-            raise ma.ValidationError(_("Invalid ObjectId."))
+        except (TypeError, bson.errors.InvalidId) as exc:
+            raise ma.ValidationError(_("Invalid ObjectId.")) from exc
 
 
 class Reference(ObjectId):
@@ -62,6 +62,6 @@ class GenericReference(ma.fields.Field):
             )
         try:
             _id = bson.ObjectId(value["id"])
-        except ValueError:
-            raise ma.ValidationError(_("Invalid `id` field."))
+        except ValueError as exc:
+            raise ma.ValidationError(_("Invalid `id` field.")) from exc
         return {"cls": value["cls"], "id": _id}
