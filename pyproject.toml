@@ -81,7 +81,6 @@ ignore = [
     "A002",    # "argument name shadows a Python standard-library module"
     "ANN",     # skip annotation checks
     "ARG",     # unused arguments are common w/ interfaces
-    "B026",    # TODO: Star-arg unpacking after a keyword argument is strongly discouraged"
     "COM",     # let formatter take care of commas
     "C901",    # don't enforce complexity level
     "D",       # don't require docstrings

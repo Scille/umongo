@@ -214,7 +214,7 @@ class PyMongoDocument(DocumentImplementation):
             )
 
     @classmethod
-    def find_one(cls, filter=None, projection=None, *args, **kwargs):
+    def find_one(cls, filter=None, projection=None, **kwargs):
         """Find a single document in database."""
         filter = cook_find_filter(cls, filter)
         if projection:
@@ -223,7 +223,6 @@ class PyMongoDocument(DocumentImplementation):
             filter,
             projection=projection,
             session=SESSION.get(),
-            *args,
             **kwargs,
         )
         if ret is not None:
@@ -237,7 +236,7 @@ class PyMongoDocument(DocumentImplementation):
         Returns a cursor that provide Documents.
         """
         filter = cook_find_filter(cls, filter)
-        raw_cursor = cls.collection.find(filter, session=SESSION.get(), *args, **kwargs)
+        raw_cursor = cls.collection.find(filter, *args, session=SESSION.get(), **kwargs)
         return cls.cursor_cls(cls, raw_cursor)
 
     @classmethod
