@@ -7,169 +7,180 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: jerome@jolimont.fr\n"
-"POT-Creation-Date: 2021-01-04 15:53+0100\n"
+"POT-Creation-Date: 2025-10-07 00:07+0200\n"
 "PO-Revision-Date: 2016-04-19 12:09+0200\n"
 "Last-Translator: Jérôme Lafréchoux <jerome@jolimont.fr>\n"
 "Language: fr\n"
 "Language-Team: fr <LL@li.org>\n"
-"Plural-Forms: nplurals=2; plural=(n > 1)\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.7.0\n"
+"Generated-By: Babel 2.17.0\n"
 
-#: umongo/abstract.py:103
+#: src/umongo/abstract.py:95
 msgid "Field value must be unique."
 msgstr "La valeur de ce champ doit être unique."
 
-#: umongo/abstract.py:104
+#: src/umongo/abstract.py:96
+#, python-brace-format
 msgid "Values of fields {fields} must be unique together."
 msgstr "L'ensemble des valeurs des champs {fields} doit être unique."
 
-#: umongo/data_objects.py:155
+#: src/umongo/data_objects.py:157
+#, python-brace-format
 msgid "Reference not found for document {document}."
 msgstr "Référence non trouvée pour document {document}."
 
-#: umongo/data_proxy.py:65
-msgid "{cls}: unknown \"{key}\" field found in DB."
-msgstr "{cls}: Champ \"{key}\" inconnu trouvé dans la base de données."
+#: src/umongo/data_proxy.py:65
+#, python-brace-format, python-format
+msgid "%s: unknown \"%s\" field found in DB."
+msgstr "%s: champ \"%s\" inconnu trouvé dans la base de données."
 
 # Marshmallow fields #
-#: umongo/data_proxy.py:170
+#: src/umongo/data_proxy.py:171
 msgid "Missing data for required field."
 msgstr "Valeur manquante pour un champ obligatoire."
 
-#: umongo/fields.py:347
+#: src/umongo/fields.py:350
+#, python-brace-format
 msgid "DBRef must be on collection `{collection}`."
 msgstr "DBRef doit être sur la collection `{collection}`."
 
-#: umongo/fields.py:352 umongo/fields.py:363
+#: src/umongo/fields.py:358 src/umongo/fields.py:373
+#, python-brace-format
 msgid "`{document}` reference expected."
 msgstr "Référence sur `{document}` attendue."
 
-#: umongo/fields.py:360 umongo/fields.py:404
+#: src/umongo/fields.py:368 src/umongo/fields.py:416
 msgid "Cannot reference a document that has not been created yet."
 msgstr "Impossible de référencer un document qui n'a pas été encore créé."
 
-#: umongo/fields.py:386 umongo/fields.py:483
+#: src/umongo/fields.py:398 src/umongo/fields.py:503
+#, python-brace-format
 msgid "Unknown document `{document}`."
 msgstr "Document unconnu `{document}`."
 
-#: umongo/fields.py:408 umongo/marshmallow_bonus.py:65
+#: src/umongo/fields.py:422 src/umongo/marshmallow_bonus.py:61
 msgid "Generic reference must have `id` and `cls` fields."
 msgstr "Une référence générique doit avoir des champs `id` et `cls`."
 
-#: umongo/fields.py:412 umongo/marshmallow_bonus.py:69
+#: src/umongo/fields.py:427 src/umongo/marshmallow_bonus.py:66
 msgid "Invalid `id` field."
 msgstr "Champ `id` invalide."
 
-#: umongo/fields.py:415 umongo/marshmallow_bonus.py:63
+#: src/umongo/fields.py:430 src/umongo/marshmallow_bonus.py:58
 msgid "Invalid value for generic reference field."
 msgstr "Valeur de référence générique invalide."
 
-#: umongo/marshmallow_bonus.py:29
+#: src/umongo/marshmallow_bonus.py:28
 msgid "Invalid ObjectId."
 msgstr "ObjectId invalide."
 
-msgid "Invalid input type."
-msgstr "Type en entrée invalide."
+#: tests/test_i18n.py:26
+msgid "hello"
+msgstr ""
 
-msgid "Field may not be null."
-msgstr "Ce champ ne doit pas être vide."
+#~ msgid "Invalid input type."
+#~ msgstr "Type en entrée invalide."
 
-msgid "Invalid value."
-msgstr "Valeur invalide."
+#~ msgid "Field may not be null."
+#~ msgstr "Ce champ ne doit pas être vide."
 
-msgid "Invalid type."
-msgstr "Type invalide."
+#~ msgid "Invalid value."
+#~ msgstr "Valeur invalide."
 
-msgid "Not a valid list."
-msgstr "Pas une liste valide."
+#~ msgid "Invalid type."
+#~ msgstr "Type invalide."
 
-msgid "Not a valid string."
-msgstr "Pas une chaîne de charactères valide."
+#~ msgid "Not a valid list."
+#~ msgstr "Pas une liste valide."
 
-msgid "Not a valid number."
-msgstr "Pas un nombre valide."
+#~ msgid "Not a valid string."
+#~ msgstr "Pas une chaîne de charactères valide."
 
-msgid "Not a valid integer."
-msgstr "Pas un nombre entier valide."
+#~ msgid "Not a valid number."
+#~ msgstr "Pas un nombre valide."
 
-msgid "Special numeric values are not permitted."
-msgstr "Nombre spéciaux non autorisés."
+#~ msgid "Not a valid integer."
+#~ msgstr "Pas un nombre entier valide."
 
-msgid "Not a valid boolean."
-msgstr "Pas un booléen valide."
+#~ msgid "Special numeric values are not permitted."
+#~ msgstr "Nombre spéciaux non autorisés."
 
-msgid "Cannot format string with given data."
-msgstr "Impossible de formater la chaine de caractère avec ces données"
+#~ msgid "Not a valid boolean."
+#~ msgstr "Pas un booléen valide."
 
-msgid "Not a valid datetime."
-msgstr "Pas une datetime valide."
+#~ msgid "Cannot format string with given data."
+#~ msgstr "Impossible de formater la chaine de caractère avec ces données"
 
-msgid "\"{input}\" cannot be formatted as a datetime."
-msgstr "\"{input}\" ne peut pas être formaté comme une datetime."
+#~ msgid "Not a valid datetime."
+#~ msgstr "Pas une datetime valide."
 
-msgid "Not a valid time."
-msgstr "Pas un temps valide."
+#~ msgid "\"{input}\" cannot be formatted as a datetime."
+#~ msgstr "\"{input}\" ne peut pas être formaté comme une datetime."
 
-msgid "\"{input}\" cannot be formatted as a time."
-msgstr "\"{input}\" ne peut pas être formatée comme un temps."
+#~ msgid "Not a valid time."
+#~ msgstr "Pas un temps valide."
 
-msgid "Not a valid date."
-msgstr "Pas une date valide."
+#~ msgid "\"{input}\" cannot be formatted as a time."
+#~ msgstr "\"{input}\" ne peut pas être formatée comme un temps."
 
-msgid "\"{input}\" cannot be formatted as a date."
-msgstr "\"{input}\" ne peut pas être formatée comme une date."
+#~ msgid "Not a valid date."
+#~ msgstr "Pas une date valide."
 
-msgid "Not a valid period of time."
-msgstr "Pas une période de temps valide."
+#~ msgid "\"{input}\" cannot be formatted as a date."
+#~ msgstr "\"{input}\" ne peut pas être formatée comme une date."
 
-msgid "{input!r} cannot be formatted as a timedelta."
-msgstr "{input!r} ne peut pas être formatée comme un timedelta."
+#~ msgid "Not a valid period of time."
+#~ msgstr "Pas une période de temps valide."
 
-msgid "Not a valid mapping type."
-msgstr "Pas un mapping valide."
+#~ msgid "{input!r} cannot be formatted as a timedelta."
+#~ msgstr "{input!r} ne peut pas être formatée comme un timedelta."
+
+#~ msgid "Not a valid mapping type."
+#~ msgstr "Pas un mapping valide."
 
 # Marshmallow validate #
-msgid "Not a valid URL."
-msgstr "Pas une URL valide."
+#~ msgid "Not a valid URL."
+#~ msgstr "Pas une URL valide."
 
-msgid "Not a valid email address."
-msgstr "Pas une adresse mail valide."
+#~ msgid "Not a valid email address."
+#~ msgstr "Pas une adresse mail valide."
 
-msgid "Must be at least {min}."
-msgstr "Doit être au moins {min}."
+#~ msgid "Must be at least {min}."
+#~ msgstr "Doit être au moins {min}."
 
-msgid "Must be at most {max}."
-msgstr "Doit être au plus {max}."
+#~ msgid "Must be at most {max}."
+#~ msgstr "Doit être au plus {max}."
 
-msgid "Must be between {min} and {max}."
-msgstr "Doit être entre {min} et {max}."
+#~ msgid "Must be between {min} and {max}."
+#~ msgstr "Doit être entre {min} et {max}."
 
-msgid "Shorter than minimum length {min}."
-msgstr "Plus court que la longueur minimal de {min}."
+#~ msgid "Shorter than minimum length {min}."
+#~ msgstr "Plus court que la longueur minimal de {min}."
 
-msgid "Longer than maximum length {max}."
-msgstr "Plus long que la longueur maximale de {max}."
+#~ msgid "Longer than maximum length {max}."
+#~ msgstr "Plus long que la longueur maximale de {max}."
 
-msgid "Length must be between {min} and {max}."
-msgstr "La longueur doit être entre {min} et {max}."
+#~ msgid "Length must be between {min} and {max}."
+#~ msgstr "La longueur doit être entre {min} et {max}."
 
-msgid "Length must be {equal}."
-msgstr "La longueur doit être de {equal}."
+#~ msgid "Length must be {equal}."
+#~ msgstr "La longueur doit être de {equal}."
 
-msgid "Must be equal to {other}."
-msgstr "Doit être égal à {other}."
+#~ msgid "Must be equal to {other}."
+#~ msgstr "Doit être égal à {other}."
 
-msgid "String does not match expected pattern."
-msgstr "La chaîne de caractère ne doit pas valider l'expression rationnelle."
+#~ msgid "String does not match expected pattern."
+#~ msgstr "La chaîne de caractère ne doit pas valider l'expression rationnelle."
 
-msgid "Invalid input."
-msgstr "Entrée invalide."
+#~ msgid "Invalid input."
+#~ msgstr "Entrée invalide."
 
-msgid "Not a valid choice."
-msgstr "Pas un choix valide."
+#~ msgid "Not a valid choice."
+#~ msgstr "Pas un choix valide."
 
-msgid "One or more of the choices you made was not acceptable."
-msgstr "Un ou plusieurs des choix faits n'est pas acceptable."
+#~ msgid "One or more of the choices you made was not acceptable."
+#~ msgstr "Un ou plusieurs des choix faits n'est pas acceptable."
+

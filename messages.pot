@@ -1,14 +1,14 @@
 # Translations template for umongo.
 # Copyright (C) 2025 Scille SAS and contributors
 # This file is distributed under the same license as the umongo project.
-# Jérôme Lafréchoux <jerome@jolimont.fr>, 2021.
+# FIRST AUTHOR Emmanuel Leblond <emmanuel.leblond@gmail.com>, 2016.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: umongo 3.0.0b14\n"
+"Project-Id-Version: umongo 4.0.0\n"
 "Report-Msgid-Bugs-To: jerome@jolimont.fr\n"
-"POT-Creation-Date: 2025-09-21 21:49+0200\n"
+"POT-Creation-Date: 2025-10-07 00:07+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Jérôme Lafréchoux <jerome@jolimont.fr>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,60 +17,65 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
-#: tests/test_i18n.py:26
-msgid "hello"
-msgstr ""
-
-#: umongo/abstract.py:101
+#: src/umongo/abstract.py:95
 msgid "Field value must be unique."
 msgstr ""
 
-#: umongo/abstract.py:102
+#: src/umongo/abstract.py:96
 #, python-brace-format
 msgid "Values of fields {fields} must be unique together."
 msgstr ""
 
-#: umongo/data_objects.py:165
+#: src/umongo/data_objects.py:157
 #, python-brace-format
 msgid "Reference not found for document {document}."
 msgstr ""
 
-#: umongo/data_proxy.py:172
+#: src/umongo/data_proxy.py:65
+#, python-format
+msgid "%s: unknown \"%s\" field found in DB."
+msgstr ""
+
+#: src/umongo/data_proxy.py:171
 msgid "Missing data for required field."
 msgstr ""
 
-#: umongo/fields.py:351
+#: src/umongo/fields.py:350
 #, python-brace-format
 msgid "DBRef must be on collection `{collection}`."
 msgstr ""
 
-#: umongo/fields.py:359 umongo/fields.py:374
+#: src/umongo/fields.py:358 src/umongo/fields.py:373
 #, python-brace-format
 msgid "`{document}` reference expected."
 msgstr ""
 
-#: umongo/fields.py:369 umongo/fields.py:417
+#: src/umongo/fields.py:368 src/umongo/fields.py:416
 msgid "Cannot reference a document that has not been created yet."
 msgstr ""
 
-#: umongo/fields.py:399 umongo/fields.py:502
+#: src/umongo/fields.py:398 src/umongo/fields.py:503
 #, python-brace-format
 msgid "Unknown document `{document}`."
 msgstr ""
 
-#: umongo/fields.py:423 umongo/marshmallow_bonus.py:61
+#: src/umongo/fields.py:422 src/umongo/marshmallow_bonus.py:61
 msgid "Generic reference must have `id` and `cls` fields."
 msgstr ""
 
-#: umongo/fields.py:428 umongo/marshmallow_bonus.py:66
+#: src/umongo/fields.py:427 src/umongo/marshmallow_bonus.py:66
 msgid "Invalid `id` field."
 msgstr ""
 
-#: umongo/fields.py:431 umongo/marshmallow_bonus.py:58
+#: src/umongo/fields.py:430 src/umongo/marshmallow_bonus.py:58
 msgid "Invalid value for generic reference field."
 msgstr ""
 
-#: umongo/marshmallow_bonus.py:28
+#: src/umongo/marshmallow_bonus.py:28
 msgid "Invalid ObjectId."
+msgstr ""
+
+#: tests/test_i18n.py:26
+msgid "hello"
 msgstr ""
 
