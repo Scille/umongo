@@ -62,10 +62,8 @@ class BaseDataProxy:
                 field = self._fields_from_mongo_key[key]
             except KeyError as exc:
                 raise UnknownFieldInDBError(
-                    _(
-                        f"{self.__class__.__name__}: "
-                        'unknown "{key}" field found in DB.',
-                    ),
+                    _('%s: unknown "%s" field found in DB.')
+                    % (self.__class__.__name__, key),
                 ) from exc
             self._data[key] = field.deserialize_from_mongo(val)
         self.clear_modified()
