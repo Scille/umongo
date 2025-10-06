@@ -2,6 +2,13 @@
 Changelog
 =========
 
+4.0.0b4 (2025-10-07)
+--------------------
+
+Features:
+
+* *Backwards-incompatible*: ``find_one`` methods don't accept ``*args`` anymore (#411).
+
 4.0.0b3 (2025-10-02)
 --------------------
 
