@@ -19,8 +19,8 @@ from .common import BaseTest
 def assert_indexes(indexes1, indexes2):
     if hasattr(indexes1, "__iter__"):
         for e1, e2 in zip_longest(indexes1, indexes2):
-            assert e1, "missing index %s" % e2.document
-            assert e2, "too much indexes: %s" % e1.document
+            assert e1, f"missing index {e2.document}"
+            assert e2, f"too much indexes: {e1.document}"
             assert e1.document == e2.document
     else:
         assert indexes1.document == indexes2.document

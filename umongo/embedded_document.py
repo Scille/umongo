@@ -105,10 +105,9 @@ class EmbeddedDocumentImplementation(Implementation, BaseDataObject):
         self._data = self.DataProxy(kwargs)
 
     def __repr__(self):
-        return "<object EmbeddedDocument %s.%s(%s)>" % (
-            self.__module__,
-            self.__class__.__name__,
-            dict(self._data.items()),
+        return (
+            f"<object EmbeddedDocument {self.__module__}.{self.__class__.__name__}"
+            f"({dict(self._data.items())})>"
         )
 
     def __eq__(self, other):

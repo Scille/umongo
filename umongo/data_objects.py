@@ -67,11 +67,7 @@ class List(BaseDataObject, list):
         return ret
 
     def __repr__(self):
-        return "<object %s.%s(%s)>" % (
-            self.__module__,
-            self.__class__.__name__,
-            list(self),
-        )
+        return f"<object {self.__module__}.{self.__class__.__name__}({list(self)})>"
 
     def is_modified(self):
         if self._modified:
@@ -137,11 +133,7 @@ class Dict(BaseDataObject, dict):
         self.set_modified()
 
     def __repr__(self):
-        return "<object %s.%s(%s)>" % (
-            self.__module__,
-            self.__class__.__name__,
-            dict(self),
-        )
+        return f"<object {self.__module__}.{self.__class__.__name__}({dict(self)})>"
 
     def is_modified(self):
         if self._modified:
@@ -189,11 +181,9 @@ class Reference:
         raise NotImplementedError
 
     def __repr__(self):
-        return "<object %s.%s(document=%s, pk=%r)>" % (
-            self.__module__,
-            self.__class__.__name__,
-            self.document_cls.__name__,
-            self.pk,
+        return (
+            f"<object {self.__module__}.{self.__class__.__name__}"
+            f"(document={self.document_cls.__name__}, pk={self.pk!r})>"
         )
 
     def __eq__(self, other):

@@ -180,7 +180,7 @@ class TestTxMongo(BaseDBTest):
         Student = classroom_model.Student
         Student.collection.drop()
         for i in range(10):
-            yield Student(name="student-%s" % i).commit()
+            yield Student(name=f"student-{i}").commit()
         results = yield Student.find(limit=5, skip=6)
         assert isinstance(results, list)
         assert len(results) == 4
@@ -188,7 +188,7 @@ class TestTxMongo(BaseDBTest):
         for elem in results:
             assert isinstance(elem, Student)
             names.append(elem.name)
-        assert sorted(names) == ["student-%s" % i for i in range(6, 10)]
+        assert sorted(names) == [f"student-{i}" for i in range(6, 10)]
         # Filter + projection
         results = yield Student.find({"name": "student-0"}, ["name"])
         assert isinstance(results, list)
@@ -200,7 +200,7 @@ class TestTxMongo(BaseDBTest):
         Student = classroom_model.Student
         Student.collection.drop()
         for i in range(10):
-            yield Student(name="student-%s" % i).commit()
+            yield Student(name=f"student-{i}").commit()
         batch1, cursor1 = yield Student.find_with_cursor(limit=5, skip=6)
         assert len(batch1) == 4
         batch2, cursor2 = yield cursor1
@@ -211,7 +211,7 @@ class TestTxMongo(BaseDBTest):
             assert isinstance(elem, Student)
             names.append(elem.name)
         # Filter + projection
-        assert sorted(names) == ["student-%s" % i for i in range(6, 10)]
+        assert sorted(names) == [f"student-{i}" for i in range(6, 10)]
         batch1, cursor1 = yield Student.find_with_cursor(
             {"name": "student-0"},
             ["name"],

@@ -146,14 +146,14 @@ class TestPymongo(BaseDBTest):
         Student = classroom_model.Student
         Student.collection.drop()
         for i in range(10):
-            Student(name="student-%s" % i).commit()
+            Student(name=f"student-{i}").commit()
         assert Student.count_documents() == 10
         assert Student.count_documents(limit=5, skip=6) == 4
         names = []
         for elem in Student.find(limit=5, skip=6):
             assert isinstance(elem, Student)
             names.append(elem.name)
-        assert sorted(names) == ["student-%s" % i for i in range(6, 10)]
+        assert sorted(names) == [f"student-{i}" for i in range(6, 10)]
 
         cursor = Student.find(limit=5, skip=6)
         elem0 = cursor[0]
@@ -169,7 +169,7 @@ class TestPymongo(BaseDBTest):
         # Cursor slicing
         cursor = Student.find()
         names = (elem.name for elem in cursor[2:5])
-        assert sorted(names) == ["student-%s" % i for i in range(2, 5)]
+        assert sorted(names) == [f"student-{i}" for i in range(2, 5)]
 
         # Filter + projection
         cursor = Student.find({"name": "student-0"}, ["name"])

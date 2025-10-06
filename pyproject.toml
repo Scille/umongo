@@ -100,7 +100,6 @@ ignore = [
     "PLW0642", # allow reassigning `cls` variable in class method"
     "PLW1641", # TODO: Object does not implement `__hash__` method
     "PLW2901", # `for` loop variable `base` overwritten by assignment target
-    "UP031",   # TODO: Use format specifiers instead of percent format
     "RET504",  # Unnecessary assignment"
     "RUF012",  # allow mutable class variables
     "S",       # allow asserts

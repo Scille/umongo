@@ -54,7 +54,4 @@ class MixinDocumentImplementation(Implementation):
     opts = MixinDocumentOpts(None, MixinDocumentTemplate)
 
     def __repr__(self):
-        return "<object MixinDocument %s.%s>" % (
-            self.__module__,
-            self.__class__.__name__,
-        )
+        return f"<object MixinDocument {self.__module__}.{self.__class__.__name__}>"

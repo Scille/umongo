@@ -144,7 +144,7 @@ class BaseBuilder:
             )
             if issubclass(base, Template):
                 if base not in self._templates_lookup:
-                    raise NotRegisteredDocumentError("Unknown document `%r`" % base)
+                    raise NotRegisteredDocumentError(f'Unknown document "{base!r}"')
                 converted_bases.append(self._templates_lookup[base])
             else:
                 converted_bases.append(base)
@@ -171,7 +171,7 @@ class BaseBuilder:
         schema_nmspc.update(schema_fields)
         schema_nmspc.update(schema_non_fields)
         schema_nmspc["MA_BASE_SCHEMA_CLS"] = template.MA_BASE_SCHEMA_CLS
-        return type("%sSchema" % template.__name__, schema_bases, schema_nmspc)
+        return type("f{template.__name__}Schema", schema_bases, schema_nmspc)
 
     def _build_document_opts(self, template, bases, is_child):
         base_tmpl_cls = _get_base_template_cls(template)

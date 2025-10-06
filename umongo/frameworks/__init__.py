@@ -37,7 +37,7 @@ class InstanceRegisterer:
             if instance.is_compatible_with(db):
                 return instance
         raise NoCompatibleInstanceError(
-            "Cannot find a umongo instance compatible with %s" % type(db),
+            f"Cannot find a umongo instance compatible with {type(db)}",
         )
 
 

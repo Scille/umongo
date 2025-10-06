@@ -211,10 +211,9 @@ class DocumentImplementation(
         super().__init__(**kwargs)
 
     def __repr__(self):
-        return "<object Document %s.%s(%s)>" % (
-            self.__module__,
-            self.__class__.__name__,
-            dict(self._data.items()),
+        return (
+            f"<object Document {self.__module__}.{self.__class__.__name__}"
+            f"({dict(self._data.items())})>"
         )
 
     def __eq__(self, other):
