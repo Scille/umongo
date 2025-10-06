@@ -13,7 +13,7 @@ class MetaTemplate(type):
         return type.__new__(cls, name, tuple(cooked_bases), nmspc)
 
     def __repr__(cls):
-        return "<Template class '%s.%s'>" % (cls.__module__, cls.__name__)
+        return f"<Template class '{cls.__module__}.{cls.__name__}'>"
 
 
 class Template(metaclass=MetaTemplate):
@@ -38,7 +38,7 @@ class MetaImplementation(MetaTemplate):
         return type.__new__(cls, name, bases, nmspc)
 
     def __repr__(cls):
-        return "<Implementation class '%s.%s'>" % (cls.__module__, cls.__name__)
+        return f"<Implementation class '{cls.__module__}.{cls.__name__}'>"
 
 
 class Implementation(metaclass=MetaImplementation):

@@ -59,7 +59,7 @@ class BaseSchema(ma.Schema):
         nmspc = {
             name: field.as_marshmallow_field() for name, field in self.fields.items()
         }
-        name = "Marshmallow%s" % type(self).__name__
+        name = f"Marshmallow{type(self).__name__}"
         m_schema = type(name, (self.MA_BASE_SCHEMA_CLS,), nmspc)
         # Add i18n support to the schema
         # We can't use I18nErrorDict here because __getitem__ is not called

@@ -62,10 +62,8 @@ class BaseDataProxy:
                 field = self._fields_from_mongo_key[key]
             except KeyError as exc:
                 raise UnknownFieldInDBError(
-                    _(
-                        f"{self.__class__.__name__}: "
-                        'unknown "{key}" field found in DB.',
-                    ),
+                    _('%s: unknown "%s" field found in DB.')
+                    % (self.__class__.__name__, key),
                 ) from exc
             self._data[key] = field.deserialize_from_mongo(val)
         self.clear_modified()
@@ -123,7 +121,7 @@ class BaseDataProxy:
 
     def __repr__(self):
         # Display data in oo world format
-        return "<%s(%s)>" % (self.__class__.__name__, dict(self.items()))
+        return f"<{self.__class__.__name__}({dict(self.items())})>"
 
     def __eq__(self, other):
         if isinstance(other, dict):
@@ -231,7 +229,7 @@ def data_proxy_factory(basename, schema, strict=True):
     This way all generic informations (like schema and fields lookups)
     are kept inside the  DataProxy class and it instances are just flyweights.
     """
-    cls_name = "%sDataProxy" % basename
+    cls_name = f"{basename}DataProxy"
 
     nmspc = {
         "__slots__": (),

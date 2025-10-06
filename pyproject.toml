@@ -81,7 +81,6 @@ ignore = [
     "A002",    # "argument name shadows a Python standard-library module"
     "ANN",     # skip annotation checks
     "ARG",     # unused arguments are common w/ interfaces
-    "B026",    # TODO: Star-arg unpacking after a keyword argument is strongly discouraged"
     "COM",     # let formatter take care of commas
     "C901",    # don't enforce complexity level
     "D",       # don't require docstrings
@@ -90,7 +89,6 @@ ignore = [
     "FBT002",  # allow boolean default positional argument
     "FIX",     # allow "FIX" comments in code
     "INP001",  # allow Python files outside of packages
-    "INT001",  # TODO: f-string is resolved before function call; consider `_("string %s") % arg`
     "N805",    # allow first method argument not to be self (can be cls)
     "N806",    # allow uppercase variable names for variables that are classes
     "N816",    # allow mixedcase variable names for variables in global scope
@@ -100,9 +98,8 @@ ignore = [
     "PLR0915", # "Too many statements"
     "PLR2004", # "Magic value used in comparison"
     "PLW0642", # allow reassigning `cls` variable in class method"
-    "PLW1641", # TODO: Object does not implement `__hash__` method
+    "PLW1641", # allow objects not implementing `__hash__` method
     "PLW2901", # `for` loop variable `base` overwritten by assignment target
-    "UP031",   # TODO: Use format specifiers instead of percent format
     "RET504",  # Unnecessary assignment"
     "RUF012",  # allow mutable class variables
     "S",       # allow asserts

@@ -55,15 +55,15 @@ quit: leave the console"""
         try:
             vehicle = Vehicle.find_one({"_id": ObjectId(id)})
         except Exception as exc:
-            print("Error: %s" % exc)
+            print(f"Error: {exc}")
             return
         if vehicle:
             print(vehicle)
         else:
-            print("Error: unknown vehicle `%s`" % id)
+            print(f"Error: unknown vehicle `{id}`")
 
     def list_vehicles(self):
-        print("Found %s vehicles" % Vehicle.find().count())
+        print(f"Found {Vehicle.find().count()} vehicles")
         print("\n".join([str(v) for v in Vehicle.find()]))
 
     def new_vehicle(self):
@@ -85,9 +85,9 @@ quit: leave the console"""
         try:
             vehicle.commit()
         except ValidationError as exc:
-            print("Error: %s" % exc)
+            print(f"Error: {exc}")
         else:
-            print("Created %s" % vehicle)
+            print(f"Created {vehicle}")
 
     def start(self):
         quit = False

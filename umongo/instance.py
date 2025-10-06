@@ -62,7 +62,7 @@ class Instance(abc.ABC):
             name_or_template = name_or_template.__name__
         if name_or_template not in self._doc_lookup:
             raise NotRegisteredDocumentError(
-                'Unknown document class "%s"' % name_or_template,
+                f'Unknown document class "{name_or_template}"'
             )
         return self._doc_lookup[name_or_template]
 
@@ -75,7 +75,7 @@ class Instance(abc.ABC):
             name_or_template = name_or_template.__name__
         if name_or_template not in self._embedded_lookup:
             raise NotRegisteredDocumentError(
-                'Unknown embedded document class "%s"' % name_or_template,
+                f'Unknown embedded document class "{name_or_template}"',
             )
         return self._embedded_lookup[name_or_template]
 
@@ -118,7 +118,7 @@ class Instance(abc.ABC):
         implementation = self.builder.build_from_template(template)
         if implementation.__name__ in self._doc_lookup:
             raise AlreadyRegisteredDocumentError(
-                "Document `%s` already registered" % implementation.__name__,
+                f'Document "{implementation.__name__}" already registered'
             )
         self._doc_lookup[implementation.__name__] = implementation
         return implementation
@@ -127,7 +127,7 @@ class Instance(abc.ABC):
         implementation = self.builder.build_from_template(template)
         if implementation.__name__ in self._embedded_lookup:
             raise AlreadyRegisteredDocumentError(
-                "EmbeddedDocument `%s` already registered" % implementation.__name__,
+                f'EmbeddedDocument "{implementation.__name__}" already registered'
             )
         self._embedded_lookup[implementation.__name__] = implementation
         return implementation
@@ -136,7 +136,7 @@ class Instance(abc.ABC):
         implementation = self.builder.build_from_template(template)
         if implementation.__name__ in self._mixin_lookup:
             raise AlreadyRegisteredDocumentError(
-                "MixinDocument `%s` already registered" % implementation.__name__,
+                f'MixinDocument "{implementation.__name__}" already registered'
             )
         self._mixin_lookup[implementation.__name__] = implementation
         return implementation

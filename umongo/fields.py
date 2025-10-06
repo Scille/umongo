@@ -557,8 +557,8 @@ class EmbeddedField(BaseField, ma.fields.Nested):
     def map_to_field(self, mongo_path, path, func):
         """Apply a function to every field in the schema"""
         for name, field in self.embedded_document_cls.schema.fields.items():
-            cur_path = "%s.%s" % (path, name)
-            cur_mongo_path = "%s.%s" % (mongo_path, field.attribute or name)
+            cur_path = f"{path}.{name}"
+            cur_mongo_path = f"{mongo_path}.{field.attribute or name}"
             func(cur_mongo_path, cur_path, field)
             if hasattr(field, "map_to_field"):
                 field.map_to_field(cur_mongo_path, cur_path, func)

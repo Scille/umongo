@@ -169,7 +169,7 @@ class TxMongoDocument(DocumentImplementation):
 
     @classmethod
     @inlineCallbacks
-    def find_one(cls, filter=None, projection=None, *args, **kwargs):
+    def find_one(cls, filter=None, projection=None, **kwargs):
         """Find a single document in database."""
         filter = cook_find_filter(cls, filter)
         if projection:
@@ -177,7 +177,6 @@ class TxMongoDocument(DocumentImplementation):
         ret = yield cls.collection.find_one(
             filter,
             projection=projection,
-            *args,
             **kwargs,
         )
         if ret is not None:

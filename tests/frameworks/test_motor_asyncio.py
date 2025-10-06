@@ -191,7 +191,7 @@ class TestMotorAsyncIO(BaseDBTest):
             await Student.collection.drop()
 
             for i in range(10):
-                await Student(name="student-%s" % i).commit()
+                await Student(name=f"student-{i}").commit()
             cursor = Student.find(limit=5, skip=6)
             assert (await Student.count_documents()) == 10
             assert (await Student.count_documents(limit=5, skip=6)) == 4
@@ -205,7 +205,7 @@ class TestMotorAsyncIO(BaseDBTest):
             for elem in await cursor.to_list(length=100):
                 assert isinstance(elem, Student)
                 names.append(elem.name)
-            assert sorted(names) == ["student-%s" % i for i in range(6, 10)]
+            assert sorted(names) == [f"student-{i}" for i in range(6, 10)]
 
             # Try with fetch_next as well
             names = []
@@ -213,7 +213,7 @@ class TestMotorAsyncIO(BaseDBTest):
             async for elem in cursor:
                 assert isinstance(elem, Student)
                 names.append(elem.name)
-            assert sorted(names) == ["student-%s" % i for i in range(6, 10)]
+            assert sorted(names) == [f"student-{i}" for i in range(6, 10)]
 
             # Try with each as well
             names = []
@@ -231,7 +231,7 @@ class TestMotorAsyncIO(BaseDBTest):
 
             cursor.each(callback=callback)
             await future
-            assert sorted(names) == ["student-%s" % i for i in range(6, 10)]
+            assert sorted(names) == [f"student-{i}" for i in range(6, 10)]
 
             # Make sure this kind of notation doesn't create new cursor
             cursor = Student.find()

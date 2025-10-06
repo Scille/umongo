@@ -269,7 +269,7 @@ class MotorAsyncIODocument(DocumentImplementation):
         )
 
     @classmethod
-    async def find_one(cls, filter=None, projection=None, *args, **kwargs):
+    async def find_one(cls, filter=None, projection=None, **kwargs):
         """Find a single document in database."""
         filter = cook_find_filter(cls, filter)
         if projection:
@@ -278,7 +278,6 @@ class MotorAsyncIODocument(DocumentImplementation):
             filter,
             projection=projection,
             session=SESSION.get(),
-            *args,
             **kwargs,
         )
         if ret is not None:
@@ -294,7 +293,7 @@ class MotorAsyncIODocument(DocumentImplementation):
         filter = cook_find_filter(cls, filter)
         return WrappedCursor(
             cls,
-            cls.collection.find(filter, session=SESSION.get(), *args, **kwargs),
+            cls.collection.find(filter, *args, session=SESSION.get(), **kwargs),
         )
 
     @classmethod

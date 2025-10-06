@@ -28,7 +28,7 @@ class MockedCollection:
         )
 
     def __repr__(self):
-        return "<%s db=%s, name=%s>" % (self.__class__.__name__, self.db, self.name)
+        return f"<{self.__class__.__name__} db={self.db}, name={self.name}>"
 
 
 class MockedDB:
@@ -50,7 +50,7 @@ class MockedDB:
         return isinstance(other, MockedDB) and self.name == other.name
 
     def __repr__(self):
-        return "<%s name=%s>" % (self.__class__.__name__, self.name)
+        return f"<{self.__class__.__name__} name={self.name}>"
 
 
 class MockedBuilder(BaseBuilder):
