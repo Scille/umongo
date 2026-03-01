@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - run: pip install tox
       - run: tox -e docs
   tests:
@@ -24,11 +24,11 @@ jobs:
       matrix:
         include:
           - { name: "3.10-pymongo3", python: "3.10", tox: py310-pymongo3 }
-          - { name: "3.13-pymongo4", python: "3.13", tox: py313-pymongo4 }
+          - { name: "3.14-pymongo4", python: "3.14", tox: py314-pymongo4 }
           - { name: "3.10-motor", python: "3.10", tox: py310-motor }
-          - { name: "3.13-motor", python: "3.13", tox: py313-motor }
+          - { name: "3.14-motor", python: "3.14", tox: py314-motor }
           - { name: "3.10-txmongo", python: "3.10", tox: py310-txmongo }
-          - { name: "3.13-txmongo", python: "3.13", tox: py313-txmongo }
+          - { name: "3.14-txmongo", python: "3.14", tox: py314-txmongo }
     steps:
       - uses: actions/checkout@v6
       - name: Start MongoDB
@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - name: Install pypa/build
         run: python -m pip install build
       - name: Build a binary wheel and a source tarball
@@ -75,7 +75,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - run: python -m pip install tox
       - run: python -m tox -e lint
   publish-to-pypi:
