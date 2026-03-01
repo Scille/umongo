@@ -1,6 +1,6 @@
 [project]
 name = "umongo"
-version = "4.0.0b4"
+version = "4.0.0"
 description = "sync/async MongoDB ODM"
 readme = "README.rst"
 license = { file = "LICENSE" }
