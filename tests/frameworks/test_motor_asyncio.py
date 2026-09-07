@@ -198,7 +198,7 @@ class TestMotorAsyncIO(BaseDBTest):
 
             # to_list with callback should fail
             with pytest.raises(TypeError):
-                await cursor.to_list(length=100, callback=lambda r, e: r if r else e)
+                await cursor.to_list(length=100, callback=lambda r, e: r or e)
 
             # Make sure returned documents are wrapped
             names = []
